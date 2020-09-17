@@ -75,16 +75,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Keycloak Login Tasks",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:keycloak-login-dev"],
-      "preLaunchTask": "source",
-      "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal"
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Debug certs-aws Tasks",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:certs-aws-dev"],
