@@ -1,0 +1,7 @@
+.history/
+.vscode/
+build
+dist
+coverage
+vendors/client/
+# commitlint.config.js

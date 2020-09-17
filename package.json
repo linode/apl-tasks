@@ -124,6 +124,7 @@
     "lint:fix": "eslint --ext js,ts .",
     "release": "standard-version",
     "tests:oauth-proxy": "./node_modules/.bin/cypress run --headless --browser chrome --spec src/cypress/integration/oauth-proxy.spec.ts",
+    "tests:oauth-proxy-dev": "./node_modules/.bin/cypress run  --no-exit --headed --browser chrome --spec src/cypress/integration/oauth-proxy.spec.ts",
     "tasks:keycloak": "node dist/tasks/keycloak/keycloak.js",
     "tasks:keycloak-dev": "ts-node-dev  ./src/tasks/keycloak/keycloak.ts",
     "tasks:keycloak-login-dev": "ts-node-dev  ./src/tasks/keycloak/team-login.ts",

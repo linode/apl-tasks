@@ -1,9 +1,8 @@
-// ***********************************************
-// https://on.cypress.io/custom-commands
-// ***********************************************
+/* eslint-disable @typescript-eslint/camelcase */
+/// <reference types="cypress" />
 
 Cypress.Commands.add("azLogin", (fn) => {
-    const idp = Cypress.config("idp")
+    const {idp} = Cypress.config()  as Record<string, any>
     cy.request({
       method: "POST",
       url: `https://login.microsoftonline.com/${idp.tenantId}/oauth2/token`,
@@ -18,7 +17,6 @@ Cypress.Commands.add("azLogin", (fn) => {
       },
     }).then((response) => {
       const access_token = response.body.access_token;
-    //   const expiresOn = response.body.expires_on;
       localStorage.setItem("idp_access_token", access_token);
       fn(access_token)
     });
@@ -30,7 +28,7 @@ Cypress.Commands.add("azLogin", (fn) => {
 
 // Refused to display 'https://login.microsoftonline.com/57a3f6ea-7e70-4260-acb4-e06ce452f695/oauth2/v2.0/authorize?scope=openid+email+profile&state=-zBpFiMGApKrg4GJRMdm53tDmSmuYDpu5Jro45ffvgg._aq9thEMeyE.otomi&response_type=code&client_id=5eb129f2-1b26-4910-a05a-70d8b6a380cd&redirect_uri=https%3A%2F%2Fkeycloak.demo.gke.otomi.cloud%2Frealms%2Fmaster%2Fbroker%2Fredkubes-azure%2Fendpoint&nonce=QZ2EHY_FeLjpZMHfVUswPQ' in a frame because it set 'X-Frame-Options' to 'deny'.
 Cypress.Commands.add("kcLogin", (fn) => {
-    const keycloak = Cypress.config("keycloak")
+    const {keycloak} = Cypress.config()  as Record<string, any>
     cy.request({
       method: "POST",
       url: `https://keycloak.demo.gke.otomi.cloud/realms/master/protocol/openid-connect/token`,
@@ -45,8 +43,12 @@ Cypress.Commands.add("kcLogin", (fn) => {
       },
     }).then((response) => {
         const access_token = response.body.access_token;
-        // const expiresOn = response.body.expires_on;
         localStorage.setItem("kc_access_token", access_token);
         fn(access_token)
     });
   });
+
+  export {
+    // Use an empty export to please Babel's single file emit.
+    // https://github.com/Microsoft/TypeScript/issues/15230
+  }

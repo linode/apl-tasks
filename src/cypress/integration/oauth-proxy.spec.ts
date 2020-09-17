@@ -1,39 +1,43 @@
+/// <reference types="cypress" />
+/* eslint-disable @typescript-eslint/camelcase */
 import jwtDecode from 'jwt-decode'
 
 describe('Otomi Landing Page', () => {
     it('should be redirected to keycloak auth page', () => {
+        cy.getCookies().should('have.length', 0)
         cy.visit('https://otomi.demo.gke.otomi.cloud/')
         cy.url().should('include', 'https://keycloak.')
     }) 
 })
 describe('Oauth Proxy Login', () => {
-    it('should open otomi auth page', () => {
+    it('should submit form and redirect to keycloak auth page', () => {
+        cy.getCookies().should('have.length', 0)
         cy.visit('https://auth.demo.gke.otomi.cloud/oauth2/sign_in')
         cy.get('form').submit()
         cy.url().should('include', 'https://keycloak.')
-        cy.get('#zocial-redkubes-azure').click()
-        cy.url()
+    })
+    it('should contain azure idp login form', () => {
+        cy.get('#zocial-redkubes-azure').should('be.visible')  
     })
 })
 describe('Azure Login', () => {
     it('should POST auth credentials to azure oauth token endpoint', () => {
-        const teamOtomiId = Cypress.config("idp")["teamOtomiId"]
-        cy.azLogin( (access_token) => {
-            console.log("teamOtomiId",teamOtomiId)
-            // const access_token = localStorage.getItem("idp_access_token");
-            const jwt = jwtDecode(access_token)
+        const {idp} = Cypress.config() as Record<string, any> 
+        cy.azLogin( (accessToken) => {
+            console.log("teamOtomiId",idp.teamOtomiId)
+            const jwt = jwtDecode(accessToken)
             console.log( jwt  )
-            expect(jwt.groups).to.include(teamOtomiId)
+            expect(jwt.groups).to.include(idp.teamOtomiId)
         })
     })
 })
 describe('KeyCloak Login', () => {
     it('should POST auth credentials to keycloak oidc token endpoint', () => {
-        cy.kcLogin( (access_token) => {
-            // const access_token = localStorage.getItem("kc_access_token");
-            const jwt = jwtDecode(access_token)
+        cy.kcLogin( (accessToken) => {
+            const jwt = jwtDecode(accessToken)
             console.log( jwt  )
             expect(jwt.groups).to.include("offline_access")
         })
     })
 })
+
