@@ -33,14 +33,12 @@ FROM dev as clean
 # below command removes the packages specified in devDependencies and set NODE_ENV to production
 RUN npm prune --production
 # --------------- Production stage
-FROM node:13.10.1-alpine AS prod
+
+FROM cypress/included:5.2.0 AS prod
 
 COPY --from=dev /usr/local/bin/node /usr/bin/
 COPY --from=dev /usr/lib/libgcc* /usr/lib/
 COPY --from=dev /usr/lib/libstdc* /usr/lib/
-
-# Install dependencies
-RUN apk add --no-cache git
 
 # Install app
 RUN mkdir /app
@@ -48,6 +46,7 @@ WORKDIR /app
 COPY --from=clean /app/node_modules node_modules
 COPY --from=ci /app/dist dist
 COPY package.json .
+COPY cypress.json .
 COPY bin bin
 
 USER node

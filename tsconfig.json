@@ -15,7 +15,7 @@
     "isolatedModules": true,
     "types": ["cypress", "node"]
   },
-  "include": ["./src/**/*.ts", "**/*.ts"],
+  "include": ["./src/**/*.ts", "**/*.ts", "**/*.d.ts"],
   "exclude": ["node_modules", "dist"],
   "parserOptions": {
     "ecmaVersion": 2018,
