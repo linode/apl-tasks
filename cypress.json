@@ -5,23 +5,5 @@
     "supportFile": "./src/cypress/support/index.ts",
     "screenshotOnRunFailure": false,
     "video": false,
-    "integrationFolder": "./src/cypress/integration/",
-    "idp": {
-        "teamOtomiId": "0efd2f6d-fb8b-49a9-9507-54cd6e92c348",
-        "grantType": "password",
-        "clientId": "5eb129f2-1b26-4910-a05a-70d8b6a380cd",
-        "clientSecret": "M1-AFG.k7bMV7rU7kvE.2xyaPk9Cl_.~A4",
-        "resource": "5eb129f2-1b26-4910-a05a-70d8b6a380cd",
-        "tenantId": "57a3f6ea-7e70-4260-acb4-e06ce452f695",
-        "username": "team.user@redkubes.net",
-        "password": "W[QNdLR;2GbNYzy3UMUkpNyq"
-    },
-    "keycloak": {
-        "grantType": "client_credentials",
-        "clientId": "otomi",
-        "clientSecret": "79e11c3d-0231-4882-95a7-36fd1e0b02b8",
-        "username": "team.user@redkubes.net",
-        "password": "W[QNdLR;2GbNYzy3UMUkpNyq",
-        "scope": "openid"
-    }
+    "integrationFolder": "./"
 }

@@ -41,6 +41,7 @@ export const TENANT_ID = str({ desc: 'The tenant ID' })
 export const TOOLS_HOST = str({ desc: 'The host of the tools server', default: '127.0.0.1' })
 export const TEAM_USER = str({ desc: 'The username for team-user', default: 'team.user@redkubes.net' })
 export const TEAM_USER_PASSWORD = str({ desc: 'Password for team-user account' })
+export const IDP_GROUP_TEAM_OTOMI = str({ desc: 'Team otomi group name' })
 
 const env = process.env
 export function cleanEnv<T>(
