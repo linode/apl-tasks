@@ -130,8 +130,8 @@
     "tasks:harbor-dev": "ts-node-dev  ./src/tasks/harbor/harbor.ts",
     "tasks:certs-aws": "node dist/tasks/otomi/certs-aws.js",
     "tasks:certs-aws-dev": "ts-node-dev  ./src/tasks/otomi/certs-aws.ts",
-    "smoke:oauth-proxy": "./node_modules/.bin/cypress run --headless --browser chrome --spec dist/cypress/integration/oauth-proxy.spec.js",
-    "smoke:oauth-proxy-dev": "./node_modules/.bin/cypress run  --no-exit --headed --browser chrome --spec src/cypress/integration/oauth-proxy.spec.ts",
+    "tests:smoke:oauth-proxy": "./node_modules/.bin/cypress run --headless --browser chrome --spec dist/cypress/integration/oauth-proxy.spec.js",
+    "tests:smoke:oauth-proxy-dev": "./node_modules/.bin/cypress run  --no-exit --headed --browser chrome --spec src/cypress/integration/oauth-proxy.spec.ts",
     "test": "NODE_ENV=test mocha --timeout 25000 -r ts-node/register -r ts-custom-error src/*.test.* --exit"
   },
   "standard-version": {
