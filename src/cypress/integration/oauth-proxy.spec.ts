@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/camelcase */
 /// <reference types="cypress" />
-import jwtDecode from 'jwt-decode'
+import * as jwt from 'jsonwebtoken'
 
 describe('Otomi Landing Page', () => {
     it('should visit landing page and be redirected to keycloak auth page', () => {
@@ -24,40 +24,34 @@ describe('Oauth Proxy Login', () => {
 describe('Azure Login', () => {
     it('should POST auth credentials to azure oauth token endpoint and obtain valid JWT', () => {
         const env = Cypress.env() 
-        cy.azLogin( (accessToken) => {
-            const jwt = jwtDecode(accessToken)
-            expect(jwt.groups).to.include(env.IDP_GROUP_TEAM_OTOMI)
+        cy.requestIdpToken().then( (accessToken) => {
+            const jwtToken = jwt.decode(accessToken)
+            expect(jwtToken['groups']).to.include(env.IDP_GROUP_TEAM_OTOMI)
             cy.setCookie('Authorization', `Bearer ${accessToken}`)
         })
     })
 })
-
-// @WIP this does not return a valid access_token
-describe('Otomi SSO Login', () => {
-    it('should Authorize keycloak oidc', () => {
-        cy.kcAuthorize( (accessToken) => {
-            console.log("Auth_CODE", accessToken)
-            // const jwt = jwtDecode(accessToken)
-            // console.log(jwt)
-            // expect(jwt.groups).to.include("offline_access")
-            // cy.wrap(accessToken).as('accessToken');
+describe('Otomi SSO Authentication Flows', () => {
+    let accessToken
+    before(() => {
+        cy.requestAccessToken().then( (token) => { 
+            accessToken = token
+            expect(accessToken).to.be.not.empty
         })
     })
-    it('should obtain valid jwt from keycloak oidc and redirect to otomi landing page', () => {
-        cy.kcLogin( (accessToken) => {
-            // cy.setCookie('Authorization', `Bearer ${accessToken}`)
-            const jwt = jwtDecode(accessToken)
-            // console.log(jwt)
-            expect(jwt.groups).to.include("offline_access")
-            cy.getCookies().should('have.length', 0)
-            cy.wrap(accessToken).as('accessToken');
+    it('should obtain and decode jwt and verify groups exist', () => {
+        const jwtToken = jwt.decode(accessToken)
+        expect(jwtToken['groups']).to.include("offline_access")
+        cy.getCookies().should('have.length', 0)
+    })
+    it('should obtain user information using access token', () => {
+        cy.requestUserinfo(accessToken).then( (response) => {
+            expect(response['groups']).to.include("offline_access")
         })
-        
-        cy.get("@accessToken").then( (accessToken) => {
-            const otomiDomain = 'otomi.demo.gke.otomi.cloud'
-            cy.setCookie('Authorization', `Bearer ${accessToken}`)
-            cy.visit(`https://auth.demo.gke.otomi.cloud/oauth2/redirect/${otomiDomain}`)
+    })
+    it('should validate access token from introspect endpoint', () => {
+        cy.validateAccessToken(accessToken).then( (response) => {
+            expect(response['groups']).to.include("offline_access")
         })
     })
 })
-

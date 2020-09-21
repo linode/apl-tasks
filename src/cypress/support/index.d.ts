@@ -1,12 +1,15 @@
 /// <reference types="cypress" />
+
 declare namespace Cypress {
     interface Chainable {
         /**
-         * Custom commands to login via oauth
+         * Custom commands related to oauth flows
          */
-        azLogin(fn: (string) => void ): void
-        kcLogin(fn: (string) => void ): void
-        kcAuthorize(fn: (string) => void ): void
+        requestIdpToken(): Promise<string>
+        requestAccessToken(): Promise<string>
+        obtainPubKey(): Promise<string>
+        requestUserinfo(token: string): Promise<object>
+        validateAccessToken(token: string): Promise<object>
     }
   }
   
