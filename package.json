@@ -14,6 +14,7 @@
     "@kubernetes/client-node": "^0.11.2",
     "@redkubes/harbor-client": "^2.0.2",
     "@redkubes/keycloak-client-node": "^10.0.0",
+    "@types/jsonwebtoken": "^8.5.0",
     "@types/lodash": "^4.14.158",
     "aws-sdk": "^2.742.0",
     "axios": "^0.19.2",
