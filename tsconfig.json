@@ -2,8 +2,8 @@
   "compilerOptions": {
     "strict": false,
     "target": "es5",
-    "lib": ["es5", "dom"],
     "outDir": "dist",
+    "sourceMap": true,
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -12,10 +12,9 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "types": ["cypress", "node"]
+    "isolatedModules": true
   },
-  "include": ["./src/**/*.ts", "**/*.ts", "**/*.d.ts"],
+  "include": ["./src/**/*.ts"],
   "exclude": ["node_modules", "dist"],
   "parserOptions": {
     "ecmaVersion": 2018,

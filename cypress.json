@@ -1,9 +1,0 @@
-{
-    "chromeWebSecurity": false,
-    "modifyObstructiveCode": false,
-    "pluginsFile": false,
-    "supportFile": "./dist/cypress/support/index.js",
-    "screenshotOnRunFailure": false,
-    "video": false,
-    "integrationFolder": "./"
-}
