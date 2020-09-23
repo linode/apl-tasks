@@ -4,8 +4,8 @@
     "tasks": [
       {
         "type": "shell",
-        "label": "source",
-        "command": "source .env.local",
+        "label": "env",
+        "command": "source .env",
       }
     ]
   }

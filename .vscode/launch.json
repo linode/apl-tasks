@@ -67,8 +67,8 @@
       "request": "launch",
       "name": "Debug Keycloak Bootstrapping Tasks",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:keycloak-dev"],
-      "preLaunchTask": "source",
+      "runtimeArgs": ["run-script", "task:keycloak-dev"],
+      "preLaunchTask": "env",
       "cwd": "${workspaceRoot}",
       "console": "integratedTerminal"
     },
@@ -77,7 +77,7 @@
       "request": "launch",
       "name": "Debug certs-aws Tasks",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:certs-aws-dev"],
+      "runtimeArgs": ["run-script", "task:certs-aws-dev"],
       "env": {
         "REGION": "eu-central-1"
       },
