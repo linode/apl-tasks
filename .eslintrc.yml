@@ -47,7 +47,7 @@ overrides:
       - prettier/@typescript-eslint
       - plugin:import/typescript
       - plugin:chai-friendly/recommended
-
+      - plugin:prettier/recommended
     plugins:
       - '@typescript-eslint'
 

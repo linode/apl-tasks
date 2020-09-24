@@ -26,7 +26,7 @@ import {
   clientScopeCfgTpl,
   otomiClientCfgTpl,
   TeamMapping,
-  clientEmailClaimMapper
+  clientEmailClaimMapper,
 } from './config'
 
 const env = cleanEnv({
@@ -115,9 +115,9 @@ export function mapTeamsToRoles(): Array<api.RoleRepresentation> {
   const teams = env.IDP_GROUP_MAPPINGS_TEAMS
   const realm = env.KEYCLOAK_REALM
   // create static admin teams
-  const otomiAdmin = Object.create({ name: "otomi-admin", groupMapping: env.IDP_GROUP_OTOMI_ADMIN }) as TeamMapping
-  const teamAdmin = Object.create({ name: "team-admin", groupMapping: env.IDP_GROUP_TEAM_ADMIN }) as TeamMapping
-  const adminTeams = [ otomiAdmin, teamAdmin ] 
+  const otomiAdmin = Object.create({ name: 'otomi-admin', groupMapping: env.IDP_GROUP_OTOMI_ADMIN }) as TeamMapping
+  const teamAdmin = Object.create({ name: 'team-admin', groupMapping: env.IDP_GROUP_TEAM_ADMIN }) as TeamMapping
+  const adminTeams = [otomiAdmin, teamAdmin]
   // iterate through all the teams and map groups
   const teamList = utils.objectToArray(teams, 'name', 'groupMapping') as TeamMapping[]
   const teamRoleRepresentations = adminTeams.concat(teamList).map((team) => {

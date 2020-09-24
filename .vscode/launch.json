@@ -68,7 +68,6 @@
       "name": "Debug Keycloak Bootstrapping Tasks",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "task:keycloak-dev"],
-      "preLaunchTask": "env",
       "cwd": "${workspaceRoot}",
       "console": "integratedTerminal"
     },

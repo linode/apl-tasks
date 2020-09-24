@@ -135,18 +135,18 @@ export const roleTpl = (name: string, groupMapping: string, containerId: string)
 
 export const clientEmailClaimMapper = () => {
   return {
-    name: "email",
-    protocol: "openid-connect",
-    protocolMapper: "oidc-usermodel-property-mapper",
+    name: 'email',
+    protocol: 'openid-connect',
+    protocolMapper: 'oidc-usermodel-property-mapper',
     consentRequired: false,
     config: {
-      "userinfo.token.claim": "true",
-      "user.attribute": "email",
-      "id.token.claim": "true",
-      "access.token.claim": "true",
-      "claim.name": "email",
-      "jsonType.label": "String"
-    }
+      'userinfo.token.claim': 'true',
+      'user.attribute': 'email',
+      'id.token.claim': 'true',
+      'access.token.claim': 'true',
+      'claim.name': 'email',
+      'jsonType.label': 'String',
+    },
   }
 }
 
@@ -199,11 +199,7 @@ export const otomiClientCfgTpl = (secret: string, redirectUris: object) => {
   return {
     id: 'otomi',
     secret: secret,
-    defaultClientScopes: [
-      'openid',
-      'email',
-      'profile',
-    ],
+    defaultClientScopes: ['openid', 'email', 'profile'],
     redirectUris: redirectUris,
     standardFlowEnabled: true,
     implicitFlowEnabled: true,
