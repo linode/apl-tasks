@@ -48,6 +48,7 @@ overrides:
       - plugin:import/typescript
       - plugin:chai-friendly/recommended
       - plugin:cypress/recommended
+      - plugin:prettier/recommended
 
     plugins:
       - '@typescript-eslint'

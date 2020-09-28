@@ -51,6 +51,4 @@ COPY package.json .
 COPY bin bin
 
 USER node
-
 ENV NODE_ENV=production
-

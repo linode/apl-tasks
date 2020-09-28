@@ -1,16 +1,29 @@
 {
+  "[typescript]": {
+    "editor.codeActionsOnSave": {
+      "source.fixAll": true
+    }
+  },
+  "[typescriptreact]": {
+    "editor.codeActionsOnSave": {
+      "source.fixAll": true
+    }
+  },
   "editor.codeActionsOnSave": {
-    "source.fixAll": true
+      "source.fixAll": true,
+      "source.fixAll.eslint": true
   },
   "editor.defaultFormatter": "dbaeumer.vscode-eslint",
   "editor.formatOnPaste": false,
   "editor.formatOnSave": true,
+  "eslint.format.enable": true,
   "eslint.alwaysShowStatus": true,
   "eslint.enable": true,
   "eslint.validate": ["javascript", "typescript"],
-  "tslint.enable": false,
-  "yaml.format.enable": false,
+  "html.format.endWithNewline": true,
   "mochaExplorer.files": "src/*.test.ts",
   "mochaExplorer.require": "ts-node/register",
-  "mochaExplorer.timeout": 20000
+  "mochaExplorer.timeout": 20000,
+  "yaml.format.enable": false,
+  "tslint.enable": false
 }

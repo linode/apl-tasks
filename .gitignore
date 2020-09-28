@@ -38,6 +38,3 @@ dist
 .history
 
 kms.json*
-
-vendors/openapi/otomi-api.json
-vendors/client/
