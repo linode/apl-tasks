@@ -1,0 +1,16 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  },
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+  "editor.formatOnPaste": false,
+  "editor.formatOnSave": true,
+  "eslint.alwaysShowStatus": true,
+  "eslint.enable": true,
+  "eslint.validate": ["javascript", "typescript"],
+  "tslint.enable": false,
+  "yaml.format.enable": false,
+  "mochaExplorer.files": "src/*.test.ts",
+  "mochaExplorer.require": "ts-node/register",
+  "mochaExplorer.timeout": 20000
+}

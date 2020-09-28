@@ -1,0 +1,88 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Program",
+      "program": "${workspaceFolder}/${relativeFile}",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach to dev:debug",
+      "protocol": "inspector",
+      "port": 4321,
+      "restart": true,
+      "cwd": "${workspaceRoot}"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Mocha Tests",
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+        "--require",
+        "dotenv/config",
+        "--require",
+        "ts-node/register",
+        "-u",
+        "tdd",
+        "--timeout",
+        "999999",
+        "--colors",
+        "--recursive",
+        "${workspaceFolder}/src/**/*.ts"
+      ],
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Mocha Current File",
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+        "--require",
+        "dotenv/config",
+        "--require",
+        "ts-node/register",
+        "--timeout",
+        "999999",
+        "--colors",
+        "--recursive",
+        "${file}"
+      ],
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Keycloak Bootstrapping Tasks",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "task:keycloak-dev"],
+      "cwd": "${workspaceRoot}",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug certs-aws Tasks",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "task:certs-aws-dev"],
+      "env": {
+        "REGION": "eu-central-1"
+      },
+      "cwd": "${workspaceRoot}",
+      "console": "integratedTerminal"
+    },
+    
+  ]
+}
