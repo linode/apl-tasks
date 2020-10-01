@@ -4,11 +4,7 @@
       "source.fixAll": true
     }
   },
-  "[typescriptreact]": {
-    "editor.codeActionsOnSave": {
-      "source.fixAll": true
-    }
-  },
+  
   "editor.codeActionsOnSave": {
       "source.fixAll": true,
       "source.fixAll.eslint": true
@@ -24,6 +20,6 @@
   "mochaExplorer.files": "src/*.test.ts",
   "mochaExplorer.require": "ts-node/register",
   "mochaExplorer.timeout": 20000,
-  "yaml.format.enable": false,
+  "yaml.format.enable": true,
   "tslint.enable": false
 }
