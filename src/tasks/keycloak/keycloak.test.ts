@@ -69,9 +69,9 @@ async function createMockedData() {
   registerNockResponse(
     'roles.realmRolesPost',
     `${baseAddress}/${keycloakRealm}/roles`,
-    realmConfig.mapTeamsToRoles().reduce((element) => {
-      return _.pick(element, ['name', 'groupMapping'])
-    }),
+    _.map(realmConfig.mapTeamsToRoles() as Array<object>, (element) => {
+      return _.pick(element, ['name', 'description'])
+    })[0],
     'POST',
   )
 
@@ -87,9 +87,9 @@ async function createMockedData() {
   registerNockResponse(
     'providers.realmIdentityProviderInstancesAliasMappersPost',
     `${baseAddress}/${keycloakRealm}/identity-provider/instances/${env.IDP_ALIAS}/mappers`,
-    realmConfig.createIdpMappers().reduce((element) => {
-      return _.pick(element, ['name', 'identityProviderAlias', 'config'])
-    }),
+    _.map(realmConfig.createIdpMappers() as Array<object>, (element) => {
+      return _.pick(element, ['name', 'identityProviderAlias'])
+    })[0],
     'POST',
   )
 
@@ -110,7 +110,6 @@ async function createMockedData() {
   )
   return { running: true }
 }
-
 describe('Keycloak Bootstrapping Settings', () => {
   before(async () => {
     return await createMockedData()
