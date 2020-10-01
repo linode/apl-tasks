@@ -37,7 +37,7 @@ async function doApiCall(resource: string, fn: () => Promise<void>, update = fal
   } catch (e) {
     if (e instanceof HttpError) {
       if ([400, 409].includes(e.statusCode)) console.warn(`${resource}: already exists.`)
-      else errors.push(`HTTP error ${e.statusCode}: ${e.message}`)
+      else errors.push(`${resource} HTTP error ${e.statusCode}: ${e.message}`)
     } else errors.push(`Error processing '${resource}': ${e}`)
     return false
   }
@@ -78,23 +78,46 @@ async function main() {
   protocols.accessToken = String(token.access_token)
 
   // Create Client Scopes
+  // @TODO check for 409 && PUT by Id
   await doApiCall('OpenID Client Scope', async () => {
     await clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, realmConfig.createClientScopes())
   })
 
   // Create Roles
   for await (const role of realmConfig.mapTeamsToRoles()) {
-    await doApiCall(`Role ${role.name}`, async () => {
-      await roles.realmRolesPost(env.KEYCLOAK_REALM, role)
-    })
+    if (
+      !(await doApiCall(`Role ${role.name}`, async () => {
+        await roles.realmRolesPost(env.KEYCLOAK_REALM, role)
+      }))
+    ) {
+      await doApiCall(
+        `Role ${role.name}`,
+        async () => {
+          await roles.realmRolesRoleNamePut(env.KEYCLOAK_REALM, role.name, role)
+        },
+        true,
+      )
+    }
   }
 
   // Create Identity Provider
-  await doApiCall('Identity Provider', async () => {
-    await providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, await realmConfig.createIdProvider())
-  })
+  if (
+    !(await doApiCall('Identity Provider', async () => {
+      await providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, await realmConfig.createIdProvider())
+    }))
+  ) {
+    await doApiCall(
+      'Identity Provider',
+      async () => {
+        const idp = await realmConfig.createIdProvider()
+        await providers.realmIdentityProviderInstancesAliasPut(env.KEYCLOAK_REALM, idp.alias, idp)
+      },
+      true,
+    )
+  }
 
   // Create Identity Provider Mappers
+  // @TODO check for 409 && PUT by Id
   for await (const idpMapper of realmConfig.createIdpMappers()) {
     await doApiCall(`Mapping ${idpMapper.name}`, async () => {
       await providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper)
@@ -118,6 +141,7 @@ async function main() {
   }
 
   // add email claim for client protocolMappers
+  // @TODO check for 409 && PUT by Id
   await doApiCall('Client Email Claim', async () => {
     await protocols.realmClientsIdProtocolMappersModelsPost(
       env.KEYCLOAK_REALM,

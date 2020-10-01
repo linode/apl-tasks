@@ -49,7 +49,6 @@
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-chai-expect": "^2.2.0",
     "eslint-plugin-chai-friendly": "^0.6.0",
-    "eslint-plugin-cypress": "^2.11.1",
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-jsx-a11y": "^6.3.1",
     "eslint-plugin-prettier": "^3.1.4",
@@ -116,6 +115,7 @@
     "task:harbor-dev": "ts-node-dev  ./src/tasks/harbor/harbor.ts",
     "task:certs-aws": "node dist/tasks/otomi/certs-aws.js",
     "task:certs-aws-dev": "ts-node-dev  ./src/tasks/otomi/certs-aws.ts",
+    "test:tasks": "NODE_ENV=test mocha --timeout 25000 -r ts-node/register -r ts-custom-error src/tasks/**/*.test.* --exit",
     "test": "NODE_ENV=test mocha --timeout 25000 -r ts-node/register -r ts-custom-error src/*.test.* --exit"
   },
   "standard-version": {

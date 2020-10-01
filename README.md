@@ -25,3 +25,8 @@ For example:
 ```
 npm run task:keycloak
 ```
+
+Run unit testing on the tasks:
+```
+npm run test:tasks
+```
