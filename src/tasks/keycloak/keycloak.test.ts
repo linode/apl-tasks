@@ -51,7 +51,7 @@ function registerNockResponse(methodName, url, payload, requestType) {
       nock(host).persist().post(url, _.matches(payload)).reply(200, { valid: true })
       break
     case 'PUT':
-      nock(keycloakAddress).persist().put(url, _.matches(payload)).reply(200, { valid: true })
+      nock(host).persist().put(url, _.matches(payload)).reply(200, { valid: true })
       break
   }
 }
