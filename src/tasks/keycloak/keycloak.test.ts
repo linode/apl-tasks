@@ -69,9 +69,12 @@ async function createMockedData() {
   registerNockResponse(
     'roles.realmRolesPost',
     `${baseAddress}/${keycloakRealm}/roles`,
-    _.map(realmConfig.mapTeamsToRoles() as Array<object>, (element) => {
-      return _.pick(element, ['name', 'description'])
-    })[0],
+    _.sortBy(
+      _.map(realmConfig.mapTeamsToRoles() as Array<object>, (element) => {
+        return _.pick(element, ['name', 'description'])
+      }),
+      'name',
+    )[0],
     'POST',
   )
 
@@ -87,9 +90,12 @@ async function createMockedData() {
   registerNockResponse(
     'providers.realmIdentityProviderInstancesAliasMappersPost',
     `${baseAddress}/${keycloakRealm}/identity-provider/instances/${env.IDP_ALIAS}/mappers`,
-    _.map(realmConfig.createIdpMappers() as Array<object>, (element) => {
-      return _.pick(element, ['name', 'identityProviderAlias'])
-    })[0],
+    _.sortBy(
+      _.map(realmConfig.createIdpMappers() as Array<object>, (element) => {
+        return _.pick(element, ['name', 'identityProviderAlias'])
+      }),
+      'name',
+    )[0],
     'POST',
   )
 
@@ -121,7 +127,7 @@ describe('Keycloak Bootstrapping Settings', () => {
   })
   // Create Roles
   it('Should validate POST request to create team to role mapper', async () => {
-    const role = realmConfig.mapTeamsToRoles()[0]
+    const role = _.sortBy(realmConfig.mapTeamsToRoles(), 'name')[0]
     const reply = await roles.realmRolesPost(keycloakRealm, role)
     expect(reply.body).to.contain({ valid: true })
   })
@@ -135,7 +141,7 @@ describe('Keycloak Bootstrapping Settings', () => {
   })
   // Create Identity Provider Mappers
   it('Should validate POST request to create identity provider mapper', async () => {
-    const idpMapper = realmConfig.createIdpMappers()[0]
+    const idpMapper = _.sortBy(realmConfig.createIdpMappers(), 'name')[0]
     const reply = await providers.realmIdentityProviderInstancesAliasMappersPost(
       keycloakRealm,
       env.IDP_ALIAS,
