@@ -105,7 +105,7 @@ async function createMockedData() {
   registerNockResponse(
     'protocols.realmClientsIdProtocolMappersModelsPost',
     `${baseAddress}/${keycloakRealm}/clients/${env.KEYCLOAK_CLIENT_ID}/protocol-mappers/models`,
-    _.pick(realmConfig.createClientEmailClaimMapper(), 'name', 'protocol', 'config'),
+    _.pick(realmConfig.createClientEmailClaimMapper(), ['name', 'protocol', 'config']),
     'POST',
   )
   return { running: true }
