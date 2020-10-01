@@ -1,5 +1,7 @@
 import { expect } from 'chai'
 import * as _ from 'lodash'
+import * as api from '@redkubes/keycloak-client-node'
+
 import {
   ClientsApi,
   IdentityProvidersApi,
@@ -22,7 +24,8 @@ import nock from 'nock'
 const keycloakAddress = env.KEYCLOAK_ADDRESS
 const keycloakRealm = env.KEYCLOAK_REALM
 const basePath = `${keycloakAddress}/admin/realms`
-const baseAddress = '/dev/admin/realms'
+const host = process.env.NODE_ENV === 'test' ? 'http://127.0.0.1:8080' : keycloakAddress
+const baseAddress = process.env.NODE_ENV === 'test' ? '/dev/admin/realms' : '/admin/realms'
 const token = {
   accessToken:
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik9JREMgQXV0aGVudGljYXRpb24gdG9rZW4iLCJpYXQiOjE1MTYyMzkwMjJ9.x5RQZuUPsjIuVHmurQ4h8X3ujIUKL1BeyRRs4Ztu5-E',
@@ -41,18 +44,11 @@ const protocols = new ProtocolMappersApi(basePath)
 protocols.accessToken = String(token.accessToken)
 
 const nockReplies = {}
-function createNockReplyObject(methodName, url, payload, requestType) {
+function registerNockResponse(methodName, url, payload, requestType) {
   nockReplies[methodName] = { url: url, payload: payload, requestType: requestType }
   switch (requestType) {
     case 'POST':
-      // @TODO fix POST request body partial matches
-      nock('http://127.0.0.1:8080')
-        .persist()
-        .post(
-          url,
-          //    _.matches(payload)
-        )
-        .reply(200, { valid: true })
+      nock(host).persist().post(url, _.matches(payload)).reply(200, { valid: true })
       break
     case 'PUT':
       nock(keycloakAddress).persist().put(url, _.matches(payload)).reply(200, { valid: true })
@@ -62,23 +58,25 @@ function createNockReplyObject(methodName, url, payload, requestType) {
 
 async function createMockedData() {
   // Create Client Scopes
-  createNockReplyObject(
+  registerNockResponse(
     'clientScope.realmClientScopesPost',
     `${baseAddress}/${keycloakRealm}/client-scopes`,
-    realmConfig.createClientScopes(),
+    _.pick(realmConfig.createClientScopes(), ['name', 'protocol', 'attributes']),
     'POST',
   )
 
   // Create Roles
-  createNockReplyObject(
+  registerNockResponse(
     'roles.realmRolesPost',
     `${baseAddress}/${keycloakRealm}/roles`,
-    realmConfig.createClientScopes(),
+    realmConfig.mapTeamsToRoles().reduce((element) => {
+      return _.pick(element, ['name', 'groupMapping'])
+    }),
     'POST',
   )
 
   // Create Identity Provider
-  createNockReplyObject(
+  registerNockResponse(
     'providers.realmIdentityProviderInstancesPost',
     `${baseAddress}/${keycloakRealm}/identity-provider/instances`,
     await realmConfig.createIdProvider(),
@@ -86,63 +84,58 @@ async function createMockedData() {
   )
 
   // Create Identity Provider Mappers
-  createNockReplyObject(
+  registerNockResponse(
     'providers.realmIdentityProviderInstancesAliasMappersPost',
     `${baseAddress}/${keycloakRealm}/identity-provider/instances/${env.IDP_ALIAS}/mappers`,
-    realmConfig.createIdpMappers(),
+    realmConfig.createIdpMappers().reduce((element) => {
+      return _.pick(element, ['name', 'identityProviderAlias', 'config'])
+    }),
     'POST',
   )
 
   // Create Otomi Client
-  createNockReplyObject(
+  registerNockResponse(
     'clients.realmClientsPost',
     `${baseAddress}/${keycloakRealm}/clients`,
-    realmConfig.createClient(),
+    _.pick(realmConfig.createClient(), ['id', 'secret']),
     'POST',
   )
 
-  // add email claim for client protocolMappers
-  createNockReplyObject(
+  // Email claim for client protocolMappers
+  registerNockResponse(
     'protocols.realmClientsIdProtocolMappersModelsPost',
     `${baseAddress}/${keycloakRealm}/clients/${env.KEYCLOAK_CLIENT_ID}/protocol-mappers/models`,
-    realmConfig.createClientEmailClaimMapper(),
+    _.pick(realmConfig.createClientEmailClaimMapper(), 'name', 'protocol', 'config'),
     'POST',
   )
   return { running: true }
 }
 
-describe('Test Async Unit', () => {
-  it('should indicate that Promise resolves true', async () => {
-    const spec: any = await Promise.resolve(true)
-    expect(spec).to.be.true
-  })
-})
-
 describe('Keycloak Bootstrapping Settings', () => {
   before(async () => {
     return await createMockedData()
   })
-
-  it('Send request to update client scopes', async () => {
+  // Create Client Scopes
+  it('Should validate POST request to create client scopes', async () => {
     const reply = await clientScope.realmClientScopesPost(keycloakRealm, realmConfig.createClientScopes())
     expect(reply.body).to.contain({ valid: true })
   })
-
-  it('Send request to create team to role mapper', async () => {
+  // Create Roles
+  it('Should validate POST request to create team to role mapper', async () => {
     const role = realmConfig.mapTeamsToRoles()[0]
     const reply = await roles.realmRolesPost(keycloakRealm, role)
     expect(reply.body).to.contain({ valid: true })
   })
-
-  it('Send request to update identity provider', async () => {
+  // Create Identity Provider
+  it('Should validate POST request to create identity provider', async () => {
     const reply = await providers.realmIdentityProviderInstancesPost(
       keycloakRealm,
       await realmConfig.createIdProvider(),
     )
     expect(reply.body).to.contain({ valid: true })
   })
-
-  it('Send request to create identity provider mapper', async () => {
+  // Create Identity Provider Mappers
+  it('Should validate POST request to create identity provider mapper', async () => {
     const idpMapper = realmConfig.createIdpMappers()[0]
     const reply = await providers.realmIdentityProviderInstancesAliasMappersPost(
       keycloakRealm,
@@ -151,16 +144,16 @@ describe('Keycloak Bootstrapping Settings', () => {
     )
     expect(reply.body).to.contain({ valid: true })
   })
-
-  it('Send request to create realm client', async () => {
+  // Create Otomi Client
+  it('Should validate POST request to create realm client', async () => {
     const reply = await clients.realmClientsPost(keycloakRealm, realmConfig.createClient())
     expect(reply.body).to.contain({ valid: true })
   })
-
-  it('Send request to create email claim for client', async () => {
+  // Email claim for client protocolMappers
+  it('Should validate POST request to create email claim for client', async () => {
     const client = realmConfig.createClient()
     const reply = await protocols.realmClientsIdProtocolMappersModelsPost(
-      env.KEYCLOAK_REALM,
+      keycloakRealm,
       client.id,
       realmConfig.createClientEmailClaimMapper(),
     )
