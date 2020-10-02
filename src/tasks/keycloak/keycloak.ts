@@ -17,6 +17,7 @@ import {
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
 } from '../../validators'
+import { find } from 'lodash'
 
 const env = cleanEnv({
   IDP_ALIAS,
@@ -78,10 +79,23 @@ async function main() {
   protocols.accessToken = String(token.access_token)
 
   // Create Client Scopes
-  // @TODO check for 409 && PUT by Id
-  await doApiCall('OpenID Client Scope', async () => {
-    await clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, realmConfig.createClientScopes())
-  })
+  if (
+    !(await doApiCall('OpenID Client Scope', async () => {
+      await clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, realmConfig.createClientScopes())
+    }))
+  ) {
+    // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
+    await doApiCall(
+      'OpenID Client Scope',
+      async () => {
+        const currentClientScopes = await clientScope.realmClientScopesGet(env.KEYCLOAK_REALM)
+        const scope = realmConfig.createClientScopes()
+        const id = find(currentClientScopes.body, { name: scope.name }).id
+        await clientScope.realmClientScopesIdPut(env.KEYCLOAK_REALM, id, scope)
+      },
+      true,
+    )
+  }
 
   // Create Roles
   for await (const role of realmConfig.mapTeamsToRoles()) {
@@ -117,7 +131,7 @@ async function main() {
   }
 
   // Create Identity Provider Mappers
-  // @TODO check for 409 && PUT by Id
+  // @NOTE - PUT involves adding strict required properties not in the factory
   for await (const idpMapper of realmConfig.createIdpMappers()) {
     await doApiCall(`Mapping ${idpMapper.name}`, async () => {
       await providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper)
@@ -141,7 +155,7 @@ async function main() {
   }
 
   // add email claim for client protocolMappers
-  // @TODO check for 409 && PUT by Id
+  // @NOTE - PUT involves adding strict required properties not in the factory
   await doApiCall('Client Email Claim', async () => {
     await protocols.realmClientsIdProtocolMappersModelsPost(
       env.KEYCLOAK_REALM,
