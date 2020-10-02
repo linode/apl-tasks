@@ -44,7 +44,7 @@ const env = cleanEnv({
 })
 
 export function createClient(): api.ClientRepresentation {
-  const redirectUris: Array<string> = JSON.parse(env.REDIRECT_URIS)
+  const redirectUris: Array<string> = env.REDIRECT_URIS
   const secret = env.KEYCLOAK_CLIENT_SECRET
   const otomiClientRepresentation = defaultsDeep(
     new api.ClientRepresentation(),
@@ -55,7 +55,7 @@ export function createClient(): api.ClientRepresentation {
 
 export function createIdpMappers(): Array<api.IdentityProviderMapperRepresentation> {
   const idpAlias = env.IDP_ALIAS
-  const teams = JSON.parse(env.IDP_GROUP_MAPPINGS_TEAMS)
+  const teams = env.IDP_GROUP_MAPPINGS_TEAMS
   const adminGroupMapping = env.IDP_GROUP_OTOMI_ADMIN
   const teamAdminGroupMapping = env.IDP_GROUP_TEAM_ADMIN
   // admin idp mapper case
@@ -112,7 +112,7 @@ export function createClientScopes(): api.ClientScopeRepresentation {
 }
 
 export function mapTeamsToRoles(): Array<api.RoleRepresentation> {
-  const teams = JSON.parse(env.IDP_GROUP_MAPPINGS_TEAMS)
+  const teams = env.IDP_GROUP_MAPPINGS_TEAMS
   const realm = env.KEYCLOAK_REALM
   // create static admin teams
   const otomiAdmin = Object.create({ name: 'otomi-admin', groupMapping: env.IDP_GROUP_OTOMI_ADMIN }) as TeamMapping
