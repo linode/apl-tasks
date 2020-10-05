@@ -1,6 +1,5 @@
 import { expect } from 'chai'
 import { matches, map, pick, sortBy } from 'lodash'
-import * as api from '@redkubes/keycloak-client-node'
 
 import {
   ClientsApi,
