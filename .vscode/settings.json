@@ -1,14 +1,4 @@
 {
-  "[typescript]": {
-    "editor.codeActionsOnSave": {
-      "source.fixAll": true
-    }
-  },
-  
-  "editor.codeActionsOnSave": {
-      "source.fixAll": true,
-      "source.fixAll.eslint": true
-  },
   "editor.defaultFormatter": "dbaeumer.vscode-eslint",
   "editor.formatOnPaste": false,
   "editor.formatOnSave": true,
