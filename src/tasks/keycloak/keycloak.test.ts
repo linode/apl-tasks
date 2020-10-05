@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/camelcase */
 import { expect } from 'chai'
 import { matches, map, pick, sortBy } from 'lodash'
-
+import sinon from 'sinon'
 import {
   ClientsApi,
   IdentityProvidersApi,
@@ -9,23 +10,36 @@ import {
   ProtocolMappersApi,
 } from '@redkubes/keycloak-client-node'
 import * as realmConfig from './realm-factory'
-import { cleanEnv, IDP_ALIAS, KEYCLOAK_ADDRESS, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID } from '../../validators'
+import * as settings from './config'
+import { OidcProviderCfg } from './config'
+import {
+  cleanEnv,
+  IDP_ALIAS,
+  KEYCLOAK_ADDRESS,
+  KEYCLOAK_REALM,
+  KEYCLOAK_CLIENT_ID,
+  IDP_OIDC_URL,
+} from '../../validators'
 
 const env = cleanEnv({
   IDP_ALIAS,
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
   KEYCLOAK_CLIENT_ID,
+  IDP_OIDC_URL,
 })
 import nock from 'nock'
 
 // Configuration Variables
 const keycloakAddress = env.KEYCLOAK_ADDRESS
 const keycloakRealm = env.KEYCLOAK_REALM
+const oidcUrl = env.IDP_OIDC_URL
 const basePath = `${keycloakAddress}/admin/realms`
 const host = process.env.NODE_ENV === 'test' ? 'http://127.0.0.1:8080' : keycloakAddress
 const baseAddress = process.env.NODE_ENV === 'test' ? '/dev/admin/realms' : '/admin/realms'
 const mockedId = '000-000'
+const mockedSecret = 'somesecret'
+const isValid = { valid: true }
 const token = {
   accessToken:
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik9JREMgQXV0aGVudGljYXRpb24gdG9rZW4iLCJpYXQiOjE1MTYyMzkwMjJ9.x5RQZuUPsjIuVHmurQ4h8X3ujIUKL1BeyRRs4Ztu5-E',
@@ -43,20 +57,51 @@ clients.accessToken = String(token.accessToken)
 const protocols = new ProtocolMappersApi(basePath)
 protocols.accessToken = String(token.accessToken)
 
-// const nockReplies = {}
+// utility function to mock server responses
+const nockReplies = {}
 function registerNockResponse(methodName, url, payload, requestType) {
-  //   nockReplies[methodName] = { url: url, payload: payload, requestType: requestType }
+  nockReplies[methodName] = { url: url, payload: payload, requestType: requestType }
   switch (requestType) {
     case 'POST':
-      nock(host).persist().post(url, matches(payload)).reply(200, { valid: true })
+      nock(host).persist().post(url, matches(payload)).reply(200, isValid)
       break
     case 'PUT':
-      nock(host).persist().put(url, matches(payload)).reply(200, { valid: true })
+      nock(host).persist().put(url, matches(payload)).reply(200, isValid)
       break
   }
 }
-
+// creating mocked data payloads for Keycloak openapi client requests
 async function createMockedData() {
+  // faked response for .well-known endpoints
+  const fakeIdpConfig = {
+    token_endpoint: `${oidcUrl}/oauth2/v2.0/token`,
+    jwks_uri: `${oidcUrl}/discovery/v2.0/keys`,
+    issuer: `${oidcUrl}/v2.0`,
+    userinfo_endpoint: `${oidcUrl}/oidc/userinfo`,
+    authorization_endpoint: `${oidcUrl}/oauth2/v2.0/authorize`,
+    end_session_endpoint: `${oidcUrl}/oauth2/v2.0/logout`,
+  }
+
+  // stub function to resolve fake endpoints
+  const fakeDiscoveryUrlsStub = sinon.fake.resolves(fakeIdpConfig)
+  sinon.replace(settings, 'getDiscoveryUrls', fakeDiscoveryUrlsStub)
+
+  // faked idp representation object
+  const fakeOidcConfig = await settings.getDiscoveryUrls(oidcUrl)
+  const idpRepresentation = {
+    alias: mockedId,
+    displayName: mockedId,
+    providerId: 'oidc',
+    enabled: true,
+    trustEmail: true,
+    firstBrokerLoginFlowAlias: 'first broker login',
+    config: settings.oidcCfg(fakeOidcConfig as OidcProviderCfg, mockedId, mockedId, mockedSecret),
+  }
+
+  // stub function to resolve fake idp config
+  const fakeIdpStub = sinon.fake.resolves(idpRepresentation)
+  sinon.replace(realmConfig, 'createIdProvider', fakeIdpStub)
+
   //  Client Scopes
   registerNockResponse(
     'clientScope.realmClientScopesPost',
@@ -147,36 +192,35 @@ async function createMockedData() {
     pick(realmConfig.createClientEmailClaimMapper(), ['name', 'protocol', 'config']),
     'POST',
   )
-
-  return { running: true }
 }
+
 describe('Keycloak Bootstrapping Settings', () => {
   before(async () => {
-    return await createMockedData()
+    await createMockedData()
   })
 
   //  Client Scopes Methods
   it('Should validate POST request to create client scopes', async () => {
     const reply = await clientScope.realmClientScopesPost(keycloakRealm, realmConfig.createClientScopes())
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 
   it('Should validate PUT request to update client scopes', async () => {
     const reply = await clientScope.realmClientScopesIdPut(keycloakRealm, mockedId, realmConfig.createClientScopes())
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 
   //  Roles Methods
   it('Should validate POST request to create team to role mapper', async () => {
     const role = sortBy(realmConfig.mapTeamsToRoles(), 'name')[0]
     const reply = await roles.realmRolesPost(keycloakRealm, role)
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 
   it('Should validate PUT request to update team to role mapper', async () => {
     const role = sortBy(realmConfig.mapTeamsToRoles(), 'name')[0]
     const reply = await roles.realmRolesRoleNamePut(keycloakRealm, mockedId, role)
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 
   //  Identity Provider Methods
@@ -185,7 +229,7 @@ describe('Keycloak Bootstrapping Settings', () => {
       keycloakRealm,
       await realmConfig.createIdProvider(),
     )
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 
   it('Should validate PUT request to update identity provider', async () => {
@@ -194,7 +238,7 @@ describe('Keycloak Bootstrapping Settings', () => {
       mockedId,
       await realmConfig.createIdProvider(),
     )
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 
   //  Identity Provider Mappers Methods
@@ -205,18 +249,18 @@ describe('Keycloak Bootstrapping Settings', () => {
       env.IDP_ALIAS,
       idpMapper,
     )
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 
   //   Client Methods
   it('Should validate POST request to create realm client', async () => {
     const reply = await clients.realmClientsPost(keycloakRealm, realmConfig.createClient())
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 
   it('Should validate POST request to update realm client', async () => {
     const reply = await clients.realmClientsIdPut(keycloakRealm, mockedId, realmConfig.createClient())
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 
   //  Email claim for client protocolMappers
@@ -227,6 +271,6 @@ describe('Keycloak Bootstrapping Settings', () => {
       client.id,
       realmConfig.createClientEmailClaimMapper(),
     )
-    expect(reply.body).to.contain({ valid: true })
+    expect(reply.body).to.contain(isValid)
   })
 })
