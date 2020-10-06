@@ -58,9 +58,9 @@ const protocols = new ProtocolMappersApi(basePath)
 protocols.accessToken = String(token.accessToken)
 
 // utility function to mock server responses
-// const nockReplies = {}
+const nockReplies = {}
 function registerNockResponse(methodName, url, payload, requestType) {
-  // nockReplies[methodName] = { url: url, payload: payload, requestType: requestType }
+  nockReplies[methodName] = { url: url, payload: payload, requestType: requestType }
   switch (requestType) {
     case 'POST':
       nock(host).persist().post(url, matches(payload)).reply(200, isValid)
@@ -123,6 +123,7 @@ async function createMockedData() {
     `${baseAddress}/${keycloakRealm}/roles`,
     sortBy(
       map(realmConfig.mapTeamsToRoles() as Array<object>, (element) => {
+        console.log(element)
         return pick(element, ['name', 'description'])
       }),
       'name',
