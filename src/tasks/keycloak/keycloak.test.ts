@@ -12,31 +12,15 @@ import {
 import * as realmConfig from './realm-factory'
 import * as settings from './config'
 import { OidcProviderCfg } from './config'
-import {
-  cleanEnv,
-  IDP_ALIAS,
-  KEYCLOAK_ADDRESS,
-  KEYCLOAK_REALM,
-  KEYCLOAK_CLIENT_ID,
-  IDP_OIDC_URL,
-} from '../../validators'
-
-const env = cleanEnv({
-  IDP_ALIAS,
-  KEYCLOAK_ADDRESS,
-  KEYCLOAK_REALM,
-  KEYCLOAK_CLIENT_ID,
-  IDP_OIDC_URL,
-})
 import nock from 'nock'
 
 // Configuration Variables
-const keycloakAddress = env.KEYCLOAK_ADDRESS
-const keycloakRealm = env.KEYCLOAK_REALM
-const oidcUrl = env.IDP_OIDC_URL
+const keycloakAddress = 'http://127.0.0.1:8080'
+const keycloakRealm = 'master'
+const idpAlias = 'oidc'
+const oidcUrl = 'bla.dibla'
 const basePath = `${keycloakAddress}/admin/realms`
-const host = process.env.NODE_ENV === 'test' ? 'http://127.0.0.1:8080' : keycloakAddress
-const baseAddress = process.env.NODE_ENV === 'test' ? '/dev/admin/realms' : '/admin/realms'
+const baseAddress = '/admin/realms'
 const mockedId = '000-000'
 const mockedSecret = 'somesecret'
 const isValid = { valid: true }
@@ -63,15 +47,50 @@ function registerNockResponse(methodName, url, payload, requestType) {
   nockReplies[methodName] = { url: url, payload: payload, requestType: requestType }
   switch (requestType) {
     case 'POST':
-      nock(host).persist().post(url, matches(payload)).reply(200, isValid)
+      nock(keycloakAddress).persist().post(url, matches(payload)).reply(200, isValid)
       break
     case 'PUT':
-      nock(host).persist().put(url, matches(payload)).reply(200, isValid)
+      nock(keycloakAddress).persist().put(url, matches(payload)).reply(200, isValid)
       break
   }
 }
 // creating mocked data payloads for Keycloak openapi client requests
 async function createMockedData() {
+  // faked idp mappers
+  const idpMapperList = [
+    {
+      name: 'map fake group to role',
+      identityProviderAlias: idpAlias,
+      identityProviderMapper: 'oidc-role-idp-mapper',
+      config: {
+        syncMode: 'INHERIT',
+        claim: 'groups',
+        role: 'some-role',
+        'claim.value': 'some-value',
+      },
+    },
+  ]
+
+  // stub function to resolve fake idp mappers
+  const fakeIdpMapperStub = sinon.fake.returns(idpMapperList)
+  sinon.replace(realmConfig, 'createIdpMappers', fakeIdpMapperStub)
+
+  // faked team list response
+  const teamList = [
+    {
+      name: 'team-a',
+      description: 'some description',
+      composite: false,
+      clientRole: false,
+      containerId: 'master',
+      attributes: {},
+    },
+  ]
+
+  // stub function to resolve fake teams list
+  const fakeTeamsStub = sinon.fake.returns(teamList)
+  sinon.replace(realmConfig, 'mapTeamsToRoles', fakeTeamsStub)
+
   // faked response for .well-known endpoints
   const fakeIdpConfig = {
     token_endpoint: `${oidcUrl}/oauth2/v2.0/token`,
@@ -101,7 +120,9 @@ async function createMockedData() {
   // stub function to resolve fake idp config
   const fakeIdpStub = sinon.fake.resolves(idpRepresentation)
   sinon.replace(realmConfig, 'createIdProvider', fakeIdpStub)
+}
 
+async function createNockResponses() {
   //  Client Scopes
   registerNockResponse(
     'clientScope.realmClientScopesPost',
@@ -123,7 +144,6 @@ async function createMockedData() {
     `${baseAddress}/${keycloakRealm}/roles`,
     sortBy(
       map(realmConfig.mapTeamsToRoles() as Array<object>, (element) => {
-        console.log(element)
         return pick(element, ['name', 'description'])
       }),
       'name',
@@ -161,7 +181,7 @@ async function createMockedData() {
   //  Identity Provider Mappers
   registerNockResponse(
     'providers.realmIdentityProviderInstancesAliasMappersPost',
-    `${baseAddress}/${keycloakRealm}/identity-provider/instances/${env.IDP_ALIAS}/mappers`,
+    `${baseAddress}/${keycloakRealm}/identity-provider/instances/${idpAlias}/mappers`,
     sortBy(
       map(realmConfig.createIdpMappers() as Array<object>, (element) => {
         return pick(element, ['name', 'identityProviderAlias'])
@@ -189,7 +209,7 @@ async function createMockedData() {
   //  Email claim for client protocolMappers
   registerNockResponse(
     'protocols.realmClientsIdProtocolMappersModelsPost',
-    `${baseAddress}/${keycloakRealm}/clients/${env.KEYCLOAK_CLIENT_ID}/protocol-mappers/models`,
+    `${baseAddress}/${keycloakRealm}/clients/${mockedId}/protocol-mappers/models`,
     pick(realmConfig.createClientEmailClaimMapper(), ['name', 'protocol', 'config']),
     'POST',
   )
@@ -198,6 +218,7 @@ async function createMockedData() {
 describe('Keycloak Bootstrapping Settings', () => {
   before(async () => {
     await createMockedData()
+    await createNockResponses()
   })
 
   //  Client Scopes Methods
@@ -245,11 +266,7 @@ describe('Keycloak Bootstrapping Settings', () => {
   //  Identity Provider Mappers Methods
   it('Should validate POST request to create identity provider mapper', async () => {
     const idpMapper = sortBy(realmConfig.createIdpMappers(), 'name')[0]
-    const reply = await providers.realmIdentityProviderInstancesAliasMappersPost(
-      keycloakRealm,
-      env.IDP_ALIAS,
-      idpMapper,
-    )
+    const reply = await providers.realmIdentityProviderInstancesAliasMappersPost(keycloakRealm, idpAlias, idpMapper)
     expect(reply.body).to.contain(isValid)
   })
 
@@ -266,10 +283,9 @@ describe('Keycloak Bootstrapping Settings', () => {
 
   //  Email claim for client protocolMappers
   it('Should validate POST request to create email claim for client', async () => {
-    const client = realmConfig.createClient()
     const reply = await protocols.realmClientsIdProtocolMappersModelsPost(
       keycloakRealm,
-      client.id,
+      mockedId,
       realmConfig.createClientEmailClaimMapper(),
     )
     expect(reply.body).to.contain(isValid)

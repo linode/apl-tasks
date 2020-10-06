@@ -55,17 +55,9 @@ export function createClient(): api.ClientRepresentation {
 
 export function createIdpMappers(): Array<api.IdentityProviderMapperRepresentation> {
   const idpAlias = env.IDP_ALIAS
+  const teams = env.IDP_GROUP_MAPPINGS_TEAMS
   const adminGroupMapping = env.IDP_GROUP_OTOMI_ADMIN
   const teamAdminGroupMapping = env.IDP_GROUP_TEAM_ADMIN
-  let teams, teamList
-  try {
-    teams = JSON.parse(env.IDP_GROUP_MAPPINGS_TEAMS)
-  } catch (error) {
-    teams = env.IDP_GROUP_MAPPINGS_TEAMS
-  } finally {
-    teamList = utils.objectToArray(teams, 'name', 'groupMapping') as TeamMapping[]
-  }
-
   // admin idp mapper case
   const admin = idpMapperTpl('map otomi-admin group to role', idpAlias, 'admin', adminGroupMapping)
   const adminMapper = defaultsDeep(new api.IdentityProviderMapperRepresentation(), admin)
@@ -78,6 +70,7 @@ export function createIdpMappers(): Array<api.IdentityProviderMapperRepresentati
     return defaultsDeep(new api.IdentityProviderMapperRepresentation(), idpMapper)
   })
   // team idp case - team list extracted from IDP_GROUP_MAPPINGS_TEAMS env
+  const teamList = utils.objectToArray(teams, 'name', 'groupMapping') as TeamMapping[]
   const teamMappers = teamList.map((team) => {
     const teamMapper = idpMapperTpl(`map ${team.name} group to role`, idpAlias, team.name, team.groupMapping)
     return defaultsDeep(new api.IdentityProviderMapperRepresentation(), teamMapper)
@@ -119,20 +112,14 @@ export function createClientScopes(): api.ClientScopeRepresentation {
 }
 
 export function mapTeamsToRoles(): Array<api.RoleRepresentation> {
+  const teams = env.IDP_GROUP_MAPPINGS_TEAMS
   const realm = env.KEYCLOAK_REALM
-  let teams, teamList
-  try {
-    teams = JSON.parse(env.IDP_GROUP_MAPPINGS_TEAMS)
-  } catch (error) {
-    teams = env.IDP_GROUP_MAPPINGS_TEAMS
-  } finally {
-    teamList = utils.objectToArray(teams, 'name', 'groupMapping') as TeamMapping[]
-  }
   // create static admin teams
   const otomiAdmin = Object.create({ name: 'otomi-admin', groupMapping: env.IDP_GROUP_OTOMI_ADMIN }) as TeamMapping
   const teamAdmin = Object.create({ name: 'team-admin', groupMapping: env.IDP_GROUP_TEAM_ADMIN }) as TeamMapping
   const adminTeams = [otomiAdmin, teamAdmin]
   // iterate through all the teams and map groups
+  const teamList = utils.objectToArray(teams, 'name', 'groupMapping') as TeamMapping[]
   const teamRoleRepresentations = adminTeams.concat(teamList).map((team) => {
     const role = roleTpl(team.name, team.groupMapping, realm)
     const roleRepresentation = defaultsDeep(new api.RoleRepresentation(), role)
