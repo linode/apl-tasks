@@ -209,6 +209,9 @@ export const otomiClientCfgTpl = (secret: string, redirectUris: object) => {
   }
 }
 
+export const loginThemeTpl = () => {
+  return { loginTheme: 'otomi' }
+}
 //type definition for imported ENV variable IDP_GROUP_MAPPINGS_TEAMS
 export type TeamMapping = {
   name: string

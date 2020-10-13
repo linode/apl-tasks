@@ -27,6 +27,7 @@ import {
   otomiClientCfgTpl,
   TeamMapping,
   clientEmailClaimMapper,
+  loginThemeTpl,
 } from './config'
 
 const env = cleanEnv({
@@ -126,4 +127,8 @@ export function mapTeamsToRoles(): Array<api.RoleRepresentation> {
     return roleRepresentation
   })
   return teamRoleRepresentations
+}
+
+export function createLoginThemeConfig(): api.RealmRepresentation {
+  return defaultsDeep(new api.RealmRepresentation(), loginThemeTpl())
 }
