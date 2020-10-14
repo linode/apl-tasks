@@ -7,6 +7,7 @@ import {
   RolesApi,
   HttpError,
   ProtocolMappersApi,
+  RealmsAdminApi,
 } from '@redkubes/keycloak-client-node'
 import * as realmConfig from './realm-factory'
 import {
@@ -76,6 +77,8 @@ async function main() {
   clients.accessToken = String(token.access_token)
   const protocols = new ProtocolMappersApi(basePath)
   protocols.accessToken = String(token.access_token)
+  const realms = new RealmsAdminApi(basePath)
+  realms.accessToken = String(token.access_token)
 
   // Create Client Scopes
   await doApiCall('OpenID Client Scope', async () => {
@@ -124,6 +127,11 @@ async function main() {
       client.id,
       realmConfig.createClientEmailClaimMapper(),
     )
+  })
+
+  // set login theme
+  await doApiCall('Login Theme', async () => {
+    await realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig())
   })
 
   // check errors and exit
