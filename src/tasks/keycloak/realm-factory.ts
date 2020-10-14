@@ -127,3 +127,7 @@ export function mapTeamsToRoles(): Array<api.RoleRepresentation> {
   })
   return teamRoleRepresentations
 }
+
+export function createLoginThemeConfig(): api.RealmRepresentation {
+  return defaultsDeep(new api.RealmRepresentation(), { loginTheme: 'otomi' })
+}
