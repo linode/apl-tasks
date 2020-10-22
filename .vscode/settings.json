@@ -10,8 +10,8 @@
     }
   },
   "editor.codeActionsOnSave": {
-      "source.fixAll": true,
-      "source.fixAll.eslint": true
+    "source.fixAll": true,
+    "source.fixAll.eslint": true
   },
   "editor.defaultFormatter": "dbaeumer.vscode-eslint",
   "editor.formatOnPaste": false,
@@ -20,10 +20,9 @@
   "eslint.alwaysShowStatus": true,
   "eslint.enable": true,
   "eslint.validate": ["javascript", "typescript"],
-  "html.format.endWithNewline": true,
   "mochaExplorer.files": "src/*.test.ts",
   "mochaExplorer.require": "ts-node/register",
   "mochaExplorer.timeout": 20000,
-  "yaml.format.enable": false,
+  "yaml.format.enable": true,
   "tslint.enable": false
 }
