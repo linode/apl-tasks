@@ -1,17 +1,6 @@
 {
-  "[typescript]": {
-    "editor.codeActionsOnSave": {
-      "source.fixAll": true
-    }
-  },
-  "[typescriptreact]": {
-    "editor.codeActionsOnSave": {
-      "source.fixAll": true
-    }
-  },
   "editor.codeActionsOnSave": {
-    "source.fixAll": true,
-    "source.fixAll.eslint": true
+    "source.fixAll": true
   },
   "editor.defaultFormatter": "dbaeumer.vscode-eslint",
   "editor.formatOnPaste": false,
