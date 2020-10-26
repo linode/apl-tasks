@@ -120,6 +120,17 @@ async function createMockedData() {
   // stub function to resolve fake idp config
   const fakeIdpStub = sinon.fake.resolves(idpRepresentation)
   sinon.replace(realmConfig, 'createIdProvider', fakeIdpStub)
+
+  // faked idp representation object
+  const fakeClientRepresentation = {
+    id: mockedId,
+    secret: mockedSecret,
+    defaultClientScopes: ['bla', 'di', 'bla'],
+  }
+
+  // stub function to resolve fake idp config
+  const fakeClientStub = sinon.fake.resolves(fakeClientRepresentation)
+  sinon.replace(realmConfig, 'createClient', fakeClientStub)
 }
 
 async function createNockResponses() {
@@ -195,14 +206,14 @@ async function createNockResponses() {
   registerNockResponse(
     'clients.realmClientsPost',
     `${baseAddress}/${keycloakRealm}/clients`,
-    pick(realmConfig.createClient(), ['id', 'secret']),
+    pick(realmConfig.createClient(), ['id', 'secret', 'defaultClientScopes']),
     'POST',
   )
 
   registerNockResponse(
     'clients.realmClientsIdPut',
     `${baseAddress}/${keycloakRealm}/clients/${mockedId}`,
-    pick(realmConfig.createClient(), ['id', 'secret']),
+    pick(realmConfig.createClient(), ['id', 'secret', 'defaultClientScopes']),
     'PUT',
   )
 
