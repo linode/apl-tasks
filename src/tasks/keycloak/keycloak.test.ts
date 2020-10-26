@@ -43,7 +43,7 @@ protocols.accessToken = String(token.accessToken)
 
 // utility function to mock server responses
 const nockReplies = {}
-function registerNockResponse(methodName, url, payload, requestType) {
+function createMockedResponse(methodName, url, payload, requestType) {
   nockReplies[methodName] = { url: url, payload: payload, requestType: requestType }
   switch (requestType) {
     case 'POST':
@@ -133,16 +133,16 @@ async function createMockedData() {
   sinon.replace(realmConfig, 'createClient', fakeClientStub)
 }
 
-async function createNockResponses() {
+async function createMockedResponses() {
   //  Client Scopes
-  registerNockResponse(
+  createMockedResponse(
     'clientScope.realmClientScopesPost',
     `${baseAddress}/${keycloakRealm}/client-scopes`,
     pick(realmConfig.createClientScopes(), ['name', 'protocol', 'attributes']),
     'POST',
   )
 
-  registerNockResponse(
+  createMockedResponse(
     'clientScope.realmClientScopesIdPut',
     `${baseAddress}/${keycloakRealm}/client-scopes/${mockedId}`,
     pick(realmConfig.createClientScopes(), ['name', 'protocol', 'attributes']),
@@ -150,7 +150,7 @@ async function createNockResponses() {
   )
 
   //  Roles
-  registerNockResponse(
+  createMockedResponse(
     'roles.realmRolesPost',
     `${baseAddress}/${keycloakRealm}/roles`,
     sortBy(
@@ -162,7 +162,7 @@ async function createNockResponses() {
     'POST',
   )
 
-  registerNockResponse(
+  createMockedResponse(
     'roles.realmRolesRoleNamePut',
     `${baseAddress}/${keycloakRealm}/roles/${mockedId}`,
     sortBy(
@@ -175,14 +175,14 @@ async function createNockResponses() {
   )
 
   //  Identity Provider
-  registerNockResponse(
+  createMockedResponse(
     'providers.realmIdentityProviderInstancesPost',
     `${baseAddress}/${keycloakRealm}/identity-provider/instances`,
     await realmConfig.createIdProvider(),
     'POST',
   )
 
-  registerNockResponse(
+  createMockedResponse(
     'providers.realmIdentityProviderInstancesAliasPut',
     `${baseAddress}/${keycloakRealm}/identity-provider/instances/${mockedId}`,
     await realmConfig.createIdProvider(),
@@ -190,7 +190,7 @@ async function createNockResponses() {
   )
 
   //  Identity Provider Mappers
-  registerNockResponse(
+  createMockedResponse(
     'providers.realmIdentityProviderInstancesAliasMappersPost',
     `${baseAddress}/${keycloakRealm}/identity-provider/instances/${idpAlias}/mappers`,
     sortBy(
@@ -203,14 +203,14 @@ async function createNockResponses() {
   )
 
   //  Client
-  registerNockResponse(
+  createMockedResponse(
     'clients.realmClientsPost',
     `${baseAddress}/${keycloakRealm}/clients`,
     pick(realmConfig.createClient(), ['id', 'secret', 'defaultClientScopes']),
     'POST',
   )
 
-  registerNockResponse(
+  createMockedResponse(
     'clients.realmClientsIdPut',
     `${baseAddress}/${keycloakRealm}/clients/${mockedId}`,
     pick(realmConfig.createClient(), ['id', 'secret', 'defaultClientScopes']),
@@ -218,7 +218,7 @@ async function createNockResponses() {
   )
 
   //  Email claim for client protocolMappers
-  registerNockResponse(
+  createMockedResponse(
     'protocols.realmClientsIdProtocolMappersModelsPost',
     `${baseAddress}/${keycloakRealm}/clients/${mockedId}/protocol-mappers/models`,
     pick(realmConfig.createClientEmailClaimMapper(), ['name', 'protocol', 'config']),
@@ -229,35 +229,35 @@ async function createNockResponses() {
 describe('Keycloak Bootstrapping Settings', () => {
   before(async () => {
     await createMockedData()
-    await createNockResponses()
+    await createMockedResponses()
   })
 
   //  Client Scopes Methods
-  it('Should validate POST request to create client scopes', async () => {
+  it('should validate POST request to create client scopes', async () => {
     const reply = await clientScope.realmClientScopesPost(keycloakRealm, realmConfig.createClientScopes())
     expect(reply.body).to.contain(isValid)
   })
 
-  it('Should validate PUT request to update client scopes', async () => {
+  it('should validate PUT request to update client scopes', async () => {
     const reply = await clientScope.realmClientScopesIdPut(keycloakRealm, mockedId, realmConfig.createClientScopes())
     expect(reply.body).to.contain(isValid)
   })
 
   //  Roles Methods
-  it('Should validate POST request to create team to role mapper', async () => {
+  it('should validate POST request to create team to role mapper', async () => {
     const role = sortBy(realmConfig.mapTeamsToRoles(), 'name')[0]
     const reply = await roles.realmRolesPost(keycloakRealm, role)
     expect(reply.body).to.contain(isValid)
   })
 
-  it('Should validate PUT request to update team to role mapper', async () => {
+  it('should validate PUT request to update team to role mapper', async () => {
     const role = sortBy(realmConfig.mapTeamsToRoles(), 'name')[0]
     const reply = await roles.realmRolesRoleNamePut(keycloakRealm, mockedId, role)
     expect(reply.body).to.contain(isValid)
   })
 
   //  Identity Provider Methods
-  it('Should validate POST request to create identity provider', async () => {
+  it('should validate POST request to create identity provider', async () => {
     const reply = await providers.realmIdentityProviderInstancesPost(
       keycloakRealm,
       await realmConfig.createIdProvider(),
@@ -265,7 +265,7 @@ describe('Keycloak Bootstrapping Settings', () => {
     expect(reply.body).to.contain(isValid)
   })
 
-  it('Should validate PUT request to update identity provider', async () => {
+  it('should validate PUT request to update identity provider', async () => {
     const reply = await providers.realmIdentityProviderInstancesAliasPut(
       keycloakRealm,
       mockedId,
@@ -275,25 +275,25 @@ describe('Keycloak Bootstrapping Settings', () => {
   })
 
   //  Identity Provider Mappers Methods
-  it('Should validate POST request to create identity provider mapper', async () => {
+  it('should validate POST request to create identity provider mapper', async () => {
     const idpMapper = sortBy(realmConfig.createIdpMappers(), 'name')[0]
     const reply = await providers.realmIdentityProviderInstancesAliasMappersPost(keycloakRealm, idpAlias, idpMapper)
     expect(reply.body).to.contain(isValid)
   })
 
   //   Client Methods
-  it('Should validate POST request to create realm client', async () => {
+  it('should validate POST request to create realm client', async () => {
     const reply = await clients.realmClientsPost(keycloakRealm, realmConfig.createClient())
     expect(reply.body).to.contain(isValid)
   })
 
-  it('Should validate POST request to update realm client', async () => {
+  it('should validate POST request to update realm client', async () => {
     const reply = await clients.realmClientsIdPut(keycloakRealm, mockedId, realmConfig.createClient())
     expect(reply.body).to.contain(isValid)
   })
 
   //  Email claim for client protocolMappers
-  it('Should validate POST request to create email claim for client', async () => {
+  it('should validate POST request to create email claim for client', async () => {
     const reply = await protocols.realmClientsIdProtocolMappersModelsPost(
       keycloakRealm,
       mockedId,
