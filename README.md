@@ -3,6 +3,7 @@
 The tasks directory contains autonomous jobs that are able to configure core otomi-stack services.
 
 # Overview
+
 A given task can be executed by running following command:
 
 ```
@@ -24,4 +25,10 @@ For example:
 
 ```
 npm run task:keycloak
+```
+
+Run unit testing on the tasks:
+
+```
+npm test
 ```

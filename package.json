@@ -116,12 +116,12 @@
     "tasks:harbor-dev": "ts-node-dev  ./src/tasks/harbor/harbor.ts",
     "tasks:certs-aws": "node dist/tasks/otomi/certs-aws.js",
     "tasks:certs-aws-dev": "ts-node-dev  ./src/tasks/otomi/certs-aws.ts",
-    "test": "NODE_ENV=test mocha --timeout 25000 -r ts-node/register -r ts-custom-error src/*.test.* --exit"
+    "test": "NODE_ENV=test mocha --timeout 25000 -r ts-node/register -r ts-custom-error src/**/*.test.* --exit"
   },
   "standard-version": {
     "skip": {
       "tag": true
     }
   },
-  "version": "0.1.1"
+  "version": "0.2.0"
 }
