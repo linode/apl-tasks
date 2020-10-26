@@ -10,9 +10,6 @@ extends:
   - plugin:import/errors
   - plugin:import/warnings
 
-globals:
-  cy: true
-
 plugins:
   - import
   - prettier
@@ -48,6 +45,7 @@ overrides:
       - plugin:import/typescript
       - plugin:chai-friendly/recommended
       - plugin:prettier/recommended
+
     plugins:
       - '@typescript-eslint'
 
