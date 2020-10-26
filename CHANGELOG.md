@@ -22,4 +22,11 @@ All notable changes to this project will be documented in this file. See [standa
 - rm extension form plugins ([9fa4a20](https://github.com/redkubes/otomi-stack-tasks/commit/9fa4a208b8693221f04018159430b37ed8e76a77))
 - rm ignore-x-frame-headers extension ([623b907](https://github.com/redkubes/otomi-stack-tasks/commit/623b907b792e6df02f26e04c1dd0c11e72b042c4))
 
+### 0.1.1 (2020-10-22)
+
+### Bug Fixes
+
+- add missing dependency ([db2b978](https://github.com/redkubes/otomi-stack-tasks/commit/db2b978f3643b6482020478f798ea9e7e7c10f7e))
+- adding owners [ci skip](<[180d895](https://github.com/redkubes/otomi-stack-tasks/commit/180d89581ed1a52b3d144e6ef7818617548b90f0)>)
+
 ### 0.0.1 (2020-09-16)
