@@ -150,7 +150,7 @@ export const clientEmailClaimMapper = () => {
   }
 }
 
-function oidcCfg(providerCfg: OidcProviderCfg, tenantId: string, clientId: string, clientSecret: string) {
+export function oidcCfg(providerCfg: OidcProviderCfg, tenantId: string, clientId: string, clientSecret: string) {
   return {
     userInfoUrl: providerCfg.userinfo_endpoint,
     validateSignature: 'true',
@@ -168,7 +168,7 @@ function oidcCfg(providerCfg: OidcProviderCfg, tenantId: string, clientId: strin
   }
 }
 
-async function getDiscoveryUrls(oidcUrl: string, version = 'v2.0') {
+export async function getDiscoveryUrls(oidcUrl: string, version = 'v2.0') {
   return await axios.get(`${oidcUrl}/${version}/.well-known/openid-configuration`).then((response) => {
     if (!response.data) throw Error('Oidc Provider Address not found!')
     return response.data
