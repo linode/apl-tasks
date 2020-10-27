@@ -13,7 +13,6 @@ env:
 jobs:
   check-build-push-clients:
     runs-on: ubuntu-latest
-    container: otomi/tools:1.4.7
     steps:
       - name: Checkout
         uses: actions/checkout@v2
