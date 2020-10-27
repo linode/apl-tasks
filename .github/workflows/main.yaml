@@ -44,14 +44,11 @@ jobs:
           echo ::set-env name=TAG::$tag
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Build and publish clients
-        run: bin/generate-all.sh && bin/publish-all.sh
       - name: CI tests, image build and push tag for master or branch
         uses: whoan/docker-build-with-cache-action@v5
         with:
           username: otomi
           password: '${{ secrets.DOCKERHUB_OTOMI_TOKEN }}'
-          registry: ${{ env.REG }}
           image_name: ${{ env.REPO }}
           image_tag: ${{ env.TAG }}
           build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.NPM_TOKEN }}'
@@ -59,12 +56,12 @@ jobs:
         name: Tag and release
         run: |
           RELEASE_TAG=v${COMMIT_MSG#* }
-          echo "Releasing $REG/$REPO:$RELEASE_TAG"
-          docker login -u _json_key -p '${{ secrets.DOCKER_PASSWORD }}' $REG
-          docker tag $REG/$REPO:$TAG $REG/$REPO:latest
-          docker tag $REG/$REPO:$TAG $REG/$REPO:$RELEASE_TAG
-          docker push $REG/$REPO:latest
-          docker push $REG/$REPO:$RELEASE_TAG
+          echo "Releasing $REPO:$RELEASE_TAG"
+          docker login -u otomi -p '${{ secrets.DOCKERHUB_OTOMI_TOKEN }}'
+          docker tag $REPO:$TAG $REPO:latest
+          docker tag $REPO:$TAG $REPO:$RELEASE_TAG
+          docker push $REPO:latest
+          docker push $REPO:$RELEASE_TAG
           git config --global user.email "$GIT_USER@users.noreply.github.com"
           git config --global user.name $GIT_USER
           echo "machine github.com login $GIT_USER password $GIT_PASSWORD" > ~/.netrc
