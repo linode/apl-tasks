@@ -11,17 +11,31 @@ env:
   GIT_USER: redkubesbot
   GIT_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 jobs:
-  build-push-clients:
+  check-build-push-clients:
     runs-on: ubuntu-latest
     container: otomi/tools:1.4.7
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Check for changes
+        run: |
+          bin/check-changes.sh
+          echo "::set-output name=has-changes::$?"
+      - if: '!${{ steps.vars.outputs.has-changes }}'
+        run: echo "Skipping building packages"
+      - uses: actions/setup-node@v1
+        if: '${{ steps.vars.outputs.has-changes }}'
+        with:
+          node-version: '14'
       - name: Build and publish clients
-        run: bin/generate-all.sh; bin/publish-all.sh
+        if: ${{ steps.vars.outputs.has-changes }}
+        run: |
+          sudo apt-get install sponge
+          bin/generate-all.sh
+          bin/publish-all.sh
   build-test-push-release:
     if: "((contains(github.event.head_commit.message, 'chore(release)') && github.ref == 'refs/heads/master') || !contains(github.event.head_commit.message, 'chore(release)')) && !contains(github.event.head_commit.message, 'ci skip') && !startsWith(github.ref, 'refs/tags/')"
-    needs: build-push-clients
+    needs: check-build-push-clients
     runs-on: ubuntu-latest
     steps:
       - name: Set env
