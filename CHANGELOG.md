@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.1](https://github.com/redkubes/otomi-stack-tasks/compare/v0.1.1...v0.2.1) (2020-10-27)
+
+### Bug Fixes
+
+- package.json formatted [ci skip](<[5d9690a](https://github.com/redkubes/otomi-stack-tasks/commit/5d9690a482d000eb87de4672e7d6f3417f0137a4)>)
+- workflow ([e47c4c0](https://github.com/redkubes/otomi-stack-tasks/commit/e47c4c00efddbcd6557a01192dd3745bd9988fbd))
+- workflow ([814f04b](https://github.com/redkubes/otomi-stack-tasks/commit/814f04bcdb9e2c9cbe82af86f02a6c103e2d8694))
+- workflow ([7cc6eb7](https://github.com/redkubes/otomi-stack-tasks/commit/7cc6eb77c614b4dddd96a4b712912136473cb39e))
+- workflow ([88bbf11](https://github.com/redkubes/otomi-stack-tasks/commit/88bbf11fae60d36d463afb0f076468b9dae4b979))
+- workflow ([e274117](https://github.com/redkubes/otomi-stack-tasks/commit/e2741176f37359e9dc67037397c0a63f3fc68004))
+- workflow ([b3178a4](https://github.com/redkubes/otomi-stack-tasks/commit/b3178a43d12b1073697ea5fcb9176130fff2c60a))
+- workflow ([d988dcd](https://github.com/redkubes/otomi-stack-tasks/commit/d988dcd6c85e0382aeacde2504b9681ba9dd312a))
+- workflow condition for releasing [ci skip](<[fb9a0d4](https://github.com/redkubes/otomi-stack-tasks/commit/fb9a0d44e85456319972d5e37812d911ab9a0d89)>)
+
+### Feature Improvements
+
+- npm package publication by workflow ([96fb846](https://github.com/redkubes/otomi-stack-tasks/commit/96fb846a1820dfe1504930a6c08357ee509317b2))
+
 ## 0.1.0 (2020-10-22)
 
 ### Features
