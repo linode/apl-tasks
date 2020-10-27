@@ -1,6 +1,6 @@
 .env
+!.env.sample
 .github
 .history
-.npm
 dist
 node_modules

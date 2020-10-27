@@ -1,4 +1,4 @@
-import { Configurations, HttpError, ProductsApi, ProjectReq, ProjectMember } from '@redkubes/harbor-client'
+import { Configurations, HttpError, ProductsApi, ProjectReq, ProjectMember } from '@redkubes/harbor-client-node'
 import http from 'http'
 import { HttpBasicAuth } from '@kubernetes/client-node'
 import {

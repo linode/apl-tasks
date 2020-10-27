@@ -1,7 +1,7 @@
 {
   "author": "RedKubes",
   "bugs": {
-    "url": "https://github.com/redkubes/otomi-stack-tasks/issues"
+    "url": "https://github.com/redkubes/otomi-tasks/issues"
   },
   "config": {
     "commitizen": {
@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^9.0.6",
-    "@kubernetes/client-node": "^0.11.2",
-    "@redkubes/harbor-client": "^2.0.2",
-    "@redkubes/keycloak-client-node": "^10.0.0",
+    "@kubernetes/client-node": "^0.12.3",
+    "@redkubes/harbor-client-node": "2.0.2",
+    "@redkubes/keycloak-client-node": "10.0.0",
     "@types/lodash": "^4.14.158",
     "aws-sdk": "^2.742.0",
     "axios": "^0.19.2",
@@ -23,10 +23,10 @@
     "lowdb": "^1.0.0",
     "morgan": "^1.10.0"
   },
-  "description": "Source repo for Tasks and Maintenance Jobs",
+  "description": "Tasks needed by the Otomi Container Platform to glue all the pieces together.",
   "devDependencies": {
-    "@commitlint/cli": "^8.3.5",
-    "@commitlint/config-conventional": "^8.3.4",
+    "@commitlint/cli": "^11.0.0",
+    "@commitlint/config-conventional": "^11.0.0",
     "@hkdobrev/run-if-changed": "^0.3.1",
     "@types/chai": "^4.2.12",
     "@types/chai-as-promised": "^7.1.3",
@@ -40,7 +40,7 @@
     "@typescript-eslint/parser": "^2.34.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "commitizen": "^4.1.2",
+    "commitizen": "^4.2.2",
     "copyfiles": "^2.3.0",
     "cz-conventional-changelog": "^3.2.0",
     "dotenv": "^8.2.0",
@@ -64,14 +64,14 @@
     "prettier": "^2.0.5",
     "sinon": "^8.1.1",
     "sinon-chai": "^3.5.0",
-    "standard-version": "^8.0.1",
+    "standard-version": "^9.0.0",
     "supertest": "^4.0.2",
     "ts-custom-error": "^3.1.1",
     "ts-node": "^8.10.2",
     "ts-node-dev": "^1.0.0-pre.56",
     "typescript": "^3.9.7"
   },
-  "homepage": "https://github.com/redkubes/otomi-stack-tasks#readme",
+  "homepage": "https://github.com/redkubes/otomi-tasks#readme",
   "husky": {
     "hooks": {
       "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
@@ -82,7 +82,7 @@
       "pre-commit": "npm run husky:pre-commit"
     }
   },
-  "license": "ISC",
+  "license": "Apache-2.0",
   "lint-staged": {
     "*.{json,md,yml,yaml}": [
       "prettier --write"
@@ -92,11 +92,11 @@
     ]
   },
   "main": "",
-  "name": "otomi-stack-tasks",
+  "name": "otomi-tasks",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/redkubes/otomi-stack-tasks.git"
+    "url": "git+https://github.com/redkubes/otomi-tasks.git"
   },
   "run-if-changed": {
     "package-lock.json": "npm install --prefer-offline --no-audit"
@@ -111,11 +111,11 @@
     "lint:fix": "eslint --fix --ext js,ts .",
     "release": "standard-version",
     "tasks:keycloak": "node dist/tasks/keycloak/keycloak.js",
-    "tasks:keycloak-dev": "ts-node-dev  ./src/tasks/keycloak/keycloak.ts",
+    "tasks:keycloak-dev": "ts-node-dev ./src/tasks/keycloak/keycloak.ts",
     "tasks:harbor": "node dist/tasks/harbor/harbor.js",
-    "tasks:harbor-dev": "ts-node-dev  ./src/tasks/harbor/harbor.ts",
+    "tasks:harbor-dev": "ts-node-dev ./src/tasks/harbor/harbor.ts",
     "tasks:certs-aws": "node dist/tasks/otomi/certs-aws.js",
-    "tasks:certs-aws-dev": "ts-node-dev  ./src/tasks/otomi/certs-aws.ts",
+    "tasks:certs-aws-dev": "ts-node-dev ./src/tasks/otomi/certs-aws.ts",
     "test": "NODE_ENV=test mocha --timeout 25000 -r ts-node/register -r ts-custom-error src/**/*.test.* --exit"
   },
   "standard-version": {
@@ -123,5 +123,5 @@
       "tag": true
     }
   },
-  "version": "0.2.0"
+  "version": "0.2.1"
 }

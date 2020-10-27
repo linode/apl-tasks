@@ -1,33 +1,24 @@
-# Otomi Stack Tasks
+# Otomi Tasks
 
-The tasks directory contains autonomous jobs that are able to configure core otomi-stack services.
+Part of [Red Kubes](https://redkubes.com)' Otomi Container Platform.
 
-# Overview
+The tasks repo contains autonomous jobs orchestrated by [redkubes/otomi-core](https://github.com/redkubes/otomi-core).
 
-A given task can be executed by running following command:
+This repo is also built as an image and published on [docker hub](https://hub.docker.com/repository/docker/otomi/tasks) at `otomi/tasks`.
 
-```
-npm run task:<task-name>
-```
+This readme is aimed at development. If you wish to contribute please read our Developers [Contributor Code of Conduct](./docs/CODE_OF_CONDUCT.md) and [Contribution Guidelines](./docs/CONTRIBUTING.md)
 
-For example:
+## Development
 
-```
-npm run task:harbor
-```
-
-KeyCloak SSO configuration:
-
-Running the tasks script will bootstrap all the configs for setting up any OIDC Provider.
-Expected environment variables need to be sourced from the `.env` file in the local workstation, which can be created from the `.secrets` file, in the company shared drive.
-
-For example:
+To execute a task:
 
 ```
-npm run task:keycloak
+npm run task:(harbor|keycloak|certs-aws|...)
 ```
 
-Run unit testing on the tasks:
+Expected environment variables should exist in a mandatory `.env` file (see `.env.sample`).
+
+Run unit tests on the tasks:
 
 ```
 npm test
