@@ -11,3 +11,4 @@ for each in "harbor/node" "keycloak/node"; do
     cd -
   fi
 done
+exit 0

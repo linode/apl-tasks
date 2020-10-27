@@ -14,8 +14,7 @@ TARGET_DIR="./vendors/client/${VENDOR}/${TYPE}"
 TARGET_PACKAGE_JSON="${TARGET_DIR}/package.json"
 TARGET_NPM_NAME="@${ORG}/$VENDOR-client-${TYPE}"
 
-function validate {
-
+validate() {
     if ! which sponge > /dev/null; then
         echo "The sponge binary does not exist. To install it execute: 'brew install moreutils'"
         exit 1
@@ -38,7 +37,7 @@ function validate {
 
 }
 
-function generate_client {
+generate_client() {
     echo "Generating client code from openapi specification ${OPENAPI_DOC}.."
 
     docker run --rm -v ${PWD}:/local \
@@ -49,7 +48,7 @@ function generate_client {
     --additional-properties supportsES6=true,npmName=${TARGET_NPM_NAME}
 }
 
-function  set_package_json {
+ set_package_json() {
     echo "Updating  $TARGET_PACKAGE_JSON file.."
 
     jq \
@@ -63,7 +62,7 @@ function  set_package_json {
 
 }
 
-function build_npm_package {
+build_npm_package() {
     echo "Building $TARGET_NPM_NAME npm pacakge"
     cd ${TARGET_DIR}
     npm install && npm run build
