@@ -12,6 +12,10 @@
   "mochaExplorer.files": "src/**/*.test.ts",
   "mochaExplorer.require": "ts-node/register",
   "mochaExplorer.timeout": 20000,
+  "files.associations": {
+    "CODE_OF_CONDUCT": "markdown",
+    "CONTRIBUTING": "markdown"
+  },
   "yaml.format.enable": true,
   "tslint.enable": false
 }

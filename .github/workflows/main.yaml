@@ -7,8 +7,7 @@ on:
       - '*'
 env:
   COMMIT_MSG: ${{ github.event.head_commit.message }}
-  REG: eu.gcr.io
-  REPO: otomi-cloud/otomi-stack-tasks
+  REPO: otomi/tasks
   GIT_USER: redkubesbot
   GIT_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 jobs:
@@ -23,11 +22,13 @@ jobs:
           echo ::set-env name=TAG::$tag
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Build and publish clients
+        run: bin/generate-all.sh && bin/publish-all.sh
       - name: CI tests, image build and push tag for master or branch
         uses: whoan/docker-build-with-cache-action@v5
         with:
-          username: _json_key
-          password: '${{ secrets.DOCKER_PASSWORD }}'
+          username: otomi
+          password: '${{ secrets.DOCKERHUB_OTOMI_TOKEN }}'
           registry: ${{ env.REG }}
           image_name: ${{ env.REPO }}
           image_tag: ${{ env.TAG }}
