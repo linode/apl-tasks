@@ -16,6 +16,7 @@ export const KEYCLOAK_ADMIN_PASSWORD = str({ desc: 'Default password for admin' 
 export const KEYCLOAK_CLIENT_ID = str({ desc: 'Default Keycloak Client', default: 'otomi' })
 export const KEYCLOAK_CLIENT_SECRET = str({ desc: 'The keycloak client secret' })
 export const KEYCLOAK_REALM = str({ desc: 'The Keycloak Realm', default: 'master' })
+export const KEYCLOAK_THEME_LOGIN = str({ desc: 'The Keycloak login theme', default: 'default' })
 export const OIDC_CLIENT_SECRET = str()
 export const OIDC_ENDPOINT = str()
 export const OIDC_SCOPE = str({ desc: 'Name of the default OIDC client scope', default: 'openid' })

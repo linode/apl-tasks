@@ -17,6 +17,7 @@ import {
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
+  KEYCLOAK_THEME_LOGIN,
 } from '../../validators'
 import { find } from 'lodash'
 
@@ -26,6 +27,7 @@ const env = cleanEnv({
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
+  KEYCLOAK_THEME_LOGIN,
 })
 
 const errors = []
@@ -168,9 +170,10 @@ async function main() {
   })
 
   // set login theme
-  await doApiCall('Login Theme', async () => {
-    await realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig())
-  })
+  if (env.KEYCLOAK_THEME_LOGIN !== 'default')
+    await doApiCall('Login Theme', async () => {
+      await realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig(env.KEYCLOAK_THEME_LOGIN))
+    })
 
   // check errors and exit
   if (errors.length) {
