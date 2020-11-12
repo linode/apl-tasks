@@ -1,4 +1,11 @@
-name: Build and publish Docker
+# RedKubes default Workflow
+#
+# Given facts:
+# * We don't allow manual tagging, but let the workflow create them after tests have passed.
+# * We don't let workflows be triggered by events coming from tags
+# * We use `npm run release` (without automated tagging) which only bumps version and creates changelog and commit message with title 'chore(release): v${semverVersion}'
+# * Pipeline detects the release title and after tests pass, creates artifacts (images) and makes full tag copies (and github release) to allow release patching.
+name: Build test push release
 on:
   push:
     branches:
@@ -22,7 +29,7 @@ jobs:
         run: |
           tag=$(echo $(basename $GITHUB_REF))
           echo "Creating tag: $tag"
-          echo ::set-env name=TAG::$tag
+          echo "TAG=$tag" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v2
       - name: CI tests, image build and push tag to cache for master or branch
@@ -40,15 +47,33 @@ jobs:
           docker tag $CACHE_REGISTRY/$CACHE_REPO:$TAG $REPO:$TAG
           docker push $REPO:$TAG
       - if: "contains(github.event.head_commit.message, 'chore(release)')"
-        name: Tag and release
+        name: Create latest and push git tag
+        id: git_tag
         run: |
-          RELEASE_TAG=v${COMMIT_MSG#* }
-          echo "Releasing $REPO:$RELEASE_TAG"
+          docker login -u otomi -p $DOCKER_PASSWORD
           docker tag $REPO:$TAG $REPO:latest
-          docker tag $REPO:$TAG $REPO:$RELEASE_TAG
           docker push $REPO:latest
-          docker push $REPO:$RELEASE_TAG
-          git config --global user.email "$GIT_USER@users.noreply.github.com"
+          release_tag=v${COMMIT_MSG#* }
+          echo ::set-output name=tag::$release_tag
+          echo "Releasing $REPO:$release_tag"
+          docker tag $REPO:$TAG $REPO:$release_tag
+          docker push $REPO:$release_tag
+          git config --global user.email $GIT_USER@users.noreply.github.com
           git config --global user.name $GIT_USER
           echo "machine github.com login $GIT_USER password $GIT_PASSWORD" > ~/.netrc
-          git tag -am "$COMMIT_MSG" $RELEASE_TAG && git push --follow-tags origin master
+          git tag -am "$COMMIT_MSG" $release_tag && git push --follow-tags origin master
+          changelog=$(cat CHANGELOG.md | awk -v n=2 '/### \[[0-9]*/&&!--n{exit}{print}')
+          # now do some escaping because github does not help us here:
+          changelog="${changelog//'%'/'%25'}"
+          changelog="${changelog//$'\n'/'%0A'}"
+          changelog="${changelog//$'\r'/'%0D'}"
+          echo ::set-output name=changes::$changelog
+      - if: "contains(github.event.head_commit.message, 'chore(release)')"
+        name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.git_tag.outputs.tag }}
+          release_name: Release ${{ steps.git_tag.outputs.tag }}
+          body: ${{ steps.git_tag.outputs.changes }}
