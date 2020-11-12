@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.2](https://github.com/redkubes/otomi-tasks/compare/v0.1.1...v0.2.2) (2020-11-12)
+
+### Bug Fixes
+
+- **workflow:** dependency removed ([41faf23](https://github.com/redkubes/otomi-tasks/commit/41faf23d86c1902a8a8c054aeacb68c83f9bdc1f))
+- added login theme override config ([cc55c69](https://github.com/redkubes/otomi-tasks/commit/cc55c693bbd728e5685c67bcb9864e2d390ce648))
+- package.json formatted [ci skip](<[5d9690a](https://github.com/redkubes/otomi-tasks/commit/5d9690a482d000eb87de4672e7d6f3417f0137a4)>)
+- workflow ([b3178a4](https://github.com/redkubes/otomi-tasks/commit/b3178a43d12b1073697ea5fcb9176130fff2c60a))
+- workflow ([d988dcd](https://github.com/redkubes/otomi-tasks/commit/d988dcd6c85e0382aeacde2504b9681ba9dd312a))
+- workflow condition for releasing [ci skip](<[fb9a0d4](https://github.com/redkubes/otomi-tasks/commit/fb9a0d44e85456319972d5e37812d911ab9a0d89)>)
+
 ### [0.2.1](https://github.com/redkubes/otomi-tasks/compare/v0.1.1...v0.2.1) (2020-10-27)
 
 ### Bug Fixes
