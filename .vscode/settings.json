@@ -3,19 +3,18 @@
     "source.fixAll": true
   },
   "editor.defaultFormatter": "dbaeumer.vscode-eslint",
-  "editor.formatOnPaste": false,
   "editor.formatOnSave": true,
-  "eslint.format.enable": true,
-  "eslint.alwaysShowStatus": true,
   "eslint.enable": true,
+  "eslint.format.enable": true,
   "eslint.validate": ["javascript", "typescript"],
-  "mochaExplorer.files": "src/**/*.test.ts",
-  "mochaExplorer.require": "ts-node/register",
-  "mochaExplorer.timeout": 20000,
   "files.associations": {
     "CODE_OF_CONDUCT": "markdown",
     "CONTRIBUTING": "markdown"
   },
-  "yaml.format.enable": true,
+  "mochaExplorer.files": "src/**/*.test.ts",
+  "mochaExplorer.require": "ts-node/register",
+  "mochaExplorer.timeout": 20000,
+  "prettier.disableLanguages": ["javascript", "typescript"],
+  "prettier.enable": true,
   "tslint.enable": false
 }
