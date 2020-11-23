@@ -169,7 +169,7 @@ export function oidcCfg(providerCfg: OidcProviderCfg, tenantId: string, clientId
 }
 
 export async function getDiscoveryUrls(oidcUrl: string, version = 'v2.0') {
-  return await axios.get(`${oidcUrl}/${version}/.well-known/openid-configuration`).then((response) => {
+  return await axios.get(`${oidcUrl}${version}/.well-known/openid-configuration`).then((response) => {
     if (!response.data) throw Error('Oidc Provider Address not found!')
     return response.data
   })
