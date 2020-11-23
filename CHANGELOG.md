@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.3](https://github.com/redkubes/otomi-tasks/compare/v0.2.2...v0.2.3) (2020-11-23)
+
+### Bug Fixes
+
+- remove trailing slash from oidc url [ci skip](<[552d1c8](https://github.com/redkubes/otomi-tasks/commit/552d1c8bce4ba61af2dc724d6dd255db416850ea)>)
+
 ### [0.2.2](https://github.com/redkubes/otomi-tasks/compare/v0.1.1...v0.2.2) (2020-11-12)
 
 ### Bug Fixes
