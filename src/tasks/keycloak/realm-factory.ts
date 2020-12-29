@@ -27,6 +27,7 @@ import {
   otomiClientCfgTpl,
   TeamMapping,
   clientEmailClaimMapper,
+  getAuthnFlows,
 } from './config'
 
 const env = cleanEnv({
@@ -130,4 +131,17 @@ export function mapTeamsToRoles(): Array<api.RoleRepresentation> {
 
 export function createLoginThemeConfig(loginTheme = 'otomi'): api.RealmRepresentation {
   return defaultsDeep(new api.RealmRepresentation(), { loginTheme })
+}
+
+export function createAuthnFlows(): Array<api.AuthenticationFlowRepresentation> {
+  const flows = getAuthnFlows().map((flow) => {
+    const newFlow = defaultsDeep(new api.AuthenticationFlowRepresentation(), flow)
+    newFlow.authenticationExecutions = newFlow.authenticationExecutions.map(
+      (authnExec: api.AuthenticationExecutionRepresentation) => {
+        return defaultsDeep(new api.AuthenticationExecutionExportRepresentation(), authnExec)
+      },
+    )
+    return newFlow
+  })
+  return flows
 }

@@ -8,6 +8,7 @@ import {
   HttpError,
   ProtocolMappersApi,
   RealmsAdminApi,
+  AuthenticationManagementApi,
 } from '@redkubes/keycloak-client-node'
 import * as realmConfig from './realm-factory'
 import {
@@ -19,7 +20,6 @@ import {
   KEYCLOAK_REALM,
   KEYCLOAK_THEME_LOGIN,
 } from '../../validators'
-import { find } from 'lodash'
 
 const env = cleanEnv({
   IDP_ALIAS,
@@ -83,97 +83,108 @@ async function main() {
   const realms = new RealmsAdminApi(basePath)
   realms.accessToken = String(token.access_token)
 
-  // Create Client Scopes
-  if (
-    !(await doApiCall('OpenID Client Scope', async () => {
-      await clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, realmConfig.createClientScopes())
-    }))
-  ) {
-    // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
-    await doApiCall(
-      'OpenID Client Scope',
-      async () => {
-        const currentClientScopes = await clientScope.realmClientScopesGet(env.KEYCLOAK_REALM)
-        const scope = realmConfig.createClientScopes()
-        const id = find(currentClientScopes.body, { name: scope.name }).id
-        await clientScope.realmClientScopesIdPut(env.KEYCLOAK_REALM, id, scope)
-      },
-      true,
-    )
-  }
+  const authn = new AuthenticationManagementApi(basePath)
+  authn.accessToken = String(token.access_token)
 
-  // Create Roles
-  for await (const role of realmConfig.mapTeamsToRoles()) {
-    if (
-      !(await doApiCall(`Role ${role.name}`, async () => {
-        await roles.realmRolesPost(env.KEYCLOAK_REALM, role)
-      }))
-    ) {
-      await doApiCall(
-        `Role ${role.name}`,
-        async () => {
-          await roles.realmRolesRoleNamePut(env.KEYCLOAK_REALM, role.name, role)
-        },
-        true,
-      )
-    }
-  }
+  // // Create Client Scopes
+  // if (
+  //   !(await doApiCall('OpenID Client Scope', async () => {
+  //     await clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, realmConfig.createClientScopes())
+  //   }))
+  // ) {
+  //   // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
+  //   await doApiCall(
+  //     'OpenID Client Scope',
+  //     async () => {
+  //       const currentClientScopes = await clientScope.realmClientScopesGet(env.KEYCLOAK_REALM)
+  //       const scope = realmConfig.createClientScopes()
+  //       const id = find(currentClientScopes.body, { name: scope.name }).id
+  //       await clientScope.realmClientScopesIdPut(env.KEYCLOAK_REALM, id, scope)
+  //     },
+  //     true,
+  //   )
+  // }
 
-  // Create Identity Provider
-  if (
-    !(await doApiCall('Identity Provider', async () => {
-      await providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, await realmConfig.createIdProvider())
-    }))
-  ) {
-    await doApiCall(
-      'Identity Provider',
-      async () => {
-        const idp = await realmConfig.createIdProvider()
-        await providers.realmIdentityProviderInstancesAliasPut(env.KEYCLOAK_REALM, idp.alias, idp)
-      },
-      true,
-    )
-  }
+  // // Create Roles
+  // for await (const role of realmConfig.mapTeamsToRoles()) {
+  //   if (
+  //     !(await doApiCall(`Role ${role.name}`, async () => {
+  //       await roles.realmRolesPost(env.KEYCLOAK_REALM, role)
+  //     }))
+  //   ) {
+  //     await doApiCall(
+  //       `Role ${role.name}`,
+  //       async () => {
+  //         await roles.realmRolesRoleNamePut(env.KEYCLOAK_REALM, role.name, role)
+  //       },
+  //       true,
+  //     )
+  //   }
+  // }
 
-  // Create Identity Provider Mappers
-  // @NOTE - PUT involves adding strict required properties not in the factory
-  for await (const idpMapper of realmConfig.createIdpMappers()) {
-    await doApiCall(`Mapping ${idpMapper.name}`, async () => {
-      await providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper)
+  // // Create Identity Provider
+  // if (
+  //   !(await doApiCall('Identity Provider', async () => {
+  //     await providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, await realmConfig.createIdProvider())
+  //   }))
+  // ) {
+  //   await doApiCall(
+  //     'Identity Provider',
+  //     async () => {
+  //       const idp = await realmConfig.createIdProvider()
+  //       await providers.realmIdentityProviderInstancesAliasPut(env.KEYCLOAK_REALM, idp.alias, idp)
+  //     },
+  //     true,
+  //   )
+  // }
+
+  // // Create Identity Provider Mappers
+  // // @NOTE - PUT involves adding strict required properties not in the factory
+  // for await (const idpMapper of realmConfig.createIdpMappers()) {
+  //   await doApiCall(`Mapping ${idpMapper.name}`, async () => {
+  //     await providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper)
+  //   })
+  // }
+
+  // // Create Otomi Client
+  // const client = realmConfig.createClient()
+  // if (
+  //   !(await doApiCall('Otomi Client', async () => {
+  //     await clients.realmClientsPost(env.KEYCLOAK_REALM, client)
+  //   }))
+  // ) {
+  //   await doApiCall(
+  //     'Otomi Client',
+  //     async () => {
+  //       await clients.realmClientsIdPut(env.KEYCLOAK_REALM, client.id, client)
+  //     },
+  //     true,
+  //   )
+  // }
+
+  // // add email claim for client protocolMappers
+  // // @NOTE - PUT involves adding strict required properties not in the factory
+  // await doApiCall('Client Email Claim', async () => {
+  //   await protocols.realmClientsIdProtocolMappersModelsPost(
+  //     env.KEYCLOAK_REALM,
+  //     client.id,
+  //     realmConfig.createClientEmailClaimMapper(),
+  //   )
+  // })
+
+  // // set login theme
+  // if (env.KEYCLOAK_THEME_LOGIN !== 'default')
+  //   await doApiCall('Login Theme', async () => {
+  //     await realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig(env.KEYCLOAK_THEME_LOGIN))
+  //   })
+
+  // Ensure Auto-Link User after IDP first registration
+  for (const flow of realmConfig.createAuthnFlows()) {
+    console.log(flow)
+    await doApiCall(`Authn Flows: ${flow.alias}`, async () => {
+      await authn.realmAuthenticationFlowsPost(env.KEYCLOAK_REALM, flow)
     })
   }
-
-  // Create Otomi Client
-  const client = realmConfig.createClient()
-  if (
-    !(await doApiCall('Otomi Client', async () => {
-      await clients.realmClientsPost(env.KEYCLOAK_REALM, client)
-    }))
-  ) {
-    await doApiCall(
-      'Otomi Client',
-      async () => {
-        await clients.realmClientsIdPut(env.KEYCLOAK_REALM, client.id, client)
-      },
-      true,
-    )
-  }
-
-  // add email claim for client protocolMappers
-  // @NOTE - PUT involves adding strict required properties not in the factory
-  await doApiCall('Client Email Claim', async () => {
-    await protocols.realmClientsIdProtocolMappersModelsPost(
-      env.KEYCLOAK_REALM,
-      client.id,
-      realmConfig.createClientEmailClaimMapper(),
-    )
-  })
-
-  // set login theme
-  if (env.KEYCLOAK_THEME_LOGIN !== 'default')
-    await doApiCall('Login Theme', async () => {
-      await realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig(env.KEYCLOAK_THEME_LOGIN))
-    })
 
   // check errors and exit
   if (errors.length) {

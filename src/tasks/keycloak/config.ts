@@ -1,4 +1,5 @@
 import axios from 'axios'
+import authnFlows from './authentication_flows.json'
 
 export const defaultsIdpMapperTpl = (alias: string) => {
   return [
@@ -223,4 +224,8 @@ export type OidcProviderCfg = {
   userinfo_endpoint: string
   authorization_endpoint: string
   end_session_endpoint: string
+}
+
+export function getAuthnFlows(): Array<object> {
+  return authnFlows.authenticationFlows
 }
