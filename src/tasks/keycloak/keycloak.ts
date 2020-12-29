@@ -184,6 +184,15 @@ async function main() {
     await doApiCall(`Authn Flows: ${flow.alias}`, async () => {
       await authn.realmAuthenticationFlowsPost(env.KEYCLOAK_REALM, flow)
     })
+    for (const exec of flow.authenticationExecutions) {
+      await doApiCall(`Authn Flow Exec: ${flow.alias}`, async () => {
+        await authn.realmAuthenticationFlowsFlowAliasExecutionsExecutionPost(
+          env.KEYCLOAK_REALM,
+          flow.alias,
+          exec as { [key: string]: object }, // @TODO map exact type
+        )
+      })
+    }
   }
 
   // check errors and exit

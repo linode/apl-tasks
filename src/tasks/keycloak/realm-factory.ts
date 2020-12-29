@@ -137,7 +137,7 @@ export function createAuthnFlows(): Array<api.AuthenticationFlowRepresentation> 
   const flows = getAuthnFlows().map((flow) => {
     const newFlow = defaultsDeep(new api.AuthenticationFlowRepresentation(), flow)
     newFlow.authenticationExecutions = newFlow.authenticationExecutions.map(
-      (authnExec: api.AuthenticationExecutionRepresentation) => {
+      (authnExec: api.AuthenticationExecutionExportRepresentation) => {
         return defaultsDeep(new api.AuthenticationExecutionExportRepresentation(), authnExec)
       },
     )
