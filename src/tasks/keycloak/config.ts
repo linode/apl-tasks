@@ -1,5 +1,5 @@
 import axios from 'axios'
-import authnFlows from './authentication_flows.json'
+import { AutolinkFlow } from './authn-flows'
 
 export const defaultsIdpMapperTpl = (alias: string) => {
   return [
@@ -227,5 +227,5 @@ export type OidcProviderCfg = {
 }
 
 export function getAuthnFlows(): Array<object> {
-  return authnFlows.authenticationFlows
+  return AutolinkFlow().authenticationFlows
 }

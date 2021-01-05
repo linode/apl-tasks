@@ -9,6 +9,7 @@ import {
   ProtocolMappersApi,
   RealmsAdminApi,
   AuthenticationManagementApi,
+  AuthenticationExecutionExportRepresentation,
 } from '@redkubes/keycloak-client-node'
 import * as realmConfig from './realm-factory'
 import {
@@ -20,6 +21,7 @@ import {
   KEYCLOAK_REALM,
   KEYCLOAK_THEME_LOGIN,
 } from '../../validators'
+import { defaultsDeep, find } from 'lodash'
 
 const env = cleanEnv({
   IDP_ALIAS,
@@ -82,7 +84,6 @@ async function main() {
   protocols.accessToken = String(token.access_token)
   const realms = new RealmsAdminApi(basePath)
   realms.accessToken = String(token.access_token)
-
   const authn = new AuthenticationManagementApi(basePath)
   authn.accessToken = String(token.access_token)
 
@@ -179,20 +180,28 @@ async function main() {
     })
 
   // Ensure Auto-Link User after IDP first registration
+
+  const flowAlias = 'first broker login'
+  await doApiCall(`Clone Authn Flows: ${flowAlias}`, async () => {
+    await authn.realmAuthenticationFlowsFlowAliasCopyPost(env.KEYCLOAK_REALM, flowAlias, {
+      authenticationExecutions2: [],
+    })
+  })
+
   for (const flow of realmConfig.createAuthnFlows()) {
-    console.log(flow)
     await doApiCall(`Authn Flows: ${flow.alias}`, async () => {
       await authn.realmAuthenticationFlowsPost(env.KEYCLOAK_REALM, flow)
     })
-    for (const exec of flow.authenticationExecutions) {
+
+    flow.authenticationExecutions.map(async (exec) => {
       await doApiCall(`Authn Flow Exec: ${flow.alias}`, async () => {
-        await authn.realmAuthenticationFlowsFlowAliasExecutionsExecutionPost(
-          env.KEYCLOAK_REALM,
-          flow.alias,
-          exec as { [key: string]: object }, // @TODO map exact type
-        )
+        if (exec.flowAlias) {
+          await authn.realmAuthenticationFlowsFlowAliasExecutionsFlowPost(env.KEYCLOAK_REALM, flow.alias, exec)
+        } else {
+          await authn.realmAuthenticationFlowsFlowAliasExecutionsExecutionPost(env.KEYCLOAK_REALM, flow.alias, exec)
+        }
       })
-    }
+    })
   }
 
   // check errors and exit

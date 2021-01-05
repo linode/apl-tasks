@@ -133,14 +133,12 @@ export function createLoginThemeConfig(loginTheme = 'otomi'): api.RealmRepresent
   return defaultsDeep(new api.RealmRepresentation(), { loginTheme })
 }
 
-export function createAuthnFlows(): Array<api.AuthenticationFlowRepresentation> {
-  const flows = getAuthnFlows().map((flow) => {
+export function createAuthnFlows() {
+  const flows = getAuthnFlows().map((flow: api.AuthenticationFlowRepresentation) => {
     const newFlow = defaultsDeep(new api.AuthenticationFlowRepresentation(), flow)
-    newFlow.authenticationExecutions = newFlow.authenticationExecutions.map(
-      (authnExec: api.AuthenticationExecutionExportRepresentation) => {
-        return defaultsDeep(new api.AuthenticationExecutionExportRepresentation(), authnExec)
-      },
-    )
+    newFlow.authenticationExecutions = flow.authenticationExecutions.map((authnExec) => {
+      return defaultsDeep(new api.AuthenticationExecutionExportRepresentation(), authnExec)
+    })
     return newFlow
   })
   return flows
