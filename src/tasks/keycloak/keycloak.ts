@@ -9,7 +9,6 @@ import {
   ProtocolMappersApi,
   RealmsAdminApi,
   AuthenticationManagementApi,
-  AuthenticationExecutionExportRepresentation,
 } from '@redkubes/keycloak-client-node'
 import * as realmConfig from './realm-factory'
 import {
@@ -21,7 +20,7 @@ import {
   KEYCLOAK_REALM,
   KEYCLOAK_THEME_LOGIN,
 } from '../../validators'
-import { defaultsDeep, find } from 'lodash'
+import { find } from 'lodash'
 
 const env = cleanEnv({
   IDP_ALIAS,
@@ -193,7 +192,7 @@ async function main() {
       await authn.realmAuthenticationFlowsPost(env.KEYCLOAK_REALM, flow)
     })
 
-    flow.authenticationExecutions.map(async (exec) => {
+    flow.authenticationExecutions.map(async (exec: any) => {
       await doApiCall(`Authn Flow Exec: ${flow.alias}`, async () => {
         if (exec.flowAlias) {
           await authn.realmAuthenticationFlowsFlowAliasExecutionsFlowPost(env.KEYCLOAK_REALM, flow.alias, exec)
