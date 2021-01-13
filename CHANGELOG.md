@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.4](https://github.com/redkubes/otomi-tasks/compare/v0.2.3...v0.2.4) (2021-01-13)
+
+### Features
+
+- add configurable username claim mapper ([2629c85](https://github.com/redkubes/otomi-tasks/commit/2629c857ddb645df5e3425c863b5bdc9a2bf717e))
+
+### Bug Fixes
+
+- removed js from tsconfig ([ba6b554](https://github.com/redkubes/otomi-tasks/commit/ba6b5542e50a258187c264bb2369e0738ad94a3a))
+
 ### [0.2.3](https://github.com/redkubes/otomi-tasks/compare/v0.2.2...v0.2.3) (2020-11-23)
 
 ### Bug Fixes

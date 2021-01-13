@@ -10,6 +10,10 @@ export const IDP_GROUP_MAPPINGS_TEAMS = json({ desc: 'A list of team names mappi
 export const IDP_GROUP_TEAM_ADMIN = str({ desc: 'Otomi team-admin group name' })
 export const IDP_GROUP_OTOMI_ADMIN = str({ desc: 'Otomi admin group name' })
 export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url" })
+export const IDP_USERNAME_CLAIM_MAPPER = str({
+  desc: "The IDP's OIDC claim to username mapper string",
+  default: '${CLAIM.email}',
+})
 export const KEYCLOAK_ADDRESS = str({ desc: 'The Keycloak Server address' })
 export const KEYCLOAK_ADMIN = str({ desc: 'Default admin username for KeyCloak Server' })
 export const KEYCLOAK_ADMIN_PASSWORD = str({ desc: 'Default password for admin' })

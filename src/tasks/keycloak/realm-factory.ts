@@ -15,6 +15,7 @@ import {
   IDP_GROUP_TEAM_ADMIN,
   IDP_GROUP_MAPPINGS_TEAMS,
   IDP_OIDC_URL,
+  IDP_USERNAME_CLAIM_MAPPER,
 } from '../../validators'
 
 import {
@@ -41,6 +42,7 @@ const env = cleanEnv({
   IDP_GROUP_TEAM_ADMIN,
   IDP_GROUP_MAPPINGS_TEAMS,
   IDP_OIDC_URL,
+  IDP_USERNAME_CLAIM_MAPPER,
 })
 
 export function createClient(): api.ClientRepresentation {
@@ -58,6 +60,7 @@ export function createIdpMappers(): Array<api.IdentityProviderMapperRepresentati
   const teams = env.IDP_GROUP_MAPPINGS_TEAMS
   const adminGroupMapping = env.IDP_GROUP_OTOMI_ADMIN
   const teamAdminGroupMapping = env.IDP_GROUP_TEAM_ADMIN
+  const idpUsernameClaimMapper = env.IDP_USERNAME_CLAIM_MAPPER
   // admin idp mapper case
   const admin = idpMapperTpl('map otomi-admin group to role', idpAlias, 'admin', adminGroupMapping)
   const adminMapper = defaultsDeep(new api.IdentityProviderMapperRepresentation(), admin)
@@ -65,7 +68,7 @@ export function createIdpMappers(): Array<api.IdentityProviderMapperRepresentati
   const teamAdmin = idpMapperTpl('map team-admin group to role', idpAlias, 'team-admin', teamAdminGroupMapping)
   const teamAdminMapper = defaultsDeep(new api.IdentityProviderMapperRepresentation(), teamAdmin)
   // default idp mappers case
-  const defaultIdps = defaultsIdpMapperTpl(idpAlias)
+  const defaultIdps = defaultsIdpMapperTpl(idpAlias, idpUsernameClaimMapper)
   const defaultMapper = defaultIdps.map((idpMapper) => {
     return defaultsDeep(new api.IdentityProviderMapperRepresentation(), idpMapper)
   })
