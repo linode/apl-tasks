@@ -32,6 +32,7 @@ rules:
   no-shadow: 0
   no-unused-vars: 0
   prefer-destructuring: 0
+  object-shorthand: warn
 
 overrides:
   - files: ['**/*.ts']

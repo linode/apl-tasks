@@ -1,6 +1,11 @@
 import { str, bool, json, cleanEnv as clean, CleanEnv, StrictCleanOptions, ValidatorSpec, num } from 'envalid'
 
 export const CERT_ROTATION_DAYS = num({ desc: 'The amount of days for the cert rotation', default: 75 })
+export const DRONE_CONFIG_PATH = str({ desc: 'The config path in the repo of the drone pipeline' })
+export const DRONE_REPO = str({ desc: 'The values repo to activate' })
+export const DRONE_OWNER = str({ desc: 'The owner of the values repo' })
+export const DRONE_TOKEN = str({ desc: 'The admin token to use for drone api server' })
+export const DRONE_URL = str({ desc: 'The internal url of the drone server', default: 'http://drone.team-admin' })
 export const DOMAINS = json({ desc: 'A list of domains and their cert status' })
 export const HARBOR_BASE_URL = str({ desc: 'The harbor core service URL' })
 export const HARBOR_PASSWORD = str({ desc: 'The harbor admin password' })
