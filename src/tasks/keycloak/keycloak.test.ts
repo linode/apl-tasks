@@ -44,7 +44,7 @@ protocols.accessToken = String(token.accessToken)
 // utility function to mock server responses
 const nockReplies = {}
 function createMockedResponse(methodName, url, payload, requestType) {
-  nockReplies[methodName] = { url: url, payload: payload, requestType: requestType }
+  nockReplies[methodName] = { url, payload, requestType }
   switch (requestType) {
     case 'POST':
       nock(keycloakAddress).persist().post(url, matches(payload)).reply(200, isValid)

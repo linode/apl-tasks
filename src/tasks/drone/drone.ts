@@ -20,7 +20,7 @@ const settings = {
 
 const errors = []
 
-async function doApiCall(action: string, fn: () => Promise<void>, update = false): Promise<boolean> {
+async function doApiCall(action: string, fn: () => Promise<void>): Promise<boolean> {
   console.info(`${action}`)
   try {
     await fn()

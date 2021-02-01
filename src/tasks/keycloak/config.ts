@@ -26,13 +26,13 @@ export const defaultsIdpMapperTpl = (alias: string) => {
 
 export const idpMapperTpl = (name: string, alias: string, role: string, claim: string) => {
   return {
-    name: name,
+    name,
     identityProviderAlias: alias,
     identityProviderMapper: 'oidc-role-idp-mapper',
     config: {
       syncMode: 'INHERIT',
       claim: 'groups',
-      role: role,
+      role,
       'claim.value': claim,
     },
   }
@@ -46,7 +46,7 @@ export const clientScopeCfgTpl = (protocolMappers: object) => {
       'include.in.token.scope': 'true',
       'display.on.consent.screen': 'true',
     },
-    protocolMappers: protocolMappers,
+    protocolMappers,
   }
 }
 
@@ -124,11 +124,11 @@ export const protocolMappersList = [
 
 export const roleTpl = (name: string, groupMapping: string, containerId: string) => {
   return {
-    name: name,
+    name,
     description: `Mapped for incoming IDP GROUP_ID: ${groupMapping}`,
     composite: false,
     clientRole: false,
-    containerId: containerId,
+    containerId,
     attributes: {},
   }
 }
@@ -154,7 +154,7 @@ export function oidcCfg(providerCfg: OidcProviderCfg, tenantId: string, clientId
   return {
     userInfoUrl: providerCfg.userinfo_endpoint,
     validateSignature: 'true',
-    clientId: clientId,
+    clientId,
     tokenUrl: providerCfg.token_endpoint,
     jwksUrl: providerCfg.jwks_uri,
     issuer: providerCfg.issuer,
@@ -163,7 +163,7 @@ export function oidcCfg(providerCfg: OidcProviderCfg, tenantId: string, clientId
     clientAuthMethod: `client_secret_post`,
     logoutUrl: providerCfg.end_session_endpoint,
     syncMode: 'FORCE',
-    clientSecret: clientSecret,
+    clientSecret,
     defaultScope: 'openid email profile',
   }
 }
@@ -185,7 +185,7 @@ export const idpProviderCfgTpl = async (
   // currently tested only on Azure AD
   const oidcCfgObj = await getDiscoveryUrls(oidcUrl)
   return {
-    alias: alias,
+    alias,
     displayName: alias,
     providerId: 'oidc',
     enabled: true,
@@ -198,9 +198,9 @@ export const idpProviderCfgTpl = async (
 export const otomiClientCfgTpl = (secret: string, redirectUris: object) => {
   return {
     id: 'otomi',
-    secret: secret,
+    secret,
     defaultClientScopes: ['openid', 'email', 'profile'],
-    redirectUris: redirectUris,
+    redirectUris,
     standardFlowEnabled: true,
     implicitFlowEnabled: true,
     directAccessGrantsEnabled: true,
