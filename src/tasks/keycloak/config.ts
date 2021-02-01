@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-export const defaultsIdpMapperTpl = (alias: string) => {
+export const defaultsIdpMapperTpl = (alias: string, mapper: string) => {
   return [
     {
       name: 'upn to email',
@@ -17,7 +17,7 @@ export const defaultsIdpMapperTpl = (alias: string) => {
       identityProviderAlias: alias,
       identityProviderMapper: 'oidc-username-idp-mapper',
       config: {
-        template: '${CLAIM.given_name} ${CLAIM.family_name}',
+        template: mapper,
         syncMode: 'INHERIT',
       },
     },
