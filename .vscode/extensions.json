@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "arjun.swagger-viewer",
+    "dbaeumer.vscode-eslint",
     "christian-kohler.path-intellisense",
     "codezombiech.gitignore",
     "donjayamanne.githistory",

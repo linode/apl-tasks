@@ -15,6 +15,5 @@
   "mochaExplorer.require": "ts-node/register",
   "mochaExplorer.timeout": 20000,
   "prettier.disableLanguages": ["javascript", "typescript"],
-  "prettier.enable": true,
-  "tslint.enable": false
+  "prettier.enable": true
 }
