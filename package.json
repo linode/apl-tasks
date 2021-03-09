@@ -15,7 +15,7 @@
     "@redkubes/keycloak-client-node": "10.0.0",
     "@types/lodash": "^4.14.158",
     "aws-sdk": "^2.742.0",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "bluebird": "^3.7.2",
     "envalid": "^6.0.2",
     "js-yaml": "^3.14.0",
