@@ -84,9 +84,10 @@ async function main() {
   realms.accessToken = String(token.access_token)
 
   // Create Client Scopes
+  const scope = realmConfig.createClientScopes()
   if (
     !(await doApiCall('OpenID Client Scope', async () => {
-      await clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, realmConfig.createClientScopes())
+      await clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, scope)
     }))
   ) {
     // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
@@ -94,7 +95,6 @@ async function main() {
       'OpenID Client Scope',
       async () => {
         const currentClientScopes = await clientScope.realmClientScopesGet(env.KEYCLOAK_REALM)
-        const scope = realmConfig.createClientScopes()
         const id = find(currentClientScopes.body, { name: scope.name }).id
         await clientScope.realmClientScopesIdPut(env.KEYCLOAK_REALM, id, scope)
       },
@@ -103,7 +103,8 @@ async function main() {
   }
 
   // Create Roles
-  for await (const role of realmConfig.mapTeamsToRoles()) {
+  const teamRoles = realmConfig.mapTeamsToRoles()
+  for await (const role of teamRoles) {
     if (
       !(await doApiCall(`Role ${role.name}`, async () => {
         await roles.realmRolesPost(env.KEYCLOAK_REALM, role)
@@ -122,7 +123,8 @@ async function main() {
   // Create Identity Provider
   if (
     !(await doApiCall('Identity Provider', async () => {
-      await providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, await realmConfig.createIdProvider())
+      const idp = await realmConfig.createIdProvider()
+      await providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, idp)
     }))
   ) {
     await doApiCall(
@@ -137,7 +139,8 @@ async function main() {
 
   // Create Identity Provider Mappers
   // @NOTE - PUT involves adding strict required properties not in the factory
-  for await (const idpMapper of realmConfig.createIdpMappers()) {
+  const idpMappers = realmConfig.createIdpMappers()
+  for await (const idpMapper of idpMappers) {
     await doApiCall(`Mapping ${idpMapper.name}`, async () => {
       await providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper)
     })

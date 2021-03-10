@@ -35,10 +35,7 @@
         "--recursive",
         "${workspaceFolder}/src/**/*.ts"
       ],
-      "resolveSourceMapLocations": [
-        "${workspaceFolder}/**",
-        "!**/node_modules/**"
-      ],
+      "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
       "env": {
         "NODE_ENV": "test"
       },
@@ -71,8 +68,11 @@
       "request": "launch",
       "name": "Debug Keycloak Bootstrapping Tasks",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "task:keycloak-dev"],
+      "runtimeArgs": ["run-script", "tasks:keycloak-dev"],
       "cwd": "${workspaceRoot}",
+      "env": {
+        "DEBUG": "*"
+      },
       "console": "integratedTerminal"
     },
     {
@@ -80,13 +80,13 @@
       "request": "launch",
       "name": "Debug certs-aws Tasks",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "task:certs-aws-dev"],
+      "runtimeArgs": ["run-script", "tasks:certs-aws-dev"],
       "env": {
+        "DEBUG": "*",
         "REGION": "eu-central-1"
       },
       "cwd": "${workspaceRoot}",
       "console": "integratedTerminal"
-    },
-    
+    }
   ]
 }
