@@ -9,26 +9,25 @@ const env = cleanEnv({
   GITEA_REPO,
 })
 
-function main() {
+async function main() {
   const hasRepo = new RepositoryApi(env.GITEA_USER, env.GITEA_PASSWORD, `${env.GITEA_URL}/api/v1`)
-  hasRepo
-    .repoGet(env.GITEA_USER, env.GITEA_REPO)
-    .then(() => {
-      console.log(`'${env.GITEA_REPO}'-repository already exists, not creating`)
-    })
-    .catch(() => {
-      const body = new CreateRepoOption()
-      body.autoInit = false
-      body.name = env.GITEA_REPO
-      hasRepo
-        .createCurrentUserRepo(body)
-        .then(() => {
-          console.log(`'${env.GITEA_REPO}'-repository has been created`)
-        })
-        .catch(() => {
-          console.error(`Something went wrong when creating '${env.GITEA_REPO}'-repository`)
-          process.exit(1)
-        })
-    })
+
+  try {
+    await hasRepo.repoGet(env.GITEA_USER, env.GITEA_REPO)
+    console.log(`'${env.GITEA_REPO}'-repository already exists, not creating`)
+    process.exit(1)
+  } catch (e) {
+    console.log(`'${env.GITEA_REPO}'-repository does not exists, creating`)
+  }
+  const body = new CreateRepoOption()
+  body.autoInit = false
+  body.name = env.GITEA_REPO
+  try {
+    await hasRepo.createCurrentUserRepo(body)
+    console.log(`'${env.GITEA_REPO}'-repository has been created`)
+  } catch (e) {
+    console.error(`Something went wrong when creating '${env.GITEA_REPO}'-repository`)
+    process.exit(1)
+  }
 }
 main()
