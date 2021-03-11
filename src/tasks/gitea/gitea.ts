@@ -10,12 +10,17 @@ const env = cleanEnv({
 })
 
 async function main() {
-  const hasRepo = new RepositoryApi(env.GITEA_USER, env.GITEA_PASSWORD, `${env.GITEA_URL}/api/v1`)
+  let giteaUrl = env.GITEA_URL
+  if (giteaUrl.endsWith('/')) {
+    giteaUrl = giteaUrl.slice(0, -1)
+  }
+
+  const hasRepo = new RepositoryApi(env.GITEA_USER, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
 
   try {
     await hasRepo.repoGet(env.GITEA_USER, env.GITEA_REPO)
     console.log(`'${env.GITEA_REPO}'-repository already exists, not creating`)
-    process.exit(1)
+    process.exit(0)
   } catch (e) {
     console.log(`'${env.GITEA_REPO}'-repository does not exists, creating`)
   }
