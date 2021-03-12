@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.5](https://github.com/redkubes/otomi-tasks/compare/v0.2.4...v0.2.5) (2021-03-12)
+
+### Bug Fixes
+
+- security warnings dependabot ([f41eaed](https://github.com/redkubes/otomi-tasks/commit/f41eaed96cefec735fb60d90afa4eb3e5eaeef69))
+- version revert [ci skip](<[040a89a](https://github.com/redkubes/otomi-tasks/commit/040a89a77e9e11d8b19de7d856f699ff02e88e21)>)
+
 ### [0.2.4](https://github.com/redkubes/otomi-tasks/compare/v0.2.3...v0.2.4) (2021-02-06)
 
 ### Features
