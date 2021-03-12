@@ -1,4 +1,4 @@
-import { str, bool, json, cleanEnv as clean, CleanEnv, StrictCleanOptions, ValidatorSpec, num } from 'envalid'
+import { str, bool, json, cleanEnv as clean, CleanEnv, StrictCleanOptions, ValidatorSpec, num, url } from 'envalid'
 
 export const CERT_ROTATION_DAYS = num({ desc: 'The amount of days for the cert rotation', default: 75 })
 export const DOMAINS = json({ desc: 'A list of domains and their cert status' })
@@ -32,6 +32,11 @@ export const TENANT_CLIENT_ID = str({ desc: 'The tenant client id' })
 export const SECRETS_NAMESPACE = str({ desc: 'The namespace of the TLS secrets', default: 'istio-system' })
 export const TENANT_CLIENT_SECRET = str({ desc: 'The tenant client secret' })
 export const TENANT_ID = str({ desc: 'The tenant ID' })
+// Gitea task vars
+export const GITEA_USER = str({ desc: 'The gitea admin username' })
+export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
+export const GITEA_URL = url({ desc: 'The gitea core service url' })
+export const GITEA_REPO = str({ desc: 'The gitea repo where values will be stored' })
 
 const env = process.env
 export function cleanEnv<T>(
