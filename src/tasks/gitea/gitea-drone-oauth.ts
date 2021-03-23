@@ -16,7 +16,7 @@ type DroneSecret = {
   clientId: string
   clientSecret: string
 }
-class K8sClass {
+class GiteaDroneOAuth {
   apiClient: k8s.CoreV1Api
   k8s_namespace = 'gitea'
   k8s_secret_name = 'gitea-drone-secret'
@@ -197,4 +197,4 @@ class K8sClass {
   }
 }
 
-new K8sClass()
+new GiteaDroneOAuth()
