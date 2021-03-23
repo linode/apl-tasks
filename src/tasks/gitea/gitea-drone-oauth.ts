@@ -157,9 +157,8 @@ class GiteaDroneOAuth {
         }
         await this.authorizeOAuth()
         return
-      } else {
-        console.log('Some data did not match, recreating OAuth data')
       }
+      console.log('Some data did not match, recreating OAuth data')
 
       // Otherwise, clear (if necessary)
       try {
