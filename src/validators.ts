@@ -14,6 +14,11 @@ export const IDP_USERNAME_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to username mapper string",
   default: '${CLAIM.email}',
 })
+export const IDP_SUB_CLAIM_MAPPER = str({
+  desc: "The IDP's OIDC claim to sub mapper",
+  default: 'sub',
+})
+
 export const KEYCLOAK_ADDRESS = str({ desc: 'The Keycloak Server address' })
 export const KEYCLOAK_ADMIN = str({ desc: 'Default admin username for KeyCloak Server' })
 export const KEYCLOAK_ADMIN_PASSWORD = str({ desc: 'Default password for admin' })
