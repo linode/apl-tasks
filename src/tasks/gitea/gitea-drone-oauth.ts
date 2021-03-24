@@ -83,7 +83,7 @@ class GiteaDroneOAuth {
     console.log('ran authorize command')
 
     const authorizeHeaderCookies: string[] = authorizeResponse.headers['set-cookie']
-    console.log('get cookies')
+    console.log('get cookies', authorizeResponse.headers)
 
     // Loop over cookies and find the _csrf cookie and retrieve the value
     this.csrfToken = authorizeHeaderCookies
