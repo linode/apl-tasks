@@ -62,7 +62,7 @@ class GiteaDroneOAuth {
         // eslint-disable-next-line @typescript-eslint/camelcase
         client_id: this.oauthData.clientId,
         // eslint-disable-next-line @typescript-eslint/camelcase
-        redirect_uri: `${this.giteaUrl}/login`,
+        redirect_uri: `${this.droneUrl}/login`,
         // eslint-disable-next-line @typescript-eslint/camelcase
         response_type: 'code',
       },
