@@ -185,7 +185,12 @@ class GiteaDroneOAuth {
 
       const result: OAuth2Application = (await user.userCreateOAuth2Application(oauthOpts)).body
       console.log('OAuth app has been created')
-      this.oauthData = result as DroneSecret
+      this.oauthData = {
+        clientId: result.clientId,
+        clientSecret: result.clientSecret,
+      }
+      console.log('stored oauth data')
+
       await this.authorizeOAuth()
       console.log('OAuth app has been authorized')
 
