@@ -65,6 +65,7 @@ class GiteaDroneOAuth {
         // eslint-disable-next-line @typescript-eslint/camelcase
         response_type: 'code',
       },
+      maxRedirects: 1,
       auth: {
         username: env.GITEA_USER,
         password: env.GITEA_PASSWORD,
@@ -116,6 +117,7 @@ class GiteaDroneOAuth {
           })
           .join('; '),
       },
+      maxRedirects: 1,
       auth: {
         username: env.GITEA_USER,
         password: env.GITEA_PASSWORD,
