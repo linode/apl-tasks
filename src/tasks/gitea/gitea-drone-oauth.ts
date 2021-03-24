@@ -34,7 +34,6 @@ class GiteaDroneOAuth {
       this.giteaUrl = this.giteaUrl.slice(0, -1)
     }
     this.droneUrl = this.giteaUrl.replace('gitea', 'drone')
-    console.log(this.giteaUrl, this.droneUrl)
 
     this.main()
   }
@@ -71,20 +70,19 @@ class GiteaDroneOAuth {
         password: env.GITEA_PASSWORD,
       },
     }
-    console.log('set opts')
+
+    console.log('Authorizing OAuth application')
 
     let authorizeResponse
     try {
       authorizeResponse = await axios.get(`${this.giteaUrl}/login/oauth/authorize`, options)
-      console.log(authorizeResponse)
     } catch (error) {
-      console.log('Authorization already granted', error)
+      console.log('Authorization already granted or something went wrong')
+      console.error(error)
       return
     }
-    console.log('ran authorize command')
 
     const authorizeHeaderCookies: string[] = authorizeResponse.headers['set-cookie']
-    console.log('get cookies', authorizeResponse.headers)
 
     // Loop over cookies and find the _csrf cookie and retrieve the value
     this.csrfToken = authorizeHeaderCookies
@@ -99,7 +97,8 @@ class GiteaDroneOAuth {
       .map((cookie) => {
         return cookie.substring(this.csrfCookieName.length + 1) // Retrieve value for '_csrf'-key
       })[0]
-    console.log('get csrf token', this.csrfToken)
+
+    console.log('Granting authorization')
 
     const grantOptions: AxiosRequestConfig = {
       method: 'POST',
@@ -130,14 +129,9 @@ class GiteaDroneOAuth {
       }),
     }
 
-    console.log('set grant options')
-
     try {
       await axios.request(grantOptions)
-      console.log('ran grant sucessfully')
     } catch (error) {
-      console.log('grant failed')
-
       // Do nothing, error code could be on the redirect
     }
   }
