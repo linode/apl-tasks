@@ -79,7 +79,7 @@ class GiteaDroneOAuth {
       authorizeResponse = await axios.get(`${this.giteaUrl}/login/oauth/authorize`, options)
     } catch (error) {
       console.log('Authorization already granted or something went wrong')
-      console.error(error)
+      console.error(error.config)
       console.error('Options used in Axios request', options)
       return
     }
