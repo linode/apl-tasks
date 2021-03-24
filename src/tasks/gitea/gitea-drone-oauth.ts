@@ -206,7 +206,7 @@ class GiteaDroneOAuth {
       await client.createNamespacedSecret(this.k8s_namespace, secret)
       console.log('New secret has been created')
     } catch (e) {
-      console.error('Something went wrong')
+      console.error('Something went wrong', e)
       console.trace()
     }
   }
