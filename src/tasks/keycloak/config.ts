@@ -1,10 +1,10 @@
 import axios from 'axios'
 
-export const defaultsIdpMapperTpl = (alias: string, mapper: string) => {
+export const defaultsIdpMapperTpl = (env) => {
   return [
     {
       name: 'upn to email',
-      identityProviderAlias: alias,
+      identityProviderAlias: env.IDP_ALIAS,
       identityProviderMapper: 'oidc-user-attribute-idp-mapper',
       config: {
         syncMode: 'INHERIT',
@@ -14,11 +14,21 @@ export const defaultsIdpMapperTpl = (alias: string, mapper: string) => {
     },
     {
       name: 'username mapping',
-      identityProviderAlias: alias,
+      identityProviderAlias: env.IDP_ALIAS,
       identityProviderMapper: 'oidc-username-idp-mapper',
       config: {
-        template: mapper,
+        template: env.IDP_USERNAME_CLAIM_MAPPER,
         syncMode: 'INHERIT',
+      },
+    },
+    {
+      name: 'sub',
+      identityProviderAlias: env.IDP_ALIAS,
+      identityProviderMapper: 'oidc-user-attribute-idp-mapper',
+      config: {
+        syncMode: 'INHERIT',
+        claim: env.IDP_SUB_CLAIM_MAPPER,
+        'user.attribute': 'sub',
       },
     },
   ]
