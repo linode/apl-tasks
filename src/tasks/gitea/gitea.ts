@@ -27,6 +27,7 @@ async function main() {
   const body = new CreateRepoOption()
   body.autoInit = false
   body.name = env.GITEA_REPO
+  body._private = true
   try {
     await hasRepo.createCurrentUserRepo(body)
     console.log(`'${env.GITEA_REPO}'-repository has been created`)
