@@ -18,8 +18,8 @@ type DroneSecret = {
 }
 class GiteaDroneOAuth {
   apiClient: k8s.CoreV1Api
-  k8s_namespace = 'gitea'
-  k8s_secret_name = 'gitea-drone-secret'
+  k8sNamespace = 'gitea'
+  k8sSecretName = 'gitea-drone-secret'
   csrfCookieName = '_csrf'
 
   oauthData: DroneSecret
@@ -49,13 +49,13 @@ class GiteaDroneOAuth {
   async secretExists(): Promise<DroneSecret> {
     const client = this.getApiClient()
     try {
-      const response = (await client.readNamespacedSecret(this.k8s_secret_name, this.k8s_namespace)).body
+      const response = (await client.readNamespacedSecret(this.k8sSecretName, this.k8sNamespace)).body
       return response.data as DroneSecret
     } catch (e) {
       return undefined
     }
   }
-  async authorizeOAuth() {
+  async authorizeOAuthApp() {
     const options: AxiosRequestConfig = {
       params: {
         // eslint-disable-next-line @typescript-eslint/camelcase
@@ -79,18 +79,22 @@ class GiteaDroneOAuth {
       authorizeResponse = await axios.get(`${this.giteaUrl}/login/oauth/authorize`, options)
     } catch (error) {
       console.log('Authorization already granted or something went wrong')
-      console.error(error.config)
-      console.error('Options used in Axios request', options)
       return
     }
 
     const authorizeHeaderCookies: string[] = authorizeResponse.headers['set-cookie']
 
     // Loop over cookies and find the _csrf cookie and retrieve the value
-    this.csrfToken = authorizeHeaderCookies
-      .filter((cookie) => {
-        return cookie.includes(this.csrfCookieName) // Find cookie that contains _csrf
-      })[0]
+    const csrfCookies = authorizeHeaderCookies.filter((cookie) => {
+      return cookie.includes(this.csrfCookieName) // Find cookie that contains _csrf
+    })
+
+    if (csrfCookies.length == 0) {
+      console.log('No CSRF cookie was returned')
+      return
+    }
+
+    const csrfTokens = csrfCookies[0]
       .split(';') // Split that cookie into multiple parts, as a single cookie can contain multiple key/values ';' separated
       .map((c) => c.trim())
       .filter((cookie) => {
@@ -98,7 +102,13 @@ class GiteaDroneOAuth {
       })
       .map((cookie) => {
         return cookie.substring(this.csrfCookieName.length + 1) // Retrieve value for '_csrf'-key
-      })[0]
+      })
+
+    if (csrfTokens.length == 0) {
+      console.log('No CSRF token was returned')
+      return
+    }
+    this.csrfToken = csrfTokens[0]
 
     console.log('Granting authorization')
 
@@ -146,66 +156,62 @@ class GiteaDroneOAuth {
     const oauthOpts = new CreateOAuth2ApplicationOptions()
     oauthOpts.name = 'otomi-drone'
     oauthOpts.redirectUris = [`${this.droneUrl}/login`]
-    try {
-      const remoteSecret = await this.secretExists()
-      const oauthApps: OAuth2Application[] = (await user.userGetOauth2Application()).body.filter(
-        (x) => x.name === oauthOpts.name,
-      )
-      // If secret exists (correctly) and oauth apps are (still) defined, everything is good
-      if (
-        remoteSecret &&
-        remoteSecret.clientId.length > 0 &&
-        remoteSecret.clientSecret.length > 0 &&
-        oauthApps.length > 0 &&
-        oauthApps[0].clientId === Buffer.from(remoteSecret.clientId, 'base64').toString()
-      ) {
-        console.log('Gitea Drone OAuth secret exists')
-        this.oauthData = {
-          clientId: Buffer.from(remoteSecret.clientId, 'base64').toString(),
-          clientSecret: Buffer.from(remoteSecret.clientSecret, 'base64').toString(),
-        }
-        await this.authorizeOAuth()
-        return
-      }
-      console.log('Some data did not match, recreating OAuth data')
-
-      // Otherwise, clear (if necessary)
-      try {
-        await client.deleteNamespacedSecret(this.k8s_secret_name, this.k8s_namespace)
-      } catch (e) {
-        // Secret didn't exist in
-      }
-      if (oauthApps.length > 0) {
-        for (const oauthApp of oauthApps) {
-          user.userDeleteOAuth2Application(oauthApp.id)
-        }
-      }
-
-      const result: OAuth2Application = (await user.userCreateOAuth2Application(oauthOpts)).body
-      console.log('OAuth app has been created')
+    const remoteSecret = await this.secretExists()
+    const oauthApps: OAuth2Application[] = (await user.userGetOauth2Application()).body.filter(
+      (x) => x.name === oauthOpts.name,
+    )
+    // If secret exists (correctly) and oauth apps are (still) defined, everything is good
+    if (!remoteSecret) {
+      console.log('Remote secret was not found')
+    } else if (remoteSecret.clientId.length == 0 || remoteSecret.clientSecret.length == 0) {
+      console.log('Remote secret values were empty')
+    } else if (oauthApps.length == 0) {
+      console.log("Gitea doesn't have any oauth application defined")
+    } else if (!oauthApps.some((e) => e.clientId === Buffer.from(remoteSecret.clientId, 'base64').toString())) {
+      console.log('OAuth data did not match with expected secret')
+    } else {
+      console.log('Gitea Drone OAuth secret exists')
       this.oauthData = {
-        clientId: result.clientId,
-        clientSecret: result.clientSecret,
+        clientId: Buffer.from(remoteSecret.clientId, 'base64').toString(),
+        clientSecret: Buffer.from(remoteSecret.clientSecret, 'base64').toString(),
       }
-
-      await this.authorizeOAuth()
-      console.log('OAuth app has been authorized')
-
-      const secret: k8s.V1Secret = new k8s.V1Secret()
-      secret.metadata = new k8s.V1ObjectMeta()
-      secret.metadata.name = this.k8s_secret_name
-      secret.metadata.namespace = this.k8s_namespace
-      secret.data = {
-        clientId: Buffer.from(result.clientId).toString('base64'),
-        clientSecret: Buffer.from(result.clientSecret).toString('base64'),
-      }
-
-      await client.createNamespacedSecret(this.k8s_namespace, secret)
-      console.log('New secret has been created')
-    } catch (e) {
-      console.error('Something went wrong', e)
-      console.trace()
+      await this.authorizeOAuthApp()
+      return
     }
+
+    // Otherwise, clear (if necessary)
+    try {
+      await client.deleteNamespacedSecret(this.k8sSecretName, this.k8sNamespace)
+    } catch (e) {
+      // Secret didn't exist in
+    }
+    if (oauthApps.length > 0) {
+      for (const oauthApp of oauthApps) {
+        user.userDeleteOAuth2Application(oauthApp.id)
+      }
+    }
+
+    const result: OAuth2Application = (await user.userCreateOAuth2Application(oauthOpts)).body
+    console.log('OAuth app has been created')
+    this.oauthData = {
+      clientId: result.clientId,
+      clientSecret: result.clientSecret,
+    }
+
+    await this.authorizeOAuthApp()
+    console.log('OAuth app has been authorized')
+
+    const secret: k8s.V1Secret = new k8s.V1Secret()
+    secret.metadata = new k8s.V1ObjectMeta()
+    secret.metadata.name = this.k8sSecretName
+    secret.metadata.namespace = this.k8sNamespace
+    secret.data = {
+      clientId: Buffer.from(result.clientId).toString('base64'),
+      clientSecret: Buffer.from(result.clientSecret).toString('base64'),
+    }
+
+    await client.createNamespacedSecret(this.k8sNamespace, secret)
+    console.log(`New secret ${this.k8sSecretName} has been created in the namespace ${this.k8sNamespace}`)
   }
 }
 
