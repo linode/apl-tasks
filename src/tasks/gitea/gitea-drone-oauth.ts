@@ -20,6 +20,7 @@ class GiteaDroneOAuth {
   apiClient: k8s.CoreV1Api
   k8sNamespace = 'gitea'
   k8sSecretName = 'gitea-drone-secret'
+  // _csrf cookie is the MVC (Minimal Viable Cookie) for authorization & grant to work.
   csrfCookieName = '_csrf'
 
   oauthData: DroneSecret
