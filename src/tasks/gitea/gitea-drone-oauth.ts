@@ -1,5 +1,5 @@
 import * as k8s from '@kubernetes/client-node'
-import axios, { AxiosRequestConfig } from 'axios'
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import querystring from 'querystring'
 
 import { UserApi, CreateOAuth2ApplicationOptions, OAuth2Application } from '@redkubes/gitea-client-node'
@@ -26,15 +26,15 @@ class GiteaDroneOAuth {
 
   giteaUrl: string
   droneUrl: string
+  droneLoginUrl: string
 
-  csrfToken: string
   constructor() {
     this.giteaUrl = env.GITEA_URL
     if (this.giteaUrl.endsWith('/')) {
       this.giteaUrl = this.giteaUrl.slice(0, -1)
     }
     this.droneUrl = this.giteaUrl.replace('gitea', 'drone')
-
+    this.droneLoginUrl = `${this.droneUrl}/login`
     this.main()
   }
 
@@ -61,7 +61,7 @@ class GiteaDroneOAuth {
         // eslint-disable-next-line @typescript-eslint/camelcase
         client_id: this.oauthData.clientId,
         // eslint-disable-next-line @typescript-eslint/camelcase
-        redirect_uri: `${this.droneUrl}/login`,
+        redirect_uri: this.droneLoginUrl,
         // eslint-disable-next-line @typescript-eslint/camelcase
         response_type: 'code',
       },
@@ -74,7 +74,7 @@ class GiteaDroneOAuth {
 
     console.log('Authorizing OAuth application')
 
-    let authorizeResponse
+    let authorizeResponse: AxiosResponse<any>
     try {
       authorizeResponse = await axios.get(`${this.giteaUrl}/login/oauth/authorize`, options)
     } catch (error) {
@@ -108,7 +108,7 @@ class GiteaDroneOAuth {
       console.log('No CSRF token was returned')
       return
     }
-    this.csrfToken = csrfTokens[0]
+    const csrfToken = csrfTokens[0]
 
     console.log('Granting authorization')
 
@@ -134,11 +134,11 @@ class GiteaDroneOAuth {
       },
       // Data for this post query must be stringified https://github.com/axios/axios#using-applicationx-www-form-urlencoded-format
       data: querystring.stringify({
-        _csrf: this.csrfToken,
+        _csrf: csrfToken,
         // eslint-disable-next-line @typescript-eslint/camelcase
         client_id: `${this.oauthData.clientId}`,
         // eslint-disable-next-line @typescript-eslint/camelcase
-        redirect_uri: `${this.droneUrl}/login`,
+        redirect_uri: this.droneLoginUrl,
       }),
     }
 
@@ -155,7 +155,7 @@ class GiteaDroneOAuth {
     const user = new UserApi(env.GITEA_USER, env.GITEA_PASSWORD, `${this.giteaUrl}/api/v1`)
     const oauthOpts = new CreateOAuth2ApplicationOptions()
     oauthOpts.name = 'otomi-drone'
-    oauthOpts.redirectUris = [`${this.droneUrl}/login`]
+    oauthOpts.redirectUris = [this.droneLoginUrl]
     const remoteSecret = await this.secretExists()
     const oauthApps: OAuth2Application[] = (await user.userGetOauth2Application()).body.filter(
       (x) => x.name === oauthOpts.name,
