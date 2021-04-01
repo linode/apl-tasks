@@ -36,4 +36,7 @@ async function main() {
     process.exit(1)
   }
 }
-main()
+// Run main only on execution, not on import (like tests)
+if (typeof require !== 'undefined' && require.main === module) {
+  main()
+}

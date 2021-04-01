@@ -12,37 +12,23 @@ const env = cleanEnv({
   GITEA_URL,
   GITEA_REPO,
 })
-type DroneSecret = {
+export type DroneSecret = {
   clientId: string
   clientSecret: string
 }
 
-let apiClient: k8s.CoreV1Api
-const k8sNamespace = 'gitea'
-const k8sSecretName = 'gitea-drone-secret'
-// _csrf cookie is the MVC (Minimal Viable Cookie) for authorization & grant to work.
-const csrfCookieName = '_csrf'
-
-let oauthData: DroneSecret
-
-let giteaUrl: string
-let droneUrl: string
-let droneLoginUrl: string
-
-function setup() {
-  giteaUrl = env.GITEA_URL
-  if (giteaUrl.endsWith('/')) {
-    giteaUrl = giteaUrl.slice(0, -1)
+export class GiteaDroneError extends Error {
+  constructor(m?: string) {
+    super(m)
+    Object.setPrototypeOf(this, GiteaDroneError.prototype)
   }
-  droneUrl = giteaUrl.replace('gitea', 'drone')
-  droneLoginUrl = `${droneUrl}/login`
-
-  const kc = new k8s.KubeConfig()
-  kc.loadFromDefault()
-  apiClient = kc.makeApiClient(k8s.CoreV1Api)
 }
 
-async function secretExists(): Promise<DroneSecret> {
+const k8sNamespace = 'gitea'
+const k8sSecretName = 'gitea-drone-secret'
+const csrfCookieName = '_csrf' // _csrf cookie is the MVC (Minimal Viable Cookie) for authorization & grant to work.
+
+async function secretExists(apiClient: k8s.CoreV1Api): Promise<DroneSecret> {
   try {
     const response = (await apiClient.readNamespacedSecret(k8sSecretName, k8sNamespace)).body
     return response.data as DroneSecret
@@ -50,7 +36,11 @@ async function secretExists(): Promise<DroneSecret> {
     return undefined
   }
 }
-async function authorizeOAuthApp() {
+export async function getGiteaAuthorizationHeaderCookie(
+  giteaUrl: string,
+  droneLoginUrl: string,
+  oauthData: DroneSecret,
+): Promise<string[]> {
   const options: AxiosRequestConfig = {
     params: {
       // eslint-disable-next-line @typescript-eslint/camelcase
@@ -69,24 +59,19 @@ async function authorizeOAuthApp() {
 
   console.log('Authorizing OAuth application')
 
-  let authorizeResponse: AxiosResponse<any>
-  try {
-    authorizeResponse = await axios.get(`${giteaUrl}/login/oauth/authorize`, options)
-  } catch (error) {
-    console.log('Authorization already granted or something went wrong')
-    return
-  }
+  const authorizeResponse: AxiosResponse<any> = await axios.get(`${giteaUrl}/login/oauth/authorize`, options)
 
-  const authorizeHeaderCookies: string[] = authorizeResponse.headers['set-cookie']
+  return authorizeResponse.headers['set-cookie']
+}
 
+export function parseCSRFToken(authorizeHeaderCookies: string[]): string {
   // Loop over cookies and find the _csrf cookie and retrieve the value
   const csrfCookies = authorizeHeaderCookies.filter((cookie) => {
     return cookie.includes(csrfCookieName) // Find cookie that contains _csrf
   })
 
   if (csrfCookies.length == 0) {
-    console.log('No CSRF cookie was returned')
-    return
+    throw new GiteaDroneError('No CSRF cookie was returned')
   }
 
   const csrfTokens = csrfCookies[0]
@@ -99,11 +84,20 @@ async function authorizeOAuthApp() {
       return cookie.substring(csrfCookieName.length + 1) // Retrieve value for '_csrf'-key
     })
 
-  if (csrfTokens.length == 0) {
-    console.log('No CSRF token was returned')
-    return
+  if (csrfTokens.length == 0 || csrfTokens[0].length == 0) {
+    throw new GiteaDroneError('No CSRF token was returned')
   }
-  const csrfToken = csrfTokens[0]
+  return csrfTokens[0]
+}
+async function authorizeOAuthApp(giteaUrl: string, droneLoginUrl: string, oauthData: DroneSecret) {
+  let authorizeHeaderCookies: string[]
+  try {
+    authorizeHeaderCookies = await getGiteaAuthorizationHeaderCookie(giteaUrl, droneLoginUrl, oauthData)
+  } catch (error) {
+    throw new GiteaDroneError('Authorization already granted or something went wrong')
+  }
+
+  const csrfToken = parseCSRFToken(authorizeHeaderCookies)
 
   console.log('Granting authorization')
 
@@ -144,16 +138,7 @@ async function authorizeOAuthApp() {
   }
 }
 
-async function main() {
-  const user = new UserApi(env.GITEA_USER, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
-  const oauthOpts = new CreateOAuth2ApplicationOptions()
-  oauthOpts.name = 'otomi-drone'
-  oauthOpts.redirectUris = [droneLoginUrl]
-  const remoteSecret = await secretExists()
-  const oauthApps: OAuth2Application[] = (await user.userGetOauth2Application()).body.filter(
-    (x) => x.name === oauthOpts.name,
-  )
-  // If secret exists (correctly) and oauth apps are (still) defined, everything is good
+export function isSecretValid(remoteSecret: DroneSecret, oauthApps: OAuth2Application[]): boolean {
   if (!remoteSecret) {
     console.log('Remote secret was not found')
   } else if (remoteSecret.clientId.length == 0 || remoteSecret.clientSecret.length == 0) {
@@ -163,12 +148,35 @@ async function main() {
   } else if (!oauthApps.some((e) => e.clientId === Buffer.from(remoteSecret.clientId, 'base64').toString())) {
     console.log('OAuth data did not match with expected secret')
   } else {
+    return true
+  }
+  return false
+}
+
+async function main() {
+  const giteaUrl: string = env.GITEA_URL.endsWith('/') ? env.GITEA_URL.slice(0, 1) : env.GITEA_URL
+  const droneLoginUrl: string = giteaUrl.replace('gitea', 'drone') + '/login'
+
+  const kc = new k8s.KubeConfig()
+  kc.loadFromDefault()
+  const apiClient = kc.makeApiClient(k8s.CoreV1Api)
+
+  const user = new UserApi(env.GITEA_USER, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  const oauthOpts = new CreateOAuth2ApplicationOptions()
+  oauthOpts.name = 'otomi-drone'
+  oauthOpts.redirectUris = [droneLoginUrl]
+  const remoteSecret: DroneSecret = await secretExists(apiClient)
+  const oauthApps: OAuth2Application[] = (await user.userGetOauth2Application()).body.filter(
+    (x) => x.name === oauthOpts.name,
+  )
+  // If secret exists (correctly) and oauth apps are (still) defined, everything is good
+  if (isSecretValid(remoteSecret, oauthApps)) {
     console.log('Gitea Drone OAuth secret exists')
-    oauthData = {
+    const oauthData: DroneSecret = {
       clientId: Buffer.from(remoteSecret.clientId, 'base64').toString(),
       clientSecret: Buffer.from(remoteSecret.clientSecret, 'base64').toString(),
     }
-    await authorizeOAuthApp()
+    await authorizeOAuthApp(giteaUrl, droneLoginUrl, oauthData)
     return
   }
 
@@ -186,12 +194,12 @@ async function main() {
 
   const result: OAuth2Application = (await user.userCreateOAuth2Application(oauthOpts)).body
   console.log('OAuth app has been created')
-  oauthData = {
+  const oauthData: DroneSecret = {
     clientId: result.clientId,
     clientSecret: result.clientSecret,
   }
 
-  await authorizeOAuthApp()
+  await authorizeOAuthApp(giteaUrl, droneLoginUrl, oauthData)
   console.log('OAuth app has been authorized')
 
   const secret: k8s.V1Secret = new k8s.V1Secret()
@@ -207,5 +215,11 @@ async function main() {
   console.log(`New secret ${k8sSecretName} has been created in the namespace ${k8sNamespace}`)
 }
 
-setup()
-main()
+// Run main only on execution, not on import (like tests)
+if (typeof require !== 'undefined' && require.main === module) {
+  main().catch((err) => {
+    if (err instanceof GiteaDroneError) {
+      console.log(err)
+    }
+  })
+}
