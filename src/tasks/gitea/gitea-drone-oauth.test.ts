@@ -7,7 +7,6 @@ import {
   parseCSRFToken,
 } from './gitea-drone-oauth'
 import { OAuth2Application } from '@redkubes/gitea-client-node'
-import nock from 'nock'
 import sinon from 'sinon'
 import axios from 'axios'
 
