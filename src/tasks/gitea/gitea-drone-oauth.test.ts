@@ -1,10 +1,10 @@
 import { expect } from 'chai'
 import {
   DroneSecret,
-  getGiteaAuthorizationHeaderCookie,
+  getGiteaAuthorizationHeaderCookies,
   GiteaDroneError,
   isSecretValid,
-  parseCSRFToken,
+  getCookieValue,
 } from './gitea-drone-oauth'
 import { OAuth2Application } from '@redkubes/gitea-client-node'
 import sinon from 'sinon'
@@ -40,10 +40,10 @@ describe('Gitea-Drone: Validate Secrets', () => {
         clientId: 'abc',
       },
     ]
-    expect(isSecretValid(null, stubOauthApps)).to.be.false
+    expect(isSecretValid(undefined, stubOauthApps)).to.be.false
     expect(consoleLog.calledWith('Remote secret was not found')).to.be.true
   })
-  it('should fail to validate on secret clientID', () => {
+  it('should fail validation when the secret contains invalid data', () => {
     const stubRemoteSecret: DroneSecret = {
       clientId: '',
       clientSecret: Buffer.from('def').toString('base64'),
@@ -57,7 +57,7 @@ describe('Gitea-Drone: Validate Secrets', () => {
     expect(isSecretValid(stubRemoteSecret, stubOauthApps)).to.be.false
     expect(consoleLog.calledWith('Remote secret values were empty')).to.be.true
   })
-  it('should fail to validate on secret clientSecret', () => {
+  it('should fail validation when the secret contains invalid data', () => {
     const stubRemoteSecret: DroneSecret = {
       clientId: Buffer.from('abc').toString('base64'),
       clientSecret: '',
@@ -97,25 +97,32 @@ describe('Gitea-Drone: Validate Secrets', () => {
 })
 
 describe('Gitea-Drone: Parse CSRF Token', () => {
+  const cookieName = '_csrf'
   it('should successfully validate the token', () => {
-    const stubHeaderCookies: string[] = ['_csrf:abc']
-    expect(parseCSRFToken(stubHeaderCookies)).to.be.equal('abc')
+    const stubHeaderCookies: string[] = [`${cookieName}:abc`]
+    expect(getCookieValue(stubHeaderCookies, cookieName)).to.be.equal('abc')
   })
   it('should successfully validate parse the token from string', () => {
-    const stubHeaderCookies: string[] = ['_csrf:abc;']
-    expect(parseCSRFToken(stubHeaderCookies)).to.be.equal('abc')
+    const stubHeaderCookies: string[] = [`${cookieName}:abc;`]
+    expect(getCookieValue(stubHeaderCookies, cookieName)).to.be.equal('abc')
   })
   it('should successfully validate parse the token from string containing more key/values', () => {
-    const stubHeaderCookies: string[] = ['_csrf:abc;redkubes:otomi']
-    expect(parseCSRFToken(stubHeaderCookies)).to.be.equal('abc')
+    const stubHeaderCookies: string[] = [`${cookieName}:abc;redkubes:otomi`]
+    expect(getCookieValue(stubHeaderCookies, cookieName)).to.be.equal('abc')
   })
   it('should fail without a CSRF cookie', () => {
     const stubHeaderCookies: string[] = ['redkubes:otomi']
-    expect(() => parseCSRFToken(stubHeaderCookies)).to.throw(GiteaDroneError, 'No CSRF cookie was returned') // Need to expect(()=>func) otherwise throw will fail
+    expect(() => getCookieValue(stubHeaderCookies, cookieName)).to.throw(
+      GiteaDroneError,
+      `No ${cookieName} cookie was returned`,
+    ) // Need to expect(()=>func) otherwise throw will fail
   })
   it('should fail without a CSRF token', () => {
-    const stubHeaderCookies: string[] = ['_csrf:;']
-    expect(() => parseCSRFToken(stubHeaderCookies)).to.throw(GiteaDroneError, 'No CSRF token was returned') // Need to expect(()=>func) otherwise throw will fail
+    const stubHeaderCookies: string[] = [`${cookieName}:;`]
+    expect(() => getCookieValue(stubHeaderCookies, cookieName)).to.throw(
+      GiteaDroneError,
+      `No value for ${cookieName} was found`,
+    ) // Need to expect(()=>func) otherwise throw will fail
   })
 })
 
@@ -123,7 +130,7 @@ describe('Gitea-Drone: Authorize OAuth', () => {
   let sandbox: sinon.SinonSandbox
   beforeEach(() => (sandbox = sinon.createSandbox()))
   afterEach(() => sandbox.restore())
-  it('should successfully validate authorize header', () => {
+  it('should successfully validate authorize header', async () => {
     const resolved = new Promise((r) => r({ headers: { 'set-cookie': 'abc' } }))
     sandbox.stub(axios, 'get').returns(resolved)
     sandbox.stub(console, 'log')
@@ -133,8 +140,7 @@ describe('Gitea-Drone: Authorize OAuth', () => {
       clientId: 'abc',
       clientSecret: 'def',
     }
-    getGiteaAuthorizationHeaderCookie(giteaUrl, droneLoginUrl, oauthData).then((data) => {
-      expect(data).to.be.equal('abc')
-    })
+    const data = await getGiteaAuthorizationHeaderCookies(giteaUrl, droneLoginUrl, oauthData)
+    expect(data).to.be.equal('abc')
   })
 })
