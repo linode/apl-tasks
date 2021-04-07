@@ -41,6 +41,7 @@ export const TENANT_ID = str({ desc: 'The tenant ID' })
 export const GITEA_USER = str({ desc: 'The gitea admin username' })
 export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
 export const GITEA_URL = url({ desc: 'The gitea core service url' })
+export const DRONE_URL = url({ desc: 'The drone core service url' })
 export const GITEA_REPO = str({ desc: 'The gitea repo where values will be stored' })
 
 const env = process.env

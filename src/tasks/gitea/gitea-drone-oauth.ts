@@ -1,28 +1,35 @@
 import * as k8s from '@kubernetes/client-node'
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import querystring from 'querystring'
+import { CustomError } from 'ts-custom-error'
 
 import { UserApi, CreateOAuth2ApplicationOptions, OAuth2Application } from '@redkubes/gitea-client-node'
 
-import { cleanEnv, GITEA_USER, GITEA_PASSWORD, GITEA_URL, GITEA_REPO } from '../../validators'
+import { cleanEnv, GITEA_USER, GITEA_PASSWORD, GITEA_URL, GITEA_REPO, DRONE_URL } from '../../validators'
 
 const env = cleanEnv({
   GITEA_USER,
   GITEA_PASSWORD,
   GITEA_URL,
   GITEA_REPO,
+  DRONE_URL,
 })
 export interface DroneSecret {
   clientId: string
   clientSecret: string
 }
 
-export class GiteaDroneError extends Error {
-  constructor(m?: string) {
-    super(m)
-    Object.setPrototypeOf(this, GiteaDroneError.prototype)
-  }
+let apiClient = undefined
+
+function getApiClient(): k8s.CoreV1Api {
+  if (apiClient) return apiClient
+  const kc = new k8s.KubeConfig()
+  kc.loadFromDefault()
+  apiClient = kc.makeApiClient(k8s.CoreV1Api)
+  return apiClient
 }
+
+export class GiteaDroneError extends CustomError {}
 
 const k8sNamespace = 'gitea'
 const k8sSecretName = 'gitea-drone-secret'
@@ -108,7 +115,6 @@ async function authorizeOAuthApp(giteaUrl: string, droneLoginUrl: string, oauthD
     url: `${giteaUrl}/login/oauth/grant`,
     headers: {
       cookie: authorizeHeaderCookies.map((cookie) => cookie.split(';')[0]).join('; '),
-      Cookie: authorizeHeaderCookies.map((cookie) => cookie.split(';')[0]).join('; '),
     },
     maxRedirects: 1,
     auth: {
@@ -128,6 +134,8 @@ async function authorizeOAuthApp(giteaUrl: string, droneLoginUrl: string, oauthD
   try {
     await axios.request(grantOptions)
   } catch (error) {
+    console.log(error)
+
     // Do nothing, error code could be on the redirect
   }
 }
@@ -147,31 +155,27 @@ export function isSecretValid(remoteSecret: DroneSecret, oauthApps: OAuth2Applic
   return false
 }
 async function createK8SSecret(apiClient: k8s.CoreV1Api, result: DroneSecret) {
-  const secret: k8s.V1Secret = new k8s.V1Secret()
-  secret.metadata = new k8s.V1ObjectMeta()
-  secret.metadata.name = k8sSecretName
-  secret.metadata.namespace = k8sNamespace
-  secret.data = {
-    clientId: Buffer.from(result.clientId).toString('base64'),
-    clientSecret: Buffer.from(result.clientSecret).toString('base64'),
+  const secret = {
+    ...new k8s.V1Secret(),
+    metadata: { ...new k8s.V1ObjectMeta(), name: k8sSecretName },
+    data: {
+      clientId: Buffer.from(result.clientId).toString('base64'),
+      clientSecret: Buffer.from(result.clientSecret).toString('base64'),
+    },
   }
 
   await apiClient.createNamespacedSecret(k8sNamespace, secret)
   console.log(`New secret ${k8sSecretName} has been created in the namespace ${k8sNamespace}`)
 }
 async function main() {
-  const giteaUrl: string = env.GITEA_URL.endsWith('/') ? env.GITEA_URL.slice(0, 1) : env.GITEA_URL
-  const droneLoginUrl: string = giteaUrl.replace('gitea', 'drone') + '/login'
-
-  const kc = new k8s.KubeConfig()
-  kc.loadFromDefault()
-  const apiClient = kc.makeApiClient(k8s.CoreV1Api)
+  const giteaUrl: string = env.GITEA_URL.endsWith('/') ? env.GITEA_URL.slice(0, -1) : env.GITEA_URL
+  const droneLoginUrl: string = (env.DRONE_URL.endsWith('/') ? env.DRONE_URL.slice(0, -1) : env.DRONE_URL) + '/login'
 
   const user = new UserApi(env.GITEA_USER, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
   const oauthOpts = new CreateOAuth2ApplicationOptions()
   oauthOpts.name = 'otomi-drone'
   oauthOpts.redirectUris = [droneLoginUrl]
-  const remoteSecret: DroneSecret = await getSecret(apiClient)
+  const remoteSecret: DroneSecret = await getSecret(getApiClient())
   const oauthAppsResponse = await user.userGetOauth2Application()
   const oauthApps: OAuth2Application[] = oauthAppsResponse.body.filter((x) => x.name === oauthOpts.name)
 
@@ -209,7 +213,7 @@ async function main() {
   await authorizeOAuthApp(giteaUrl, droneLoginUrl, oauthData)
   console.log('OAuth app has been authorized')
 
-  createK8SSecret(apiClient, oauthData)
+  createK8SSecret(getApiClient(), oauthData)
 }
 
 // Run main only on execution, not on import (like tests)
