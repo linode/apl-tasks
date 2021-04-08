@@ -10,6 +10,9 @@ import { OAuth2Application } from '@redkubes/gitea-client-node'
 import sinon from 'sinon'
 import axios from 'axios'
 
+const base64Abc = 'YWJj'
+const base64Def = 'ZGVm'
+
 describe('Gitea-Drone: Validate Secrets', () => {
   let consoleLog: sinon.SinonStub
   let sandbox: sinon.SinonSandbox
@@ -22,8 +25,8 @@ describe('Gitea-Drone: Validate Secrets', () => {
   })
   it('should successfully validate secret', () => {
     const stubRemoteSecret: DroneSecret = {
-      clientId: Buffer.from('abc').toString('base64'),
-      clientSecret: Buffer.from('def').toString('base64'),
+      clientId: base64Abc,
+      clientSecret: base64Def,
     }
     const stubOauthApps: OAuth2Application[] = [
       {
@@ -46,7 +49,7 @@ describe('Gitea-Drone: Validate Secrets', () => {
   it('should fail validation when the secret contains invalid data', () => {
     const stubRemoteSecret: DroneSecret = {
       clientId: '',
-      clientSecret: Buffer.from('def').toString('base64'),
+      clientSecret: base64Def,
     }
     const stubOauthApps: OAuth2Application[] = [
       {
@@ -59,7 +62,7 @@ describe('Gitea-Drone: Validate Secrets', () => {
   })
   it('should fail validation when the secret contains invalid data', () => {
     const stubRemoteSecret: DroneSecret = {
-      clientId: Buffer.from('abc').toString('base64'),
+      clientId: base64Abc,
       clientSecret: '',
     }
     const stubOauthApps: OAuth2Application[] = [
@@ -73,8 +76,8 @@ describe('Gitea-Drone: Validate Secrets', () => {
   })
   it('should fail to validate on empty OAuthApp list', () => {
     const stubRemoteSecret: DroneSecret = {
-      clientId: Buffer.from('abc').toString('base64'),
-      clientSecret: Buffer.from('def').toString('base64'),
+      clientId: base64Abc,
+      clientSecret: base64Def,
     }
     const stubOauthApps: OAuth2Application[] = []
     expect(isSecretValid(stubRemoteSecret, stubOauthApps)).to.be.false
@@ -82,8 +85,8 @@ describe('Gitea-Drone: Validate Secrets', () => {
   })
   it('should fail to validate on non equal values', () => {
     const stubRemoteSecret: DroneSecret = {
-      clientId: Buffer.from('abc').toString('base64'),
-      clientSecret: Buffer.from('def').toString('base64'),
+      clientId: base64Abc,
+      clientSecret: base64Def,
     }
     const stubOauthApps: OAuth2Application[] = [
       {
