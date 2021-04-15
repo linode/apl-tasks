@@ -44,7 +44,7 @@ export async function createSecret(name: string, namespace: string, data: object
 export async function getSecret(name: string, namespace: string): Promise<object | undefined> {
   const b64dec = (val): string => Buffer.from(val, 'base64').toString()
   try {
-    const response = await getApiClient().readNamespacedSecret(namespace, name)
+    const response = await getApiClient().readNamespacedSecret(name, namespace)
     const {
       body: { data },
     } = response

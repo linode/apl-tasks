@@ -136,7 +136,7 @@ async function createRobotSecret(): Promise<RobotSecret> {
 }
 
 async function ensureSecret(): Promise<RobotSecret> {
-  let robotSecret = (await getSecret(namespace, secretName)) as RobotSecret
+  let robotSecret = (await getSecret(secretName, namespace)) as RobotSecret
   if (!robotSecret) {
     // not existing yet, create robot account and keep creds in secret
     robotSecret = await createRobotSecret()
