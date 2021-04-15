@@ -1,12 +1,11 @@
 import { RepositoryApi, CreateRepoOption } from '@redkubes/gitea-client-node'
 
-import { cleanEnv, GITEA_USER, GITEA_PASSWORD, GITEA_URL, GITEA_REPO } from '../../validators'
+import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
+import { username, repoName, GiteaDroneError } from './common'
 
 const env = cleanEnv({
-  GITEA_USER,
   GITEA_PASSWORD,
   GITEA_URL,
-  GITEA_REPO,
 })
 
 async function main() {
@@ -15,25 +14,25 @@ async function main() {
     giteaUrl = giteaUrl.slice(0, -1)
   }
 
-  const hasRepo = new RepositoryApi(env.GITEA_USER, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  const repo = new RepositoryApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
 
   try {
-    await hasRepo.repoGet(env.GITEA_USER, env.GITEA_REPO)
-    console.log(`'${env.GITEA_REPO}'-repository already exists, not creating`)
+    await repo.repoGet(username, repoName)
+    console.info(`repo '${repoName}' already exists`)
     process.exit(0)
   } catch (e) {
-    console.log(`'${env.GITEA_REPO}'-repository does not exists, creating`)
+    if (e.statusCode !== '404') {
+      console.error(e)
+      throw e
+    }
+    console.info(`repo '${repoName}' does not exist yet, creating`)
   }
-  const body = new CreateRepoOption()
-  body.autoInit = false
-  body.name = env.GITEA_REPO
-  body._private = true
+  const body = { ...new CreateRepoOption(), autoInit: false, name: repoName, _private: true }
   try {
-    await hasRepo.createCurrentUserRepo(body)
-    console.log(`'${env.GITEA_REPO}'-repository has been created`)
+    await repo.createCurrentUserRepo(body)
+    console.info(`repo '${repoName}' has been created`)
   } catch (e) {
-    console.error(`Something went wrong when creating '${env.GITEA_REPO}'-repository`)
-    process.exit(1)
+    throw new GiteaDroneError(`Something went wrong when creating repo '${repoName}'`)
   }
 }
 // Run main only on execution, not on import (like tests)

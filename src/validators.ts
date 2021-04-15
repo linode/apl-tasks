@@ -12,6 +12,7 @@ export const IDP_GROUP_OTOMI_ADMIN = str({ desc: 'Otomi admin group name' })
 export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url" })
 export const IDP_USERNAME_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to username mapper string",
+  // eslint-disable-next-line no-template-curly-in-string
   default: '${CLAIM.email}',
 })
 export const IDP_SUB_CLAIM_MAPPER = str({
@@ -44,14 +45,12 @@ export const GITEA_URL = url({ desc: 'The gitea core service url' })
 export const DRONE_URL = url({ desc: 'The drone core service url' })
 export const GITEA_REPO = str({ desc: 'The gitea repo where values will be stored' })
 
-const env = process.env
+const { env } = process
 export function cleanEnv<T>(
   validators: { [K in keyof T]: ValidatorSpec<T[K]> },
   options: StrictCleanOptions = { strict: true },
 ): Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined } {
   if (env.NODE_ENV === 'test')
     return process.env as Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined }
-  else
-    return clean(env, validators, options) as Readonly<T> &
-      CleanEnv & { readonly [varName: string]: string | undefined }
+  return clean(env, validators, options) as Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined }
 }

@@ -1,8 +1,8 @@
 import * as k8s from '@kubernetes/client-node'
-import map from 'lodash/lang'
+import { forIn } from 'lodash'
 import AWS, { ACM } from 'aws-sdk'
-import { cleanEnv, CERT_ROTATION_DAYS, DOMAINS, REGION, SECRETS_NAMESPACE } from '../../validators'
 import { ImportCertificateRequest, ImportCertificateResponse } from 'aws-sdk/clients/acm'
+import { cleanEnv, CERT_ROTATION_DAYS, DOMAINS, REGION, SECRETS_NAMESPACE } from '../../validators'
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const env = cleanEnv({
   CERT_ROTATION_DAYS,
@@ -13,41 +13,42 @@ const env = cleanEnv({
 AWS.config.update({ region: env.REGION })
 const acm = new ACM()
 const cmName = 'cert-arns'
-const errors = []
+const errors: string[] = []
 const kc = new k8s.KubeConfig()
 kc.loadFromDefault()
 const client = kc.makeApiClient(k8s.CoreV1Api)
 const netClient = kc.makeApiClient(k8s.NetworkingV1beta1Api)
 
-async function getDomains(): Promise<any> {
+async function getDomains(): Promise<object> {
   try {
     const res = await client.readNamespacedConfigMap(cmName, 'maintenance')
     const { body }: { body: k8s.V1ConfigMap } = res
-    return JSON.parse(body.data.domains)
+    return JSON.parse(body.data?.domains || '{}')
   } catch (e) {
     return {}
   }
 }
 
-async function updateConfig(domains): Promise<any> {
+async function updateConfig(domains): Promise<object> {
   const body = { data: { domains: JSON.stringify(domains) } }
   const res = await client.patchNamespacedConfigMap(cmName, 'maintenance', body)
   const { body: data }: { body: k8s.V1Secret } = res
   return data
 }
 
-async function getTLSSecret(secretName: string): Promise<any> {
+async function getTLSSecret(secretName: string): Promise<object | undefined> {
   try {
     const res = await client.readNamespacedSecret(secretName, env.SECRETS_NAMESPACE)
     const { body: secret }: { body: k8s.V1Secret } = res
-    return secret.data
+    return secret.data as object
   } catch (e) {
     console.error(`Secret not found: ${secretName}`, e)
+    return undefined
   }
 }
 
-async function importCert(secret, certArn?): Promise<string> {
-  const { ['ca.crt']: ca64, ['tls.crt']: certChain64, ['tls.key']: key64 } = secret
+async function importCert(secret, certArn?): Promise<string | undefined> {
+  const { 'ca.crt': ca64, 'tls.crt': certChain64, 'tls.key': key64 } = secret
   const ca = ca64 !== '' ? Buffer.from(ca64, 'base64').toString('ascii') : undefined
   const certChain = Buffer.from(certChain64, 'base64').toString('ascii')
   const key = Buffer.from(key64, 'base64').toString('ascii')
@@ -56,7 +57,7 @@ async function importCert(secret, certArn?): Promise<string> {
   const params: ImportCertificateRequest = {
     Certificate: `${certs[0]}${del}`,
     PrivateKey: key,
-    CertificateChain: ca ? ca : `${certs[1]}${del}`,
+    CertificateChain: ca || `${certs[1]}${del}`,
   }
   if (certArn) params.CertificateArn = certArn
   try {
@@ -65,6 +66,7 @@ async function importCert(secret, certArn?): Promise<string> {
     return CertificateArn
   } catch (e) {
     errors.push(e)
+    return undefined
   }
 }
 
@@ -81,9 +83,9 @@ async function patchIngress(arns): Promise<void> {
 
 async function main() {
   try {
-    const domains = await getDomains()
-    for await (const domInfo of env.DOMAINS) {
-      const domain = domInfo.domain
+    const domains: any = await getDomains()
+    forIn(env.DOMAINS, async (domInfo: any) => {
+      const { domain } = domInfo
       const certName = domInfo.certName || domain.replace(/\./g, '-')
       const running = domains[domain]
       const now = new Date().getTime()
@@ -110,10 +112,10 @@ async function main() {
           date: now,
         }
       }
-    }
+    })
     await updateConfig(domains)
-    const arns = map(domains, 'arn').join(',')
-    console.log('Patching ingress with new cert arns: ', arns)
+    const arns = domains.map('arn').join(',')
+    console.info('Patching ingress with new cert arns: ', arns)
     await patchIngress(arns)
   } catch (e) {
     errors.push(e)

@@ -1,21 +1,22 @@
 {
   "compilerOptions": {
-    "strict": false,
-    "target": "es5",
-    "outDir": "dist",
-    "sourceMap": true,
     "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
     "module": "commonjs",
     "moduleResolution": "node",
+    "outDir": "dist",
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strictNullChecks": true,
+    "strict": false,
+    "target": "es5"
   },
-  "include": ["./src/**/*.ts"],
   "exclude": ["node_modules", "dist"],
+  "include": ["./src/**/*.ts"],
   "parserOptions": {
     "ecmaVersion": 2018,
     "sourceType": "module"

@@ -1,41 +1,17 @@
-import cloneDeep from 'lodash/cloneDeep'
+import * as k8s from '@kubernetes/client-node'
+import { mapValues } from 'lodash'
 
-interface ResourceBase {
-  name: string
+let apiClient
+
+export function getApiClient(): k8s.CoreV1Api {
+  if (apiClient) return apiClient
+  const kc = new k8s.KubeConfig()
+  kc.loadFromDefault()
+  apiClient = kc.makeApiClient(k8s.CoreV1Api)
+  return apiClient
 }
 
-export function setSignalHandlers(server) {
-  process.on('SIGTERM', () => {
-    console.log('Received SIGTERM signal. \nFinishing all requests')
-    server.close(() => {
-      console.log('Finished all requests.')
-    })
-  })
-
-  process.on('SIGINT', () => {
-    console.log('Received SIGINT signal \nFinishing all requests')
-    server.close(() => {
-      console.log('Finished all requests')
-    })
-  })
-}
-
-export function arrayToObject(array: [], keyName: string, keyValue: string) {
-  const obj = {}
-  array.forEach((item) => {
-    const cloneItem = cloneDeep(item)
-    obj[cloneItem[keyName]] = cloneItem[keyValue]
-  })
-  // const obj = array.reduce((accumulator, currentValue: ResourceBase) => {
-  //   const cloneItem = cloneDeep(currentValue)
-  //   obj[cloneItem[keyField]] = cloneItem[keyValue]
-  //   delete cloneItem.name
-  //   return obj
-  // }, {})
-  return obj
-}
-
-export function objectToArray(obj, keyName, keyValue) {
+export function objectToArray(obj: object, keyName: string, keyValue: string): any[] {
   const arr = Object.keys(obj).map((key) => {
     const tmp = {}
     tmp[keyName] = key
@@ -45,25 +21,38 @@ export function objectToArray(obj, keyName, keyValue) {
   return arr
 }
 
-export function getPublicUrl(serviceDomain, serviceName, teamId, cluster) {
-  if (!serviceDomain) {
-    // Fallback mechanism for exposed service that does not have its public url specified in values
-    return {
-      subdomain: `${serviceName}.team-${teamId}.${cluster.name}`,
-      domain: cluster.dnsZones[0],
-    }
+export function ensure<T>(argument: T | undefined | null, message = 'This value was promised to be there.'): T {
+  if (argument === undefined || argument === null) {
+    throw new TypeError(message)
   }
 
-  const dnsZones = [...cluster.dnsZones]
-  // Sort by length descending
-  dnsZones.sort((a, b) => b.length - a.length)
-  for (let i = 0; i < dnsZones.length; i += 1) {
-    if (serviceDomain.endsWith(dnsZones[i])) {
-      const subdomainLength = serviceDomain.length - dnsZones[i].length - 1
-      return { subdomain: serviceDomain.substring(0, subdomainLength), domain: dnsZones[i] }
-    }
+  return argument
+}
+
+export async function createSecret(name: string, namespace: string, data: object): Promise<void> {
+  const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
+  const secret = {
+    ...new k8s.V1Secret(),
+    metadata: { ...new k8s.V1ObjectMeta(), name },
+    data: mapValues(data, b64enc),
   }
 
-  // Custom domain that is not visible in clusters.yaml values
-  return { subdomain: '', domain: serviceDomain }
+  await apiClient.createNamespacedSecret(namespace, secret)
+  console.info(`New secret ${name} has been created in the namespace ${namespace}`)
+}
+
+export async function getSecret(name: string, namespace: string): Promise<object | undefined> {
+  const b64dec = (val): string => Buffer.from(val, 'base64').toString()
+  try {
+    const response = await getApiClient().readNamespacedSecret(namespace, name)
+    const {
+      body: { data },
+    } = response
+    const secret = mapValues(data, b64dec)
+    console.debug(`Found: secret ${name} in namespace ${namespace}`)
+    return secret
+  } catch (e) {
+    console.info(`Not found: secret ${name} in namespace ${namespace}`)
+    return undefined
+  }
 }

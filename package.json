@@ -12,12 +12,13 @@
     "@apidevtools/json-schema-ref-parser": "^9.0.6",
     "@kubernetes/client-node": "^0.12.3",
     "@redkubes/gitea-client-node": "1.1.1",
-    "@redkubes/harbor-client-node": "2.0.2",
-    "@redkubes/keycloak-client-node": "10.0.0",
+    "@redkubes/harbor-client-node": "^2.2.1",
+    "@redkubes/keycloak-client-node": "^11.0.0",
     "@types/lodash": "^4.14.158",
     "aws-sdk": "^2.742.0",
     "axios": "^0.21.1",
     "bluebird": "^3.7.2",
+    "cookie": "^0.4.1",
     "envalid": "^6.0.2",
     "js-yaml": "^3.14.0",
     "lodash": "^4.17.19",
@@ -70,7 +71,7 @@
     "ts-custom-error": "^3.2.0",
     "ts-node": "^8.10.2",
     "ts-node-dev": "^1.0.0-pre.56",
-    "typescript": "^3.9.7"
+    "typescript": "^4.2.4"
   },
   "homepage": "https://github.com/redkubes/otomi-tasks#readme",
   "husky": {

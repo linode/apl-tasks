@@ -66,7 +66,43 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Keycloak Bootstrapping Tasks",
+      "name": "Debug Gitea task",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "tasks:gitea-dev"],
+      "cwd": "${workspaceRoot}",
+      "env": {
+        "DEBUG": "*"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Gitea drone auth task",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "tasks:gitea-drone-auth-dev"],
+      "cwd": "${workspaceRoot}",
+      "env": {
+        "DEBUG": "*"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Harbor task",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "tasks:harbor-dev"],
+      "cwd": "${workspaceRoot}",
+      "env": {
+        "DEBUG": "*"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Keycloak task",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:keycloak-dev"],
       "cwd": "${workspaceRoot}",

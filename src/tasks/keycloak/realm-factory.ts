@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import * as api from '@redkubes/keycloak-client-node'
-import * as utils from '../../utils'
 import { defaultsDeep } from 'lodash'
+import * as utils from '../../utils'
 import {
   cleanEnv,
   TENANT_ID,

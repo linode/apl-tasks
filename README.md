@@ -10,15 +10,24 @@ This readme is aimed at development. If you wish to contribute please read our D
 
 ## Development
 
-To execute a task:
+Make sure your expected environment variables exist in a mandatory `.env` file (see `.env.sample`).
+Then start a proxy to the api you wish to target:
+
+- gitea: `k -n gitea port-forward svc/gitea-http 3000 &`
+- harbor: `k -n harbor port-forward svc/harbor-harbor-core 3000 &`
+- keycloak: `k -n keycloak port-forward svc/keycloak-0 3000 &`
+
+Now you can execute a task locally: 
 
 ```
-npm run task:(harbor|keycloak|certs-aws|...)
+npm run task:(harbor|keycloak|certs-aws|...)-dev
 ```
 
-Expected environment variables should exist in a mandatory `.env` file (see `.env.sample`).
+Or you can start them in the vscode debugger.
 
-Run unit tests on the tasks:
+## Unit tests
+
+There are not many unit tests, as the tasks are *very* robust and idempotent. You can run them as always with:
 
 ```
 npm test

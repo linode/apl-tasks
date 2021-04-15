@@ -11,9 +11,12 @@
     "CODE_OF_CONDUCT": "markdown",
     "CONTRIBUTING": "markdown"
   },
+  "javascript.autoClosingTags": false,
   "mochaExplorer.files": "src/**/*.test.ts",
   "mochaExplorer.require": "ts-node/register",
   "mochaExplorer.timeout": 20000,
   "prettier.disableLanguages": ["javascript", "typescript"],
-  "prettier.enable": true
+  "prettier.enable": true,
+  "typescript.autoClosingTags": false,
+  "standard.enable": false
 }
