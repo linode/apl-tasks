@@ -15,12 +15,12 @@ Then start a proxy to the api you wish to target:
 
 - gitea: `k -n gitea port-forward svc/gitea-http 3000 &`
 - harbor: `k -n harbor port-forward svc/harbor-harbor-core 3000 &`
-- keycloak: `k -n keycloak port-forward svc/keycloak-0 3000 &`
+- keycloak: `k -n keycloak port-forward svc/keycloak-http 3000 &`
 
 Now you can execute a task locally: 
 
 ```
-npm run task:(harbor|keycloak|certs-aws|...)-dev
+npm run task:(gitea*|harbor|keycloak|certs-aws|...)-dev
 ```
 
 Or you can start them in the vscode debugger.
