@@ -22,7 +22,7 @@ const settings = {
 
 const errors: string[] = []
 
-async function main() {
+async function main(): Promise<void> {
   // first two steps are not working, and drone discourse mentions only real users being able to do this:
   // https://discourse.drone.io/t/not-found-from-machine-user/7073/4?u=morriz
 
