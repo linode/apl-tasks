@@ -2,11 +2,11 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import querystring from 'querystring'
 import cookie from 'cookie'
 
-import { UserApi, CreateOAuth2ApplicationOptions } from '@redkubes/gitea-client-node'
+import { UserApi, CreateOAuth2ApplicationOptions, OAuth2Application } from '@redkubes/gitea-client-node'
 
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL, DRONE_URL } from '../../validators'
-import { createSecret, ensure, getApiClient, getSecret } from '../../utils'
-import { username, GiteaDroneError } from './common'
+import { createSecret, doApiCall, ensure, getApiClient, getSecret } from '../../utils'
+import { orgName, username, GiteaDroneError } from './common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
@@ -18,14 +18,15 @@ export interface DroneSecret {
   clientSecret: string
 }
 
+const errors: string[] = []
 const namespace = 'team-admin'
 const secretName = 'drone-source-control'
 const csrfCookieName = '_csrf' // _csrf cookie is the MVC (Minimal Viable Cookie) for authorization & grant to work.
 const giteaUrl: string = env.GITEA_URL.endsWith('/') ? env.GITEA_URL.slice(0, -1) : env.GITEA_URL
 const droneLoginUrl = `${env.DRONE_URL.endsWith('/') ? env.DRONE_URL.slice(0, -1) : env.DRONE_URL}/login`
-const user = new UserApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+const userApi = new UserApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
 const auth = {
-  username,
+  username: orgName,
   password: env.GITEA_PASSWORD,
 }
 const oauthOpts = { ...new CreateOAuth2ApplicationOptions(), name: 'otomi-drone', redirectUris: [droneLoginUrl] }
@@ -41,7 +42,7 @@ export async function getGiteaAuthorizationHeaderCookies(oauthData: DroneSecret)
       response_type: 'code',
     },
     maxRedirects: 1,
-    ...auth,
+    auth,
   }
 
   console.info('Authorizing OAuth application')
@@ -50,8 +51,8 @@ export async function getGiteaAuthorizationHeaderCookies(oauthData: DroneSecret)
     const authorizeResponse: AxiosResponse<any> = await axios.get(`${giteaUrl}/login/oauth/authorize`, options)
     return authorizeResponse.headers['set-cookie']
   } catch (e) {
-    // TODO: ask Marc if he can determine wether always to throw here or catch
-    // "Authorization already granted" and silence that
+    // since we can't determine wether there was a real error or not, we throw a GiteaDroneError
+    // which we can later catch and deem not fatal
     throw new GiteaDroneError('Authorization already granted or something went wrong')
   }
 }
@@ -74,17 +75,18 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
   const authorizeHeaderCookies: string[] = await getGiteaAuthorizationHeaderCookies(oauthData)
 
   const csrfToken = getCsrfToken(authorizeHeaderCookies)
-
-  console.info('Granting authorization')
+  // from the csrf cookie we only need to forward the csrf key value
+  // the next line takes cars of that:
+  const forwardCookies = authorizeHeaderCookies.map((c) => c.split(';')[0]).join('; ')
 
   const grantOptions: AxiosRequestConfig = {
     method: 'POST',
     url: `${giteaUrl}/login/oauth/grant`,
     headers: {
-      cookie: authorizeHeaderCookies.map((cookie) => cookie.split(';')[0]).join('; '),
+      cookie: forwardCookies,
     },
     maxRedirects: 1,
-    ...auth,
+    auth,
     // Data for this post query must be stringified https://github.com/axios/axios#using-applicationx-www-form-urlencoded-format
     data: querystring.stringify({
       [csrfCookieName]: csrfToken,
@@ -95,46 +97,44 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
     }),
   }
 
-  try {
-    await axios.request(grantOptions)
-  } catch (error) {
-    console.debug(error)
-    // Do nothing, error code could be on the redirect
-  }
+  await doApiCall(errors, 'Granting authorization', () => axios.request(grantOptions))
 }
 
 async function main(): Promise<void> {
+  // fresh cluster: no secret no oauth app
+  // already exists: cluster with predeployed secret and oauth app
   const remoteSecret = (await getSecret(secretName, namespace)) as DroneSecret
-  const { body: oauth2Apps } = await user.userGetOauth2Application()
+  const oauth2Apps = await doApiCall(errors, 'Getting oauth2 app', () => userApi.userGetOauth2Application())
   const oauthApp = oauth2Apps.find(({ name }) => name === oauthOpts.name)
 
-  if (remoteSecret) {
+  // when we encounter both secret and oauth app we can conclude that the previous run
+  // which created the oauth app ended successfully
+  if (remoteSecret && oauthApp) {
     console.info('Gitea Drone OAuth secret exists')
     await authorizeOAuthApp(remoteSecret)
     return
   }
 
   // Otherwise, clear (if necessary)
-  try {
-    await getApiClient().deleteNamespacedSecret(secretName, namespace)
-  } catch (e) {
-    // Secret didn't exist
-  }
+  await doApiCall(errors, 'Deleting old secret', () => getApiClient().deleteNamespacedSecret(secretName, namespace))
   if (oauthApp?.id) {
-    await user.userDeleteOAuth2Application(oauthApp.id)
+    await doApiCall(errors, 'Deleting old oauth2 app', () => userApi.userDeleteOAuth2Application(oauthApp.id))
   }
 
-  const { body: oauth2App } = await user.userCreateOAuth2Application(oauthOpts)
-  console.info('OAuth app has been created')
-  const oauthData = ensure(oauth2App) as DroneSecret
+  // an create again
+  const oauth2App = await doApiCall(errors, 'Creating oauth2 app', () => userApi.userCreateOAuth2Application(oauthOpts))
+  await authorizeOAuthApp(oauth2App)
 
-  await authorizeOAuthApp(oauthData)
-  console.info('OAuth app has been authorized')
-
-  createSecret(secretName, namespace, oauthData)
+  createSecret(secretName, namespace, oauth2App)
 }
 
 // Run main only on execution, not on import (like tests)
 if (typeof require !== 'undefined' && require.main === module) {
-  main()
+  try {
+    main()
+  } catch (err) {
+    if (err instanceof GiteaDroneError) {
+      console.log(err)
+    } else throw err
+  }
 }

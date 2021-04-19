@@ -1,38 +1,36 @@
-import { RepositoryApi, CreateRepoOption } from '@redkubes/gitea-client-node'
+import { OrganizationApi, CreateRepoOption, CreateOrgOption } from '@redkubes/gitea-client-node'
+import { doApiCall } from '../../utils'
 
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
-import { username, repoName, GiteaDroneError } from './common'
+import { orgName, repoName, username } from './common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
   GITEA_URL,
 })
 
-async function main() {
+const errors: string[] = []
+
+export default async function main(): Promise<void> {
   let giteaUrl = env.GITEA_URL
   if (giteaUrl.endsWith('/')) {
     giteaUrl = giteaUrl.slice(0, -1)
   }
 
-  const repo = new RepositoryApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  // create the org
+  const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
+  await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), [422])
+  // create the org repo
+  const repoOption = { ...new CreateRepoOption(), autoInit: false, name: repoName, _private: true }
+  await doApiCall(errors, `Creating org repo "${repoName}"`, () => orgApi.createOrgRepo(orgName, repoOption))
+  // add the
 
-  try {
-    await repo.repoGet(username, repoName)
-    console.info(`repo '${repoName}' already exists`)
-    process.exit(0)
-  } catch (e) {
-    if (e.statusCode !== '404') {
-      console.error(e)
-      throw e
-    }
-    console.info(`repo '${repoName}' does not exist yet, creating`)
-  }
-  const body = { ...new CreateRepoOption(), autoInit: false, name: repoName, _private: true }
-  try {
-    await repo.createCurrentUserRepo(body)
-    console.info(`repo '${repoName}' has been created`)
-  } catch (e) {
-    throw new GiteaDroneError(`Something went wrong when creating repo '${repoName}'`)
+  if (errors.length) {
+    console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
+    process.exit(1)
+  } else {
+    console.info('Success!')
   }
 }
 // Run main only on execution, not on import (like tests)

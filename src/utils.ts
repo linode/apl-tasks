@@ -1,3 +1,4 @@
+import http from 'http'
 import * as k8s from '@kubernetes/client-node'
 import { mapValues } from 'lodash'
 
@@ -53,6 +54,30 @@ export async function getSecret(name: string, namespace: string): Promise<object
     return secret
   } catch (e) {
     console.info(`Not found: secret ${name} in namespace ${namespace}`)
+    return undefined
+  }
+}
+
+export type openapiResponse = {
+  response: http.IncomingMessage
+  body?: any
+}
+
+export async function doApiCall(
+  errors: string[],
+  action: string,
+  fn: () => Promise<openapiResponse>,
+  statusCodeExists = 409,
+): Promise<any | undefined> {
+  console.info(action)
+  try {
+    const { body } = await fn()
+    return body
+  } catch (e) {
+    if (e.statusCode) {
+      if (e.statusCode === statusCodeExists) console.warn(`${action} > already exists.`)
+      else errors.push(`${action} > HTTP error ${e.statusCode}: ${e.message}`)
+    } else errors.push(`${action} > Unknown error: ${e}`)
     return undefined
   }
 }

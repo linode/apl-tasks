@@ -63,10 +63,10 @@ export function createIdpMappers(): Array<api.IdentityProviderMapperRepresentati
   const adminGroupMapping = env.IDP_GROUP_OTOMI_ADMIN
   const teamAdminGroupMapping = env.IDP_GROUP_TEAM_ADMIN
   // admin idp mapper case
-  const admin = idpMapperTpl('map otomi-admin group to role', idpAlias, 'admin', adminGroupMapping)
+  const admin = idpMapperTpl('otomi-admin group to role', idpAlias, 'admin', adminGroupMapping)
   const adminMapper = defaultsDeep(new api.IdentityProviderMapperRepresentation(), admin)
   // team admin idp mapper case
-  const teamAdmin = idpMapperTpl('map team-admin group to role', idpAlias, 'team-admin', teamAdminGroupMapping)
+  const teamAdmin = idpMapperTpl('team-admin group to role', idpAlias, 'team-admin', teamAdminGroupMapping)
   const teamAdminMapper = defaultsDeep(new api.IdentityProviderMapperRepresentation(), teamAdmin)
 
   // default idp mappers case
@@ -78,7 +78,7 @@ export function createIdpMappers(): Array<api.IdentityProviderMapperRepresentati
   // team idp case - team list extracted from IDP_GROUP_MAPPINGS_TEAMS env
   const teamList = utils.objectToArray(teams, 'name', 'groupMapping') as TeamMapping[]
   const teamMappers = teamList.map((team) => {
-    const teamMapper = idpMapperTpl(`map ${team.name} group to role`, idpAlias, team.name, team.groupMapping)
+    const teamMapper = idpMapperTpl(`${team.name} group to role`, idpAlias, team.name, team.groupMapping)
     return defaultsDeep(new api.IdentityProviderMapperRepresentation(), teamMapper)
   })
   return teamMappers.concat(defaultMapper).concat(adminMapper).concat(teamAdminMapper)

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/camelcase */
 import {
   ConfigureApi,
-  HttpError,
   MemberApi,
   HttpBearerAuth,
   ProjectApi,
@@ -10,7 +9,7 @@ import {
   RobotApi,
   Project,
 } from '@redkubes/harbor-client-node'
-import http from 'http'
+
 import {
   cleanEnv,
   HARBOR_BASE_URL,
@@ -21,7 +20,7 @@ import {
   OIDC_VERIFY_CERT,
   TEAM_NAMES,
 } from '../../validators'
-import { createSecret, ensure, getApiClient, getSecret } from '../../utils'
+import { createSecret, ensure, getApiClient, getSecret, doApiCall } from '../../utils'
 
 const env = cleanEnv({
   HARBOR_BASE_URL,
@@ -46,10 +45,6 @@ const HarborGroupType = {
 }
 
 const errors: string[] = []
-type asyncFn = {
-  response: http.IncomingMessage
-  body?: any
-}
 
 export interface RobotSecret {
   id: number
@@ -98,38 +93,24 @@ const configureApi = new ConfigureApi(env.HARBOR_USER, env.HARBOR_PASSWORD, env.
 const projectsApi = new ProjectApi(env.HARBOR_USER, env.HARBOR_PASSWORD, env.HARBOR_BASE_URL)
 const memberApi = new MemberApi(env.HARBOR_USER, env.HARBOR_PASSWORD, env.HARBOR_BASE_URL)
 
-function setAuth(secret) {
+function setAuth(secret): void {
   bearerAuth.accessToken = secret
   robotApi.setDefaultAuthentication(bearerAuth)
 }
 
-async function doApiCall(action: string, fn: () => Promise<asyncFn>): Promise<any | undefined> {
-  console.info(`Running '${action}'`)
-  try {
-    const res = await fn()
-    console.info(`Successful '${action}'`)
-    return res?.body
-  } catch (e) {
-    if (e instanceof HttpError) {
-      if (e.statusCode === 409) console.warn(`${action}: already exists.`)
-      else errors.push(`${action} > HTTP error ${e.statusCode}: ${e.message}`)
-    } else errors.push(`${action} > Error processing '${action}': ${e}`)
-    return undefined
-  }
-}
-
 // NOTE: assumes OIDC is not yet configured, otherwise this operation is NOT possible
 async function createRobotSecret(): Promise<RobotSecret> {
-  const robotList = await doApiCall(`Reading list of robot accounts`, () => robotApi.listRobot())
+  const { body: robotList } = await robotApi.listRobot()
   const existing = robotList.find((i) => i.name === `robot$${robot.name}`)
-  if (existing) {
+  if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(`Deleting previous robot account ${robot.name}`, () => robotApi.deleteRobot(existingId))
+    await doApiCall(errors, `Deleting previous robot account ${robot.name}`, () => robotApi.deleteRobot(existingId))
   }
-  const res = await doApiCall(`Create robot account ${robot.name} with system level perms`, () =>
-    robotApi.createRobot(robot),
+  const { id, name, secret } = await doApiCall(
+    errors,
+    `Create robot account ${robot.name} with system level perms`,
+    () => robotApi.createRobot(robot),
   )
-  const { id, name, secret } = res
   const robotSecret: RobotSecret = { id, name, secret }
   await createSecret(secretName, namespace, robotSecret)
   return robotSecret
@@ -169,14 +150,14 @@ async function main(): Promise<void> {
   projectsApi.setDefaultAuthentication(bearerAuth)
   memberApi.setDefaultAuthentication(bearerAuth)
 
-  await doApiCall('Harbor configuration', () => configureApi.configurationsPut(config))
+  await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
   await Promise.all(
     env.TEAM_NAMES.map(async (team) => {
       const projectReq: ProjectReq = {
         projectName: team,
       }
-      await doApiCall(`Create project for team ${team}`, async () => projectsApi.createProject(projectReq))
-      const project = (await doApiCall(`Get project for team ${team}`, async () =>
+      await doApiCall(errors, `Creating project for team ${team}`, () => projectsApi.createProject(projectReq))
+      const project = (await doApiCall(errors, `Get project for team ${team}`, () =>
         projectsApi.getProject(team),
       )) as Project
 
@@ -197,10 +178,10 @@ async function main(): Promise<void> {
           groupType: HarborGroupType.http,
         },
       }
-      await doApiCall(`Associating "developer" role for team "${team}" with harbor project "${team}"`, () =>
+      await doApiCall(errors, `Associating "developer" role for team "${team}" with harbor project "${team}"`, () =>
         memberApi.createProjectMember(projectId, undefined, undefined, projMember),
       )
-      await doApiCall(`Associating "project-admin" role for "team-admin" with harbor project "${team}"`, () =>
+      await doApiCall(errors, `Associating "project-admin" role for "team-admin" with harbor project "${team}"`, () =>
         memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
       )
     }),
