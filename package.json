@@ -19,7 +19,7 @@
     "axios": "^0.21.1",
     "bluebird": "^3.7.2",
     "cookie": "^0.4.1",
-    "drone-node": "^2.1.0",
+    "drone-node": "^1.0.1",
     "envalid": "^6.0.2",
     "js-yaml": "^3.14.0",
     "lodash": "^4.17.19",
