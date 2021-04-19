@@ -19,6 +19,7 @@
     "axios": "^0.21.1",
     "bluebird": "^3.7.2",
     "cookie": "^0.4.1",
+    "drone-node": "^2.1.0",
     "envalid": "^6.0.2",
     "js-yaml": "^3.14.0",
     "lodash": "^4.17.19",
@@ -89,7 +90,7 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ],
-    "*.{js,ts}": [
+    "*.ts": [
       "eslint --fix"
     ]
   },
@@ -109,8 +110,8 @@
     "cz:retry": "git-cz --retry",
     "husky:lint-staged": "lint-staged",
     "husky:pre-commit": "run-p lint husky:lint-staged",
-    "lint": "eslint --ext js,ts .",
-    "lint:fix": "eslint --fix --ext js,ts .",
+    "lint": "eslint --ext ts .",
+    "lint:fix": "eslint --fix --ext ts .",
     "release": "standard-version",
     "tasks:keycloak": "node dist/tasks/keycloak/keycloak.js",
     "tasks:keycloak-dev": "ts-node-dev ./src/tasks/keycloak/keycloak.ts",

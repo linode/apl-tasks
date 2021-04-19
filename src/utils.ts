@@ -81,3 +81,12 @@ export async function doApiCall(
     return undefined
   }
 }
+
+export function handleErrors(errors: string[]) {
+  if (errors.length) {
+    console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
+    process.exit(1)
+  } else {
+    console.info('Success!')
+  }
+}

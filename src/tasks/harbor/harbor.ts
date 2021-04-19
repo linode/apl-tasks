@@ -20,7 +20,7 @@ import {
   OIDC_VERIFY_CERT,
   TEAM_NAMES,
 } from '../../validators'
-import { createSecret, ensure, getApiClient, getSecret, doApiCall } from '../../utils'
+import { createSecret, ensure, getApiClient, getSecret, doApiCall, handleErrors } from '../../utils'
 
 const env = cleanEnv({
   HARBOR_BASE_URL,
@@ -187,14 +187,9 @@ async function main(): Promise<void> {
     }),
   )
 
-  if (errors.length) {
-    console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
-    process.exit(1)
-  } else {
-    console.info('Success!')
-  }
+  handleErrors(errors)
 }
-// Run main only on execution, not on import (like tests)
+
 if (typeof require !== 'undefined' && require.main === module) {
   main()
 }

@@ -2,10 +2,10 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import querystring from 'querystring'
 import cookie from 'cookie'
 
-import { UserApi, CreateOAuth2ApplicationOptions, OAuth2Application } from '@redkubes/gitea-client-node'
+import { UserApi, CreateOAuth2ApplicationOptions } from '@redkubes/gitea-client-node'
 
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL, DRONE_URL } from '../../validators'
-import { createSecret, doApiCall, ensure, getApiClient, getSecret } from '../../utils'
+import { createSecret, doApiCall, getApiClient, getSecret } from '../../utils'
 import { orgName, username, GiteaDroneError } from './common'
 
 const env = cleanEnv({
@@ -130,11 +130,5 @@ async function main(): Promise<void> {
 
 // Run main only on execution, not on import (like tests)
 if (typeof require !== 'undefined' && require.main === module) {
-  try {
-    main()
-  } catch (err) {
-    if (err instanceof GiteaDroneError) {
-      console.log(err)
-    } else throw err
-  }
+  main()
 }

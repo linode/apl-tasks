@@ -17,9 +17,8 @@ import {
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
-  KEYCLOAK_THEME_LOGIN,
 } from '../../validators'
-import { doApiCall, ensure } from '../../utils'
+import { doApiCall, ensure, handleErrors } from '../../utils'
 
 const env = cleanEnv({
   IDP_ALIAS,
@@ -27,7 +26,6 @@ const env = cleanEnv({
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
-  KEYCLOAK_THEME_LOGIN,
 })
 
 const errors: string[] = []
@@ -146,18 +144,11 @@ async function main(): Promise<void> {
   )
 
   // set login theme
-  if (env.KEYCLOAK_THEME_LOGIN !== 'default')
-    await doApiCall(errors, 'adding Login Theme', () =>
-      realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig(env.KEYCLOAK_THEME_LOGIN)),
-    )
+  await doApiCall(errors, 'adding Login Theme', () =>
+    realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig('otomi')),
+  )
 
-  // check errors and exit
-  if (errors.length) {
-    console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
-    process.exit(1)
-  } else {
-    console.info('Success!')
-  }
+  handleErrors(errors)
 }
 
 // Run main only on execution, not on import (like tests)

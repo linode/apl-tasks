@@ -20,6 +20,13 @@ export const IDP_SUB_CLAIM_MAPPER = str({
   default: 'sub',
 })
 
+export const DRONE_CONFIG_PATH = str({ desc: 'The config path in the repo of the drone pipeline' })
+export const DRONE_REPO = str({ desc: 'The values repo to activate' })
+export const DRONE_OWNER = str({ desc: 'The owner of the values repo' })
+export const DRONE_TOKEN = str({ desc: 'The admin token to use for drone api server' })
+export const DRONE_URL = str({ desc: 'The internal url of the drone server', default: 'http://drone.team-admin' })
+export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
+export const GITEA_URL = url({ desc: 'The gitea core service url' })
 export const KEYCLOAK_ADDRESS = str({ desc: 'The Keycloak Server address' })
 export const KEYCLOAK_ADMIN = str({ desc: 'Default admin username for KeyCloak Server' })
 export const KEYCLOAK_ADMIN_PASSWORD = str({ desc: 'Default password for admin' })
@@ -27,23 +34,16 @@ export const KEYCLOAK_CLIENT_ID = str({ desc: 'Default Keycloak Client', default
 export const KEYCLOAK_CLIENT_SECRET = str({ desc: 'The keycloak client secret' })
 export const KEYCLOAK_REALM = str({ desc: 'The Keycloak Realm', default: 'master' })
 export const KEYCLOAK_THEME_LOGIN = str({ desc: 'The Keycloak login theme', default: 'default' })
-export const OIDC_CLIENT_SECRET = str()
-export const OIDC_ENDPOINT = str()
-export const OIDC_SCOPE = str({ desc: 'Name of the default OIDC client scope', default: 'openid email groups' })
-export const OIDC_VERIFY_CERT = bool()
+export const OIDC_CLIENT_SECRET = str({ desc: 'The OIDC client secret used by keycloak to access the IDP' })
+export const OIDC_ENDPOINT = str({ desc: 'The OIDC endpoint used by keycloak to access the IDP' })
+export const OIDC_VERIFY_CERT = bool({ desc: 'Wether to validate the OIDC endpoint cert' })
 export const REDIRECT_URIS = json({ desc: "A list of redirect URI's in JSON format" })
 export const REGION = str({ desc: 'The cloud region' })
+export const SECRETS_NAMESPACE = str({ desc: 'The namespace of the TLS secrets', default: 'istio-system' })
 export const TEAM_NAMES = json({ desc: 'A list of team names in JSON format' })
 export const TENANT_CLIENT_ID = str({ desc: 'The tenant client id' })
-export const SECRETS_NAMESPACE = str({ desc: 'The namespace of the TLS secrets', default: 'istio-system' })
 export const TENANT_CLIENT_SECRET = str({ desc: 'The tenant client secret' })
 export const TENANT_ID = str({ desc: 'The tenant ID' })
-// Gitea task vars
-export const GITEA_USER = str({ desc: 'The gitea admin username' })
-export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
-export const GITEA_URL = url({ desc: 'The gitea core service url' })
-export const DRONE_URL = url({ desc: 'The drone core service url' })
-export const GITEA_REPO = str({ desc: 'The gitea repo where values will be stored' })
 
 const { env } = process
 export function cleanEnv<T>(
