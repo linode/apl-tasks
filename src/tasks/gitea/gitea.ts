@@ -20,7 +20,7 @@ export default async function main(): Promise<void> {
   // create the org
   const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
-  await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), [422])
+  await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
   // create the org repo
   const repoOption = { ...new CreateRepoOption(), autoInit: false, name: repoName, _private: true }
   await doApiCall(errors, `Creating org repo "${repoName}"`, () => orgApi.createOrgRepo(orgName, repoOption))

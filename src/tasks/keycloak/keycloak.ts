@@ -7,6 +7,7 @@ import {
   RolesApi,
   ProtocolMappersApi,
   RealmsAdminApi,
+  IdentityProviderMapperRepresentation,
 } from '@redkubes/keycloak-client-node'
 import { find } from 'lodash'
 import * as realmConfig from './realm-factory'
@@ -69,12 +70,12 @@ async function main(): Promise<void> {
 
   // Create Client Scopes
   const scope = realmConfig.createClientScopes()
-  const clientScopes = !(await doApiCall(errors, 'creating OpenID Client Scope', () =>
+  const clientScopes = !(await doApiCall(errors, 'Creating openid client scope', () =>
     clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, scope),
   ))
   if (clientScopes) {
     // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
-    await doApiCall(errors, 'updating OpenID Client Scope', async () => {
+    await doApiCall(errors, 'Updating openid client scope', async () => {
       const currentClientScopes = await clientScope.realmClientScopesGet(env.KEYCLOAK_REALM)
       const { id } = ensure(find(currentClientScopes.body, { name: scope.name }))
       return clientScope.realmClientScopesIdPut(env.KEYCLOAK_REALM, ensure(id), scope)
@@ -86,11 +87,11 @@ async function main(): Promise<void> {
   await Promise.all(
     teamRoles.map(
       async (role): Promise<void> => {
-        const exists = await doApiCall(errors, `creating Role ${role.name}`, async () =>
+        const exists = await doApiCall(errors, `Creating role ${role.name}`, async () =>
           roles.realmRolesPost(env.KEYCLOAK_REALM, role),
         )
         if (exists)
-          await doApiCall(errors, `updating Role ${role.name}`, async () =>
+          await doApiCall(errors, `Updating role ${role.name}`, async () =>
             roles.realmRolesRoleNamePut(env.KEYCLOAK_REALM, role.name ?? '', role),
           )
       },
@@ -99,11 +100,11 @@ async function main(): Promise<void> {
 
   // Create Identity Provider
   const idp = await realmConfig.createIdProvider()
-  const idpExists = await doApiCall(errors, 'creating Identity Provider', async () => {
+  const idpExists = await doApiCall(errors, 'Creating identity provider', async () => {
     return providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, idp)
   })
   if (idpExists) {
-    await doApiCall(errors, 'updating Identity Provider', async () => {
+    await doApiCall(errors, 'Updating identity provider', async () => {
       return providers.realmIdentityProviderInstancesAliasPut(env.KEYCLOAK_REALM, ensure(idp.alias), idp)
     })
   }
@@ -111,31 +112,55 @@ async function main(): Promise<void> {
   // Create Identity Provider Mappers
   // @NOTE - PUT involves adding strict required properties not in the factory
   const idpMappers = realmConfig.createIdpMappers()
+  const existingMappers: IdentityProviderMapperRepresentation[] = await doApiCall(
+    errors,
+    `Getting mappers`,
+    () => providers.realmIdentityProviderInstancesAliasMappersGet(env.KEYCLOAK_REALM, env.IDP_ALIAS),
+    400,
+  )
   await Promise.all(
-    idpMappers.map(async (idpMapper) =>
-      doApiCall(
-        errors,
-        `creating mapper ${idpMapper.name}`,
-        () => providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper),
-        400,
-      ),
-    ),
+    idpMappers.map(async (idpMapper) => {
+      const existingMapper: IdentityProviderMapperRepresentation | undefined = (existingMappers || []).find(
+        (m) => m.name === idpMapper.name,
+      )
+      if (existingMapper) {
+        await doApiCall(
+          errors,
+          `Updating mapper ${idpMapper.name}`,
+          () =>
+            providers.realmIdentityProviderInstancesAliasMappersIdPut(
+              env.KEYCLOAK_REALM,
+              env.IDP_ALIAS,
+              existingMapper.id!,
+              { ...existingMapper, ...idpMapper },
+            ),
+          400,
+        )
+      } else {
+        await doApiCall(
+          errors,
+          `Creating mapper ${idpMapper.name}`,
+          () => providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper),
+          400,
+        )
+      }
+    }),
   )
 
   // Create Otomi Client
   const client = realmConfig.createClient()
-  const clientExists = await doApiCall(errors, 'creating Otomi Client', () =>
+  const clientExists = await doApiCall(errors, 'Creating otomi client', () =>
     clients.realmClientsPost(env.KEYCLOAK_REALM, client),
   )
   if (clientExists) {
-    await doApiCall(errors, 'updating Otomi Client', () =>
+    await doApiCall(errors, 'Updating otomi client', () =>
       clients.realmClientsIdPut(env.KEYCLOAK_REALM, ensure(client.id), client),
     )
   }
 
   // add email claim for client protocolMappers
   // @NOTE - PUT involves adding strict required properties not in the factory
-  await doApiCall(errors, 'creating Client Email Claim', () =>
+  await doApiCall(errors, 'creating client email claim', () =>
     protocols.realmClientsIdProtocolMappersModelsPost(
       env.KEYCLOAK_REALM,
       ensure(client.id),
@@ -144,7 +169,7 @@ async function main(): Promise<void> {
   )
 
   // set login theme
-  await doApiCall(errors, 'adding Login Theme', () =>
+  await doApiCall(errors, 'adding login theme', () =>
     realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig('otomi')),
   )
 

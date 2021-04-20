@@ -13,9 +13,12 @@ This readme is aimed at development. If you wish to contribute please read our D
 Make sure your expected environment variables exist in a mandatory `.env` file (see `.env.sample`).
 Then start a proxy to the api you wish to target:
 
-- gitea: `k -n gitea port-forward svc/gitea-http 8080:3000` &`
-- harbor: `k -n harbor port-forward svc/harbor-harbor-core 8080:80 &`
-- keycloak: `k -n keycloak port-forward svc/keycloak-http 8080:80` &`
+- drone: `k -n team-admin port-forward svc/drone 8081:80 &`
+- gitea: `k -n gitea port-forward svc/gitea-http 8082:3000 &`
+- harbor: `k -n harbor port-forward svc/harbor-harbor-core 8083:80 &`
+- keycloak: `k -n keycloak port-forward svc/keycloak-http 8084:80 &`
+
+Or start them all with `bin/start-proxies.sh`
 
 Now you can execute a task locally: 
 

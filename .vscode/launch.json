@@ -66,6 +66,19 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug Drone task",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "tasks:drone-dev"],
+      "cwd": "${workspaceRoot}",
+      "env": {
+        "DEBUG": "*"
+      },
+      "console": "integratedTerminal"
+    },
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Debug Gitea task",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:gitea-dev"],

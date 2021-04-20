@@ -47,23 +47,13 @@ export async function getGiteaAuthorizationHeaderCookies(oauthData: DroneSecret)
 
   console.info('Authorizing OAuth application')
 
-  try {
-    const authorizeResponse: AxiosResponse<any> = await axios.get(`${giteaUrl}/login/oauth/authorize`, options)
-    return authorizeResponse.headers['set-cookie']
-  } catch (e) {
-    // since we can't determine wether there was a real error or not, we throw a GiteaDroneError
-    // which we can later catch and deem not fatal
-    throw new GiteaDroneError('Authorization already granted or something went wrong')
-  }
+  const authorizeResponse: AxiosResponse<any> = await axios.get(`${giteaUrl}/login/oauth/authorize`, options)
+  return authorizeResponse.headers['set-cookie']
 }
 
 export function getCsrfToken(authorizeHeaderCookies: string[]): string {
   // Loop over cookies and find the _csrf cookie and retrieve the value
   const cookieWithName = authorizeHeaderCookies.find((c: string) => c.includes(csrfCookieName))
-
-  if (!cookieWithName) {
-    throw new GiteaDroneError(`No ${csrfCookieName} cookie was returned`)
-  }
 
   const cookieObj = cookie.parse(cookieWithName)
   const csrfToken: string = cookieObj[csrfCookieName]
@@ -75,17 +65,14 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
   const authorizeHeaderCookies: string[] = await getGiteaAuthorizationHeaderCookies(oauthData)
 
   const csrfToken = getCsrfToken(authorizeHeaderCookies)
-  // from the csrf cookie we only need to forward the csrf key value
-  // the next line takes cars of that:
-  const forwardCookies = authorizeHeaderCookies.map((c) => c.split(';')[0]).join('; ')
 
   const grantOptions: AxiosRequestConfig = {
     method: 'POST',
     url: `${giteaUrl}/login/oauth/grant`,
     headers: {
-      cookie: forwardCookies,
+      cookie: authorizeHeaderCookies.join('; '),
     },
-    maxRedirects: 1,
+    maxRedirects: 2,
     auth,
     // Data for this post query must be stringified https://github.com/axios/axios#using-applicationx-www-form-urlencoded-format
     data: querystring.stringify({
@@ -105,30 +92,37 @@ async function main(): Promise<void> {
   // already exists: cluster with predeployed secret and oauth app
   const remoteSecret = (await getSecret(secretName, namespace)) as DroneSecret
   const oauth2Apps = await doApiCall(errors, 'Getting oauth2 app', () => userApi.userGetOauth2Application())
-  const oauthApp = oauth2Apps.find(({ name }) => name === oauthOpts.name)
+  const previousOauth2App = (oauth2Apps || []).find(({ name }) => name === oauthOpts.name)
 
   // when we encounter both secret and oauth app we can conclude that the previous run
   // which created the oauth app ended successfully
-  if (remoteSecret && oauthApp) {
-    console.info('Gitea Drone OAuth secret exists')
+  if (remoteSecret && previousOauth2App) {
+    console.info('Gitea Drone OAuth2 app and secret exist')
     await authorizeOAuthApp(remoteSecret)
     return
   }
 
-  // Otherwise, clear (if necessary)
-  await doApiCall(errors, 'Deleting old secret', () => getApiClient().deleteNamespacedSecret(secretName, namespace))
-  if (oauthApp?.id) {
-    await doApiCall(errors, 'Deleting old oauth2 app', () => userApi.userDeleteOAuth2Application(oauthApp.id))
-  }
+  // Otherwise, clear old stuff (if necessary)
+  if (remoteSecret)
+    await doApiCall(errors, 'Deleting old secret', () => getApiClient().deleteNamespacedSecret(secretName, namespace))
+  if (previousOauth2App?.id)
+    await doApiCall(errors, 'Deleting old oauth2 app', () => userApi.userDeleteOAuth2Application(previousOauth2App.id))
 
-  // an create again
+  // and create again
   const oauth2App = await doApiCall(errors, 'Creating oauth2 app', () => userApi.userCreateOAuth2Application(oauthOpts))
+  const secret = oauth2App as DroneSecret
   await authorizeOAuthApp(oauth2App)
 
-  createSecret(secretName, namespace, oauth2App)
+  createSecret(secretName, namespace, secret)
 }
 
 // Run main only on execution, not on import (like tests)
 if (typeof require !== 'undefined' && require.main === module) {
-  main()
+  try {
+    main()
+  } catch (err) {
+    if (err instanceof GiteaDroneError) {
+      console.log(err)
+    } else throw err
+  }
 }

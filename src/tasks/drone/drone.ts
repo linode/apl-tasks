@@ -1,13 +1,10 @@
 import * as drone from 'drone-node'
 import { doApiCall, handleErrors } from '../../utils'
-import { cleanEnv, DRONE_CONFIG_PATH, DRONE_URL, DRONE_TOKEN, DRONE_REPO, DRONE_OWNER } from '../../validators'
+import { cleanEnv, DRONE_URL, DRONE_TOKEN } from '../../validators'
 
 const env = cleanEnv({
-  DRONE_CONFIG_PATH,
   DRONE_URL,
   DRONE_TOKEN,
-  DRONE_REPO,
-  DRONE_OWNER,
 })
 
 const client = new drone.Client({
@@ -15,10 +12,10 @@ const client = new drone.Client({
   token: env.DRONE_TOKEN,
 })
 
-const settings = {
-  // eslint-disable-next-line @typescript-eslint/camelcase
-  config_path: env.DRONE_CONFIG_PATH,
-}
+// const settings = {
+//   // eslint-disable-next-line @typescript-eslint/camelcase
+//   config_path: env.DRONE_CONFIG_PATH,
+// }
 
 const errors: string[] = []
 
@@ -30,10 +27,10 @@ async function main(): Promise<void> {
   await doApiCall(errors, 'Syncing repos', () => client.syncRepos())
 
   // Connect repo
-  await doApiCall(errors, 'Connecting repo', () => client.enableRepo(env.DRONE_OWNER, env.DRONE_REPO))
+  await doApiCall(errors, 'Connecting repo', () => client.enableRepo('otomi-admin', 'values'))
 
   // Update repo: this preconfigures the repo so that it only needs activating
-  await doApiCall(errors, 'Updating repo', () => client.updateRepo(env.DRONE_OWNER, env.DRONE_REPO, settings))
+  // await doApiCall(errors, 'Updating repo', () => client.updateRepo(env.DRONE_OWNER, env.DRONE_REPO, settings))
 
   handleErrors(errors)
 }

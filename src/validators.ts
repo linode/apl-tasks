@@ -20,11 +20,8 @@ export const IDP_SUB_CLAIM_MAPPER = str({
   default: 'sub',
 })
 
-export const DRONE_CONFIG_PATH = str({ desc: 'The config path in the repo of the drone pipeline' })
-export const DRONE_REPO = str({ desc: 'The values repo to activate' })
-export const DRONE_OWNER = str({ desc: 'The owner of the values repo' })
 export const DRONE_TOKEN = str({ desc: 'The admin token to use for drone api server' })
-export const DRONE_URL = str({ desc: 'The internal url of the drone server', default: 'http://drone.team-admin' })
+export const DRONE_URL = str({ desc: 'The public url of the drone server' })
 export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
 export const GITEA_URL = url({ desc: 'The gitea core service url' })
 export const KEYCLOAK_ADDRESS = str({ desc: 'The Keycloak Server address' })

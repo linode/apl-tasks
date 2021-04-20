@@ -71,13 +71,14 @@ export async function doApiCall(
 ): Promise<any | undefined> {
   console.info(action)
   try {
-    const { body } = await fn()
+    const res = await fn()
+    const { body } = res
     return body
   } catch (e) {
     if (e.statusCode) {
       if (e.statusCode === statusCodeExists) console.warn(`${action} > already exists.`)
       else errors.push(`${action} > HTTP error ${e.statusCode}: ${e.message}`)
-    } else errors.push(`${action} > Unknown error: ${e}`)
+    } else errors.push(`${action} > Unknown error: ${e.message}`)
     return undefined
   }
 }
