@@ -6,7 +6,7 @@ import { UserApi, CreateOAuth2ApplicationOptions } from '@redkubes/gitea-client-
 
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL, DRONE_URL } from '../../validators'
 import { createSecret, doApiCall, getApiClient, getSecret } from '../../utils'
-import { orgName, username, GiteaDroneError } from './common'
+import { username, GiteaDroneError } from './common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
@@ -26,7 +26,7 @@ const giteaUrl: string = env.GITEA_URL.endsWith('/') ? env.GITEA_URL.slice(0, -1
 const droneLoginUrl = `${env.DRONE_URL.endsWith('/') ? env.DRONE_URL.slice(0, -1) : env.DRONE_URL}/login`
 const userApi = new UserApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
 const auth = {
-  username: orgName,
+  username,
   password: env.GITEA_PASSWORD,
 }
 const oauthOpts = { ...new CreateOAuth2ApplicationOptions(), name: 'otomi-drone', redirectUris: [droneLoginUrl] }
@@ -47,8 +47,12 @@ export async function getGiteaAuthorizationHeaderCookies(oauthData: DroneSecret)
 
   console.info('Authorizing OAuth application')
 
-  const authorizeResponse: AxiosResponse<any> = await axios.get(`${giteaUrl}/login/oauth/authorize`, options)
-  return authorizeResponse.headers['set-cookie']
+  try {
+    const authorizeResponse: AxiosResponse<any> = await axios.get(`${giteaUrl}/login/oauth/authorize`, options)
+    return authorizeResponse.headers['set-cookie']
+  } catch (e) {
+    throw new GiteaDroneError('Authorization already granted!')
+  }
 }
 
 export function getCsrfToken(authorizeHeaderCookies: string[]): string {
@@ -72,7 +76,7 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
     headers: {
       cookie: authorizeHeaderCookies.join('; '),
     },
-    maxRedirects: 2,
+    maxRedirects: 1,
     auth,
     // Data for this post query must be stringified https://github.com/axios/axios#using-applicationx-www-form-urlencoded-format
     data: querystring.stringify({
@@ -118,11 +122,10 @@ async function main(): Promise<void> {
 
 // Run main only on execution, not on import (like tests)
 if (typeof require !== 'undefined' && require.main === module) {
-  try {
-    main()
-  } catch (err) {
-    if (err instanceof GiteaDroneError) {
-      console.log(err)
-    } else throw err
-  }
+  main().catch((e) => {
+    if (e instanceof GiteaDroneError) {
+      // silence expected aborts
+      console.info(e.message)
+    } else throw e
+  })
 }
