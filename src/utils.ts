@@ -1,14 +1,14 @@
 import http from 'http'
-import * as k8s from '@kubernetes/client-node'
-import { mapValues } from 'lodash'
+import { findIndex, mapValues } from 'lodash'
+import { CoreV1Api, KubeConfig, V1Secret, V1ObjectMeta, V1ServiceAccount } from '@kubernetes/client-node'
 
 let apiClient
 
-export function getApiClient(): k8s.CoreV1Api {
+export function getApiClient(): CoreV1Api {
   if (apiClient) return apiClient
-  const kc = new k8s.KubeConfig()
+  const kc = new KubeConfig()
   kc.loadFromDefault()
-  apiClient = kc.makeApiClient(k8s.CoreV1Api)
+  apiClient = kc.makeApiClient(CoreV1Api)
   return apiClient
 }
 
@@ -33,14 +33,24 @@ export function ensure<T>(argument: T | undefined | null, message = 'This value 
 export async function createSecret(name: string, namespace: string, data: object): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret = {
-    ...new k8s.V1Secret(),
-    metadata: { ...new k8s.V1ObjectMeta(), name },
+    ...new V1Secret(),
+    metadata: { ...new V1ObjectMeta(), name },
     data: mapValues(data, b64enc),
   }
 
   await apiClient.createNamespacedSecret(namespace, secret)
   console.info(`New secret ${name} has been created in the namespace ${namespace}`)
 }
+
+export type SecretPromise = Promise<{
+  response: http.IncomingMessage
+  body: V1Secret
+}>
+
+export type ServiceAccountPromise = Promise<{
+  response: http.IncomingMessage
+  body: V1ServiceAccount
+}>
 
 export async function getSecret(name: string, namespace: string): Promise<object | undefined> {
   const b64dec = (val): string => Buffer.from(val, 'base64').toString()
@@ -89,5 +99,87 @@ export function handleErrors(errors: string[]) {
     process.exit(1)
   } else {
     console.info('Success!')
+  }
+}
+
+export async function createPullSecret({
+  teamId,
+  name,
+  server,
+  password,
+  username = '_json_key',
+}: {
+  teamId: string
+  name: string
+  server: string
+  password: string
+  username?: string
+}): Promise<void> {
+  const client = getApiClient()
+  const namespace = `team-${teamId}`
+  // create data structure for secret
+  const data = {
+    auths: {
+      [server]: {
+        username,
+        password,
+        email: 'not@val.id',
+        auth: username + Buffer.from(password).toString('base64'),
+      },
+    },
+  }
+  // create the secret
+  const secret = {
+    ...new V1Secret(),
+    metadata: { ...new V1ObjectMeta(), name },
+    type: 'docker-registry',
+    data: {
+      '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
+    },
+  }
+  // eslint-disable-next-line no-useless-catch
+  try {
+    await client.createNamespacedSecret(namespace, secret)
+  } catch (e) {
+    throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
+  }
+  // get service account we want to add the secret to as pull secret
+  const saRes = await client.readNamespacedServiceAccount('default', namespace)
+  const { body: sa }: { body: V1ServiceAccount } = saRes
+  // add to service account if needed
+  if (!sa.imagePullSecrets) sa.imagePullSecrets = []
+  const idx = findIndex(sa.imagePullSecrets, { name })
+  if (idx === -1) {
+    sa.imagePullSecrets.push({ name })
+    await client.patchNamespacedServiceAccount('default', namespace, sa, undefined, undefined, undefined, undefined, {
+      headers: { 'content-type': 'application/strategic-merge-patch+json' },
+    })
+  }
+}
+
+export async function getPullSecrets(teamId: string): Promise<Array<any>> {
+  const client = getApiClient()
+  const namespace = `team-${teamId}`
+  const saRes = await client.readNamespacedServiceAccount('default', namespace)
+  const { body: sa }: { body: V1ServiceAccount } = saRes
+  return (sa.imagePullSecrets || []) as Array<any>
+}
+
+export async function deletePullSecret(teamId: string, name: string): Promise<void> {
+  const client = getApiClient()
+  const namespace = `team-${teamId}`
+  const saRes = await client.readNamespacedServiceAccount('default', namespace)
+  const { body: sa }: { body: V1ServiceAccount } = saRes
+  const idx = findIndex(sa.imagePullSecrets, { name })
+  if (idx > -1) {
+    sa.imagePullSecrets!.splice(idx, 1)
+    await client.patchNamespacedServiceAccount('default', namespace, sa, undefined, undefined, undefined, undefined, {
+      headers: { 'content-type': 'application/strategic-merge-patch+json' },
+    })
+  }
+  try {
+    await client.deleteNamespacedSecret(name, namespace)
+  } catch (e) {
+    throw new Error(`Secret '${name}' does not exist in namespace '${namespace}'`)
   }
 }

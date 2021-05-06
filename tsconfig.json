@@ -13,7 +13,7 @@
     "sourceMap": true,
     "strictNullChecks": true,
     "strict": false,
-    "target": "es5"
+    "target": "esnext"
   },
   "exclude": ["node_modules", "dist"],
   "include": ["./src/**/*.ts"],
