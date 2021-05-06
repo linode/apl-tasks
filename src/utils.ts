@@ -1,41 +1,18 @@
-import cloneDeep from 'lodash/cloneDeep'
+import http from 'http'
+import { findIndex, mapValues } from 'lodash'
+import { CoreV1Api, KubeConfig, V1Secret, V1ObjectMeta, V1ServiceAccount } from '@kubernetes/client-node'
 
-interface ResourceBase {
-  name: string
+let apiClient
+
+export function getApiClient(): CoreV1Api {
+  if (apiClient) return apiClient
+  const kc = new KubeConfig()
+  kc.loadFromDefault()
+  apiClient = kc.makeApiClient(CoreV1Api)
+  return apiClient
 }
 
-export function setSignalHandlers(server) {
-  process.on('SIGTERM', () => {
-    console.log('Received SIGTERM signal. \nFinishing all requests')
-    server.close(() => {
-      console.log('Finished all requests.')
-    })
-  })
-
-  process.on('SIGINT', () => {
-    console.log('Received SIGINT signal \nFinishing all requests')
-    server.close(() => {
-      console.log('Finished all requests')
-    })
-  })
-}
-
-export function arrayToObject(array: [], keyName: string, keyValue: string) {
-  const obj = {}
-  array.forEach((item) => {
-    const cloneItem = cloneDeep(item)
-    obj[cloneItem[keyName]] = cloneItem[keyValue]
-  })
-  // const obj = array.reduce((accumulator, currentValue: ResourceBase) => {
-  //   const cloneItem = cloneDeep(currentValue)
-  //   obj[cloneItem[keyField]] = cloneItem[keyValue]
-  //   delete cloneItem.name
-  //   return obj
-  // }, {})
-  return obj
-}
-
-export function objectToArray(obj, keyName, keyValue) {
+export function objectToArray(obj: object, keyName: string, keyValue: string): any[] {
   const arr = Object.keys(obj).map((key) => {
     const tmp = {}
     tmp[keyName] = key
@@ -45,25 +22,164 @@ export function objectToArray(obj, keyName, keyValue) {
   return arr
 }
 
-export function getPublicUrl(serviceDomain, serviceName, teamId, cluster) {
-  if (!serviceDomain) {
-    // Fallback mechanism for exposed service that does not have its public url specified in values
-    return {
-      subdomain: `${serviceName}.team-${teamId}.${cluster.name}`,
-      domain: cluster.dnsZones[0],
-    }
+export function ensure<T>(argument: T | undefined | null, message = 'This value was promised to be there.'): T {
+  if (argument === undefined || argument === null) {
+    throw new TypeError(message)
   }
 
-  const dnsZones = [...cluster.dnsZones]
-  // Sort by length descending
-  dnsZones.sort((a, b) => b.length - a.length)
-  for (let i = 0; i < dnsZones.length; i += 1) {
-    if (serviceDomain.endsWith(dnsZones[i])) {
-      const subdomainLength = serviceDomain.length - dnsZones[i].length - 1
-      return { subdomain: serviceDomain.substring(0, subdomainLength), domain: dnsZones[i] }
-    }
+  return argument
+}
+
+export async function createSecret(name: string, namespace: string, data: object): Promise<void> {
+  const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
+  const secret = {
+    ...new V1Secret(),
+    metadata: { ...new V1ObjectMeta(), name },
+    data: mapValues(data, b64enc),
   }
 
-  // Custom domain that is not visible in clusters.yaml values
-  return { subdomain: '', domain: serviceDomain }
+  await apiClient.createNamespacedSecret(namespace, secret)
+  console.info(`New secret ${name} has been created in the namespace ${namespace}`)
+}
+
+export type SecretPromise = Promise<{
+  response: http.IncomingMessage
+  body: V1Secret
+}>
+
+export type ServiceAccountPromise = Promise<{
+  response: http.IncomingMessage
+  body: V1ServiceAccount
+}>
+
+export async function getSecret(name: string, namespace: string): Promise<object | undefined> {
+  const b64dec = (val): string => Buffer.from(val, 'base64').toString()
+  try {
+    const response = await getApiClient().readNamespacedSecret(name, namespace)
+    const {
+      body: { data },
+    } = response
+    const secret = mapValues(data, b64dec)
+    console.debug(`Found: secret ${name} in namespace ${namespace}`)
+    return secret
+  } catch (e) {
+    console.info(`Not found: secret ${name} in namespace ${namespace}`)
+    return undefined
+  }
+}
+
+export type openapiResponse = {
+  response: http.IncomingMessage
+  body?: any
+}
+
+export async function doApiCall(
+  errors: string[],
+  action: string,
+  fn: () => Promise<openapiResponse>,
+  statusCodeExists = 409,
+): Promise<any | undefined> {
+  console.info(action)
+  try {
+    const res = await fn()
+    const { body } = res
+    return body
+  } catch (e) {
+    if (e.statusCode) {
+      if (e.statusCode === statusCodeExists) console.warn(`${action} > already exists.`)
+      else errors.push(`${action} > HTTP error ${e.statusCode}: ${e.message}`)
+    } else errors.push(`${action} > Unknown error: ${e.message}`)
+    return undefined
+  }
+}
+
+export function handleErrors(errors: string[]) {
+  if (errors.length) {
+    console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
+    process.exit(1)
+  } else {
+    console.info('Success!')
+  }
+}
+
+export async function createPullSecret({
+  teamId,
+  name,
+  server,
+  password,
+  username = '_json_key',
+}: {
+  teamId: string
+  name: string
+  server: string
+  password: string
+  username?: string
+}): Promise<void> {
+  const client = getApiClient()
+  const namespace = `team-${teamId}`
+  // create data structure for secret
+  const data = {
+    auths: {
+      [server]: {
+        username,
+        password,
+        email: 'not@val.id',
+        auth: username + Buffer.from(password).toString('base64'),
+      },
+    },
+  }
+  // create the secret
+  const secret = {
+    ...new V1Secret(),
+    metadata: { ...new V1ObjectMeta(), name },
+    type: 'docker-registry',
+    data: {
+      '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
+    },
+  }
+  // eslint-disable-next-line no-useless-catch
+  try {
+    await client.createNamespacedSecret(namespace, secret)
+  } catch (e) {
+    throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
+  }
+  // get service account we want to add the secret to as pull secret
+  const saRes = await client.readNamespacedServiceAccount('default', namespace)
+  const { body: sa }: { body: V1ServiceAccount } = saRes
+  // add to service account if needed
+  if (!sa.imagePullSecrets) sa.imagePullSecrets = []
+  const idx = findIndex(sa.imagePullSecrets, { name })
+  if (idx === -1) {
+    sa.imagePullSecrets.push({ name })
+    await client.patchNamespacedServiceAccount('default', namespace, sa, undefined, undefined, undefined, undefined, {
+      headers: { 'content-type': 'application/strategic-merge-patch+json' },
+    })
+  }
+}
+
+export async function getPullSecrets(teamId: string): Promise<Array<any>> {
+  const client = getApiClient()
+  const namespace = `team-${teamId}`
+  const saRes = await client.readNamespacedServiceAccount('default', namespace)
+  const { body: sa }: { body: V1ServiceAccount } = saRes
+  return (sa.imagePullSecrets || []) as Array<any>
+}
+
+export async function deletePullSecret(teamId: string, name: string): Promise<void> {
+  const client = getApiClient()
+  const namespace = `team-${teamId}`
+  const saRes = await client.readNamespacedServiceAccount('default', namespace)
+  const { body: sa }: { body: V1ServiceAccount } = saRes
+  const idx = findIndex(sa.imagePullSecrets, { name })
+  if (idx > -1) {
+    sa.imagePullSecrets!.splice(idx, 1)
+    await client.patchNamespacedServiceAccount('default', namespace, sa, undefined, undefined, undefined, undefined, {
+      headers: { 'content-type': 'application/strategic-merge-patch+json' },
+    })
+  }
+  try {
+    await client.deleteNamespacedSecret(name, namespace)
+  } catch (e) {
+    throw new Error(`Secret '${name}' does not exist in namespace '${namespace}'`)
+  }
 }

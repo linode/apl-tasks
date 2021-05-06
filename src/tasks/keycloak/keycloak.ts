@@ -5,10 +5,11 @@ import {
   IdentityProvidersApi,
   ClientScopesApi,
   RolesApi,
-  HttpError,
   ProtocolMappersApi,
   RealmsAdminApi,
+  IdentityProviderMapperRepresentation,
 } from '@redkubes/keycloak-client-node'
+import { find } from 'lodash'
 import * as realmConfig from './realm-factory'
 import {
   cleanEnv,
@@ -17,9 +18,8 @@ import {
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
-  KEYCLOAK_THEME_LOGIN,
 } from '../../validators'
-import { find } from 'lodash'
+import { doApiCall, ensure, handleErrors } from '../../utils'
 
 const env = cleanEnv({
   IDP_ALIAS,
@@ -27,28 +27,13 @@ const env = cleanEnv({
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
-  KEYCLOAK_THEME_LOGIN,
 })
 
-const errors = []
+const errors: string[] = []
 
-async function doApiCall(resource: string, fn: () => Promise<void>, update = false): Promise<boolean> {
-  console.info(`Running ${update ? 'update' : 'create'} for '${resource}'`)
-  try {
-    await fn()
-    console.info(`Successful ${update ? 'update' : 'create'} for '${resource}'`)
-    return true
-  } catch (e) {
-    if (e instanceof HttpError) {
-      if ([400, 409].includes(e.statusCode)) console.warn(`${resource}: already exists.`)
-      else errors.push(`${resource} HTTP error ${e.statusCode}: ${e.message}`)
-    } else errors.push(`Error processing '${resource}': ${e}`)
-    return false
-  }
-}
-
-async function main() {
-  let basePath, token
+async function main(): Promise<void> {
+  let basePath
+  let token
   try {
     const keycloakAddress = env.KEYCLOAK_ADDRESS
     const keycloakRealm = env.KEYCLOAK_REALM
@@ -65,7 +50,7 @@ async function main() {
     })
   } catch (error) {
     console.error(error)
-    console.log('Exiting!')
+    console.info('Exiting!')
     process.exit(1)
   }
 
@@ -85,107 +70,113 @@ async function main() {
 
   // Create Client Scopes
   const scope = realmConfig.createClientScopes()
-  if (
-    !(await doApiCall('OpenID Client Scope', async () => {
-      await clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, scope)
-    }))
-  ) {
+  const clientScopes = !(await doApiCall(errors, 'Creating openid client scope', () =>
+    clientScope.realmClientScopesPost(env.KEYCLOAK_REALM, scope),
+  ))
+  if (clientScopes) {
     // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
-    await doApiCall(
-      'OpenID Client Scope',
-      async () => {
-        const currentClientScopes = await clientScope.realmClientScopesGet(env.KEYCLOAK_REALM)
-        const id = find(currentClientScopes.body, { name: scope.name }).id
-        await clientScope.realmClientScopesIdPut(env.KEYCLOAK_REALM, id, scope)
-      },
-      true,
-    )
+    await doApiCall(errors, 'Updating openid client scope', async () => {
+      const currentClientScopes = await clientScope.realmClientScopesGet(env.KEYCLOAK_REALM)
+      const { id } = ensure(find(currentClientScopes.body, { name: scope.name }))
+      return clientScope.realmClientScopesIdPut(env.KEYCLOAK_REALM, ensure(id), scope)
+    })
   }
 
   // Create Roles
   const teamRoles = realmConfig.mapTeamsToRoles()
-  for await (const role of teamRoles) {
-    if (
-      !(await doApiCall(`Role ${role.name}`, async () => {
-        await roles.realmRolesPost(env.KEYCLOAK_REALM, role)
-      }))
-    ) {
-      await doApiCall(
-        `Role ${role.name}`,
-        async () => {
-          await roles.realmRolesRoleNamePut(env.KEYCLOAK_REALM, role.name, role)
-        },
-        true,
-      )
-    }
-  }
+  await Promise.all(
+    teamRoles.map(
+      async (role): Promise<void> => {
+        const exists = await doApiCall(errors, `Creating role ${role.name}`, async () =>
+          roles.realmRolesPost(env.KEYCLOAK_REALM, role),
+        )
+        if (exists)
+          await doApiCall(errors, `Updating role ${role.name}`, async () =>
+            roles.realmRolesRoleNamePut(env.KEYCLOAK_REALM, role.name ?? '', role),
+          )
+      },
+    ),
+  )
 
   // Create Identity Provider
-  if (
-    !(await doApiCall('Identity Provider', async () => {
-      const idp = await realmConfig.createIdProvider()
-      await providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, idp)
-    }))
-  ) {
-    await doApiCall(
-      'Identity Provider',
-      async () => {
-        const idp = await realmConfig.createIdProvider()
-        await providers.realmIdentityProviderInstancesAliasPut(env.KEYCLOAK_REALM, idp.alias, idp)
-      },
-      true,
-    )
+  const idp = await realmConfig.createIdProvider()
+  const idpExists = await doApiCall(errors, 'Creating identity provider', async () => {
+    return providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, idp)
+  })
+  if (idpExists) {
+    await doApiCall(errors, 'Updating identity provider', async () => {
+      return providers.realmIdentityProviderInstancesAliasPut(env.KEYCLOAK_REALM, ensure(idp.alias), idp)
+    })
   }
 
   // Create Identity Provider Mappers
   // @NOTE - PUT involves adding strict required properties not in the factory
   const idpMappers = realmConfig.createIdpMappers()
-  for await (const idpMapper of idpMappers) {
-    await doApiCall(`Mapping ${idpMapper.name}`, async () => {
-      await providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper)
-    })
-  }
+  const existingMappers: IdentityProviderMapperRepresentation[] = await doApiCall(
+    errors,
+    `Getting mappers`,
+    () => providers.realmIdentityProviderInstancesAliasMappersGet(env.KEYCLOAK_REALM, env.IDP_ALIAS),
+    400,
+  )
+  await Promise.all(
+    idpMappers.map(async (idpMapper) => {
+      const existingMapper: IdentityProviderMapperRepresentation | undefined = (existingMappers || []).find(
+        (m) => m.name === idpMapper.name,
+      )
+      if (existingMapper) {
+        await doApiCall(
+          errors,
+          `Updating mapper ${idpMapper.name}`,
+          () =>
+            providers.realmIdentityProviderInstancesAliasMappersIdPut(
+              env.KEYCLOAK_REALM,
+              env.IDP_ALIAS,
+              existingMapper.id!,
+              { ...existingMapper, ...idpMapper },
+            ),
+          400,
+        )
+      } else {
+        await doApiCall(
+          errors,
+          `Creating mapper ${idpMapper.name}`,
+          () => providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper),
+          400,
+        )
+      }
+    }),
+  )
 
   // Create Otomi Client
   const client = realmConfig.createClient()
-  if (
-    !(await doApiCall('Otomi Client', async () => {
-      await clients.realmClientsPost(env.KEYCLOAK_REALM, client)
-    }))
-  ) {
-    await doApiCall(
-      'Otomi Client',
-      async () => {
-        await clients.realmClientsIdPut(env.KEYCLOAK_REALM, client.id, client)
-      },
-      true,
+  const clientExists = await doApiCall(errors, 'Creating otomi client', () =>
+    clients.realmClientsPost(env.KEYCLOAK_REALM, client),
+  )
+  if (clientExists) {
+    await doApiCall(errors, 'Updating otomi client', () =>
+      clients.realmClientsIdPut(env.KEYCLOAK_REALM, ensure(client.id), client),
     )
   }
 
   // add email claim for client protocolMappers
   // @NOTE - PUT involves adding strict required properties not in the factory
-  await doApiCall('Client Email Claim', async () => {
-    await protocols.realmClientsIdProtocolMappersModelsPost(
+  await doApiCall(errors, 'creating client email claim', () =>
+    protocols.realmClientsIdProtocolMappersModelsPost(
       env.KEYCLOAK_REALM,
-      client.id,
+      ensure(client.id),
       realmConfig.createClientEmailClaimMapper(),
-    )
-  })
+    ),
+  )
 
   // set login theme
-  if (env.KEYCLOAK_THEME_LOGIN !== 'default')
-    await doApiCall('Login Theme', async () => {
-      await realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig(env.KEYCLOAK_THEME_LOGIN))
-    })
+  await doApiCall(errors, 'adding login theme', () =>
+    realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig('otomi')),
+  )
 
-  // check errors and exit
-  if (errors.length) {
-    console.error(JSON.stringify(errors, null, 2))
-    console.log('Exiting!')
-    process.exit(1)
-  } else {
-    console.info('Success!')
-  }
+  handleErrors(errors)
 }
 
-main()
+// Run main only on execution, not on import (like tests)
+if (typeof require !== 'undefined' && require.main === module) {
+  main()
+}

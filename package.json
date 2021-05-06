@@ -12,12 +12,14 @@
     "@apidevtools/json-schema-ref-parser": "^9.0.6",
     "@kubernetes/client-node": "^0.12.3",
     "@redkubes/gitea-client-node": "1.1.1",
-    "@redkubes/harbor-client-node": "2.0.2",
-    "@redkubes/keycloak-client-node": "10.0.0",
+    "@redkubes/harbor-client-node": "^2.2.1",
+    "@redkubes/keycloak-client-node": "^11.0.0",
     "@types/lodash": "^4.14.158",
     "aws-sdk": "^2.742.0",
     "axios": "^0.21.1",
     "bluebird": "^3.7.2",
+    "cookie": "^0.4.1",
+    "drone-node": "^2.1.0",
     "envalid": "^6.0.2",
     "js-yaml": "^3.14.0",
     "lodash": "^4.17.19",
@@ -67,10 +69,10 @@
     "sinon-chai": "^3.5.0",
     "standard-version": "^9.0.0",
     "supertest": "^4.0.2",
-    "ts-custom-error": "^3.1.1",
+    "ts-custom-error": "^3.2.0",
     "ts-node": "^8.10.2",
     "ts-node-dev": "^1.0.0-pre.56",
-    "typescript": "^3.9.7"
+    "typescript": "^4.2.4"
   },
   "homepage": "https://github.com/redkubes/otomi-tasks#readme",
   "husky": {
@@ -88,7 +90,7 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ],
-    "*.{js,ts}": [
+    "*.ts": [
       "eslint --fix"
     ]
   },
@@ -108,13 +110,16 @@
     "cz:retry": "git-cz --retry",
     "husky:lint-staged": "lint-staged",
     "husky:pre-commit": "run-p lint husky:lint-staged",
-    "lint": "eslint --ext js,ts .",
-    "lint:fix": "eslint --fix --ext js,ts .",
+    "lint": "eslint --ext ts .",
+    "lint:fix": "eslint --fix --ext ts .",
     "release": "standard-version",
+    "tasks:drone": "node dist/tasks/drone/drone.js",
+    "tasks:drone-dev": "ts-node-dev ./src/tasks/drone/drone.ts",
     "tasks:keycloak": "node dist/tasks/keycloak/keycloak.js",
     "tasks:keycloak-dev": "ts-node-dev ./src/tasks/keycloak/keycloak.ts",
-    "tasks:gitea": "node dist/tasks/gitea/gitea.js",
+    "tasks:gitea": "node dist/tasks/gitea/gitea.js && node dist/tasks/gitea/gitea-drone-oauth.js",
     "tasks:gitea-dev": "ts-node-dev ./src/tasks/gitea/gitea.ts",
+    "tasks:gitea-drone-auth-dev": "ts-node-dev ./src/tasks/gitea/gitea-drone-oauth.ts",
     "tasks:harbor": "node dist/tasks/harbor/harbor.js",
     "tasks:harbor-dev": "ts-node-dev ./src/tasks/harbor/harbor.ts",
     "tasks:certs-aws": "node dist/tasks/otomi/certs-aws.js",

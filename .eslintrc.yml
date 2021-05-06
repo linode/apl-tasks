@@ -2,57 +2,47 @@
 root: true
 
 parserOptions:
-  ecmaVersion: 9
+  project: ['./tsconfig.json']
+  ecmaVersion: 2021
 
 extends:
   - eslint:recommended
+  - plugin:@typescript-eslint/eslint-recommended
+  - plugin:@typescript-eslint/recommended
+  - plugin:@typescript-eslint/recommended-requiring-type-checking
+  - airbnb-base
   - plugin:prettier/recommended
   - prettier
+  - prettier/@typescript-eslint
   - plugin:import/errors
   - plugin:import/warnings
+  - plugin:import/typescript
+  - plugin:chai-friendly/recommended
 
 plugins:
   - import
   - prettier
+  - '@typescript-eslint'
 
 settings:
   import/resolver:
     node:
-      extensions: ['.js', '.ts']
+      extensions: ['.ts']
 
 env:
   es6: true
-  browser: true
+  mocha: true
   node: true
 
 rules:
+  '@typescript-eslint/no-non-null-assertion': off
   import/no-extraneous-dependencies: off
-  eol-last: ['error', 'always']
   import/extensions: off
-  no-shadow: 0
-  no-unused-vars: 0
-  prefer-destructuring: 0
-
-overrides:
-  - files: ['**/*.ts']
-    parser: '@typescript-eslint/parser'
-    parserOptions:
-      project: ['./tsconfig.json']
-    extends:
-      - plugin:@typescript-eslint/eslint-recommended
-      - plugin:@typescript-eslint/recommended
-      - plugin:@typescript-eslint/recommended-requiring-type-checking
-      - prettier/@typescript-eslint
-      - plugin:import/typescript
-      - plugin:chai-friendly/recommended
-      - plugin:prettier/recommended
-
-    plugins:
-      - '@typescript-eslint'
-
-    rules:
-      '@typescript-eslint/member-delimiter-style': off
-      '@typescript-eslint/no-explicit-any': off
-      '@typescript-eslint/explicit-function-return-type': off
-      '@typescript-eslint/no-unused-vars': warn
-      import/default: off
+  eol-last: ['error', 'always']
+  no-shadow: warn
+  no-unused-vars: error
+  prefer-destructuring: error
+  no-use-before-define: error
+  no-console: off
+  object-shorthand: error
+  no-debugger: error

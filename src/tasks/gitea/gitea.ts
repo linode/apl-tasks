@@ -1,38 +1,36 @@
-import { RepositoryApi, CreateRepoOption } from '@redkubes/gitea-client-node'
+import { CreateRepoOption, UserApi } from '@redkubes/gitea-client-node'
+import { doApiCall, handleErrors } from '../../utils'
 
-import { cleanEnv, GITEA_USER, GITEA_PASSWORD, GITEA_URL, GITEA_REPO } from '../../validators'
+import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
+import { repoName, username } from './common'
 
 const env = cleanEnv({
-  GITEA_USER,
   GITEA_PASSWORD,
   GITEA_URL,
-  GITEA_REPO,
 })
 
-async function main() {
+const errors: string[] = []
+
+export default async function main(): Promise<void> {
   let giteaUrl = env.GITEA_URL
   if (giteaUrl.endsWith('/')) {
     giteaUrl = giteaUrl.slice(0, -1)
   }
 
-  const hasRepo = new RepositoryApi(env.GITEA_USER, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  // create the org
+  const userApi = new UserApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  // const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  // const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
+  // await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
+  // create the org repo
+  const repoOption = { ...new CreateRepoOption(), autoInit: false, name: repoName, _private: true }
+  await doApiCall(errors, `Creating repo "${repoName}"`, () => userApi.createCurrentUserRepo(repoOption))
+  // await doApiCall(errors, `Creating org repo "${repoName}"`, () => orgApi.createOrgRepo(orgName, repoOption))
+  // add the
 
-  try {
-    await hasRepo.repoGet(env.GITEA_USER, env.GITEA_REPO)
-    console.log(`'${env.GITEA_REPO}'-repository already exists, not creating`)
-    process.exit(0)
-  } catch (e) {
-    console.log(`'${env.GITEA_REPO}'-repository does not exists, creating`)
-  }
-  const body = new CreateRepoOption()
-  body.autoInit = false
-  body.name = env.GITEA_REPO
-  try {
-    await hasRepo.createCurrentUserRepo(body)
-    console.log(`'${env.GITEA_REPO}'-repository has been created`)
-  } catch (e) {
-    console.error(`Something went wrong when creating '${env.GITEA_REPO}'-repository`)
-    process.exit(1)
-  }
+  handleErrors(errors)
 }
-main()
+// Run main only on execution, not on import (like tests)
+if (typeof require !== 'undefined' && require.main === module) {
+  main()
+}
