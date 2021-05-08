@@ -22,6 +22,8 @@ export const IDP_SUB_CLAIM_MAPPER = str({
 
 export const DRONE_TOKEN = str({ desc: 'The admin token to use for drone api server' })
 export const DRONE_URL = str({ desc: 'The public url of the drone server' })
+export const DRONE_OWNER = str({ desc: 'The owner of the repo to use for drone api server' })
+export const DRONE_REPO = str({ desc: 'The repo to use for drone api server' })
 export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
 export const GITEA_URL = url({ desc: 'The gitea core service url' })
 export const KEYCLOAK_ADDRESS = str({ desc: 'The Keycloak Server address' })
