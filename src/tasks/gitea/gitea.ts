@@ -1,5 +1,5 @@
-import { OrganizationApi, CreateRepoOption, CreateOrgOption } from '@redkubes/gitea-client-node'
-import { doApiCall } from '../../utils'
+import { OrganizationApi, CreateRepoOption, CreateOrgOption, UserApi } from '@redkubes/gitea-client-node'
+import { createSecret, doApiCall } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
 import { orgName, createTeam, repoName, username } from './common'
 
@@ -13,6 +13,19 @@ export default async function main(): Promise<void> {
   if (giteaUrl.endsWith('/')) {
     giteaUrl = giteaUrl.slice(0, -1)
   }
+
+  const namespace = 'otomi'
+  const secretName = 'gitea-token'
+  // todo Create API token
+  const userApi = new UserApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  const tokenData = await doApiCall(
+    errors,
+    `Creating token for "${username}"`,
+    () => userApi.userCreateToken(username, { name: 'otomiToken' }),
+    422,
+  )
+
+  createSecret(secretName, namespace, tokenData)
   // create the org
   const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
