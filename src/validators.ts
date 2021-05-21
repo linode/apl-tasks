@@ -51,3 +51,6 @@ export function cleanEnv<T>(
     return process.env as Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined }
   return clean(env, validators, options) as Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined }
 }
+
+// And to avoid npm trying to check for updates
+process.env.NO_UPDATE_NOTIFIER = 'true'
