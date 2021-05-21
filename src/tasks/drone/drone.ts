@@ -1,7 +1,7 @@
 import * as drone from 'drone-node'
 import { doApiCall, handleErrors } from '../../utils'
 import { cleanEnv, DRONE_URL, DRONE_TOKEN } from '../../validators'
-import { orgName, repoName, username } from '../common'
+import { orgName, repoName } from '../common'
 
 const env = cleanEnv({
   DRONE_URL,

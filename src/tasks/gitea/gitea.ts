@@ -16,7 +16,7 @@ export async function createTeam(teamName: string, orgApi: OrganizationApi): Pro
     name: teamNameViewer,
     includesAllRepositories: true,
     permission: CreateTeamOption.PermissionEnum.Read,
-    units: ['repo.code', 'repo.issues', 'repo.ext_issues', 'repo.wiki', 'repo.pulls', 'repo.releases', 'repo.ext_wiki'],
+    units: ['repo.code'],
   }
   return doApiCall(
     errors,

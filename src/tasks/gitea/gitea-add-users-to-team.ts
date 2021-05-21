@@ -1,7 +1,7 @@
 import { OrganizationApi, AdminApi, User, Team } from '@redkubes/gitea-client-node'
 import { doApiCall } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
-import { orgName, teamNameOwners, teamNameViewer, username } from '../common'
+import { orgName, teamNameViewer, username } from '../common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
