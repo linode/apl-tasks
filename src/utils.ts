@@ -2,7 +2,7 @@ import http from 'http'
 import { findIndex, mapValues } from 'lodash'
 import { CoreV1Api, KubeConfig, V1Secret, V1ObjectMeta, V1ServiceAccount } from '@kubernetes/client-node'
 
-let apiClient
+let apiClient: CoreV1Api
 
 export function getApiClient(): CoreV1Api {
   if (apiClient) return apiClient
@@ -32,13 +32,15 @@ export function ensure<T>(argument: T | undefined | null, message = 'This value 
 
 export async function createSecret(name: string, namespace: string, data: object): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
-  const secret = {
+  const secret: V1Secret = {
     ...new V1Secret(),
     metadata: { ...new V1ObjectMeta(), name },
-    data: mapValues(data, b64enc),
+    data: mapValues(data, b64enc) as {
+      [key: string]: string
+    },
   }
 
-  await apiClient.createNamespacedSecret(namespace, secret)
+  await getApiClient().createNamespacedSecret(namespace, secret)
   console.info(`New secret ${name} has been created in the namespace ${namespace}`)
 }
 
