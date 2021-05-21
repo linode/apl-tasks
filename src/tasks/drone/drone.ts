@@ -1,12 +1,11 @@
 import * as drone from 'drone-node'
 import { doApiCall, handleErrors } from '../../utils'
-import { cleanEnv, DRONE_URL, DRONE_TOKEN, DRONE_OWNER, DRONE_REPO } from '../../validators'
+import { cleanEnv, DRONE_URL, DRONE_TOKEN } from '../../validators'
+import { orgName, repoName, username } from '../common'
 
 const env = cleanEnv({
   DRONE_URL,
   DRONE_TOKEN,
-  DRONE_OWNER,
-  DRONE_REPO,
 })
 
 const client = new drone.Client({
@@ -29,10 +28,10 @@ async function main(): Promise<void> {
   // await doApiCall(errors, 'Syncing repos', () => client.syncRepos())
 
   // Connect repo
-  await doApiCall(errors, 'Connecting repo', () => client.enableRepo(env.DRONE_OWNER, env.DRONE_REPO))
+  await doApiCall(errors, 'Connecting repo', () => client.enableRepo(orgName, repoName))
 
   // Update repo: this preconfigures the repo so that it only needs activating
-  await doApiCall(errors, 'Updating repo', () => client.updateRepo(env.DRONE_OWNER, env.DRONE_REPO, {}))
+  await doApiCall(errors, 'Updating repo', () => client.updateRepo(orgName, repoName, {}))
 
   handleErrors(errors)
 }

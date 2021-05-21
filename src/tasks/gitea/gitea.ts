@@ -1,9 +1,7 @@
 import { OrganizationApi, CreateRepoOption, CreateOrgOption, CreateTeamOption } from '@redkubes/gitea-client-node'
 import { doApiCall } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
-import { orgName, repoName, username, teamName } from './common'
-
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+import { orgName, repoName, username, teamNameViewer } from '../common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
@@ -11,11 +9,11 @@ const env = cleanEnv({
 })
 const errors: string[] = []
 
-export async function createTeam(errors: string[], orgApi: OrganizationApi): Promise<any | undefined> {
+export async function createTeam(teamName: string, orgApi: OrganizationApi): Promise<any | undefined> {
   const readOnlyTeam: CreateTeamOption = {
     ...new CreateTeamOption(),
     canCreateOrgRepo: false,
-    name: teamName,
+    name: teamNameViewer,
     includesAllRepositories: true,
     permission: CreateTeamOption.PermissionEnum.Read,
     units: ['repo.code', 'repo.issues', 'repo.ext_issues', 'repo.wiki', 'repo.pulls', 'repo.releases', 'repo.ext_wiki'],
@@ -39,7 +37,7 @@ export default async function main(): Promise<void> {
   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
   await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
 
-  await createTeam(errors, orgApi)
+  await createTeam(orgApi)
   // create the org repo
   const repoOption = { ...new CreateRepoOption(), autoInit: false, name: repoName, _private: true }
   await doApiCall(errors, `Creating org repo "${repoName}"`, () => orgApi.createOrgRepo(orgName, repoOption))
