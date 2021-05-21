@@ -121,6 +121,7 @@
     "tasks:gitea-add-users": "node dist/tasks/gitea/gitea-add-users-to-team.js",
     "tasks:gitea-dev": "ts-node-dev ./src/tasks/gitea/gitea.ts",
     "tasks:gitea-add-users-dev": "ts-node-dev ./src/tasks/gitea/gitea-add-users-to-team.ts",
+    "tasks:gitea-drone-auth": "node dist/tasks/gitea/gitea-drone-oauth.js",
     "tasks:gitea-drone-auth-dev": "ts-node-dev ./src/tasks/gitea/gitea-drone-oauth.ts",
     "tasks:harbor": "node dist/tasks/harbor/harbor.js",
     "tasks:harbor-dev": "ts-node-dev ./src/tasks/harbor/harbor.ts",

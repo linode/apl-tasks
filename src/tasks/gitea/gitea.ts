@@ -1,31 +1,39 @@
-import { OrganizationApi, CreateRepoOption, CreateOrgOption, UserApi } from '@redkubes/gitea-client-node'
-import { createSecret, doApiCall } from '../../utils'
+import { OrganizationApi, CreateRepoOption, CreateOrgOption, CreateTeamOption } from '@redkubes/gitea-client-node'
+import { doApiCall } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
-import { orgName, createTeam, repoName, username } from './common'
+import { orgName, repoName, username, teamName } from './common'
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
   GITEA_URL,
 })
 const errors: string[] = []
+
+export async function createTeam(errors: string[], orgApi: OrganizationApi): Promise<any | undefined> {
+  const readOnlyTeam: CreateTeamOption = {
+    ...new CreateTeamOption(),
+    canCreateOrgRepo: false,
+    name: teamName,
+    includesAllRepositories: true,
+    permission: CreateTeamOption.PermissionEnum.Read,
+    units: ['repo.code', 'repo.issues', 'repo.ext_issues', 'repo.wiki', 'repo.pulls', 'repo.releases', 'repo.ext_wiki'],
+  }
+  return doApiCall(
+    errors,
+    `Creating team "${teamName}" in org "${orgName}"`,
+    () => orgApi.orgCreateTeam(orgName, readOnlyTeam),
+    422,
+  )
+}
+
 export default async function main(): Promise<void> {
   let giteaUrl = env.GITEA_URL
   if (giteaUrl.endsWith('/')) {
     giteaUrl = giteaUrl.slice(0, -1)
   }
 
-  const namespace = 'otomi'
-  const secretName = 'gitea-token'
-  // todo Create API token
-  const userApi = new UserApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
-  const tokenData = await doApiCall(
-    errors,
-    `Creating token for "${username}"`,
-    () => userApi.userCreateToken(username, { name: 'otomiToken' }),
-    422,
-  )
-
-  createSecret(secretName, namespace, tokenData)
   // create the org
   const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
@@ -43,7 +51,7 @@ export default async function main(): Promise<void> {
     console.info('Success!')
   }
 }
-// Run main only on execution, not on import (like tests)
+
 if (typeof require !== 'undefined' && require.main === module) {
   main()
 }

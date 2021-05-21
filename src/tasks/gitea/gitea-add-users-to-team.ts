@@ -10,7 +10,6 @@ import {
 import { doApiCall } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
 import {
-  createTeam,
   orgName,
   teamName,
   // orgName,
@@ -35,13 +34,9 @@ export default async function main(): Promise<void> {
   const users: User[] = await doApiCall(errors, `Get all users`, () => adminApi.adminGetAllUsers())
 
   const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
-  let teams = ((await doApiCall(errors, 'Find team ID if exists', () =>
-    orgApi.orgListTeams(orgName),
-  )) as Team[]).filter((team) => team.name === teamName)
-  if (teams.length === 0) {
-    teams = [await createTeam(errors, orgApi)]
-  }
-  const teamID: number = teams.map((team) => team.id)[0] as number
+  const teams = (await doApiCall(errors, 'Find team ID if exists', () => orgApi.orgListTeams(orgName))) as Team[]
+  const team = teams.find((team) => team.name === teamName)
+  const teamID = team!.id as number
 
   const membersInTeam: User[] = (await doApiCall(errors, 'Find all members in this team', () =>
     orgApi.orgListTeamMembers(teamID),
