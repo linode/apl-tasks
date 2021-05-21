@@ -9,7 +9,7 @@ const env = cleanEnv({
 })
 const errors: string[] = []
 
-export async function createTeam(teamName: string, orgApi: OrganizationApi): Promise<any | undefined> {
+export async function createTeam(orgApi: OrganizationApi): Promise<void> {
   const readOnlyTeam: CreateTeamOption = {
     ...new CreateTeamOption(),
     canCreateOrgRepo: false,
@@ -20,7 +20,7 @@ export async function createTeam(teamName: string, orgApi: OrganizationApi): Pro
   }
   return doApiCall(
     errors,
-    `Creating team "${teamName}" in org "${orgName}"`,
+    `Creating team "${teamNameViewer}" in org "${orgName}"`,
     () => orgApi.orgCreateTeam(orgName, readOnlyTeam),
     422,
   )
