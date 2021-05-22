@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.6](https://github.com/redkubes/otomi-tasks/compare/v0.2.5...v0.2.6) (2021-05-22)
+
+
+### Features
+
+* Gitea drone ([#33](https://github.com/redkubes/otomi-tasks/issues/33)) ([2b2d2ff](https://github.com/redkubes/otomi-tasks/commit/2b2d2ff8743b58899dd6a88878af4c9b298fd08f))
+* Gitea drone task ([#28](https://github.com/redkubes/otomi-tasks/issues/28)) ([0e58f0c](https://github.com/redkubes/otomi-tasks/commit/0e58f0c16671bf16e822b6e22c3e01b25d0a07f9))
+
 ### [0.2.5](https://github.com/redkubes/otomi-tasks/compare/v0.2.4...v0.2.5) (2021-03-12)
 
 ### Bug Fixes
