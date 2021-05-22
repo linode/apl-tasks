@@ -6,7 +6,8 @@ import { UserApi, CreateOAuth2ApplicationOptions } from '@redkubes/gitea-client-
 
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL, DRONE_URL } from '../../validators'
 import { createSecret, doApiCall, getApiClient, getSecret } from '../../utils'
-import { username, GiteaDroneError } from './common'
+import { GiteaDroneError } from './common'
+import { username } from '../common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,

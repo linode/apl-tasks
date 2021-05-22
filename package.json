@@ -24,7 +24,8 @@
     "js-yaml": "^3.14.0",
     "lodash": "^4.17.21",
     "lowdb": "^1.0.0",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "ts-custom-error": "^3.2.0"
   },
   "description": "Tasks needed by the Otomi Container Platform to glue all the pieces together.",
   "devDependencies": {
@@ -69,7 +70,6 @@
     "sinon-chai": "^3.5.0",
     "standard-version": "^9.0.0",
     "supertest": "^4.0.2",
-    "ts-custom-error": "^3.2.0",
     "ts-node": "^8.10.2",
     "ts-node-dev": "^1.0.0-pre.56",
     "typescript": "^4.2.4"
@@ -118,7 +118,10 @@
     "tasks:keycloak": "node dist/tasks/keycloak/keycloak.js",
     "tasks:keycloak-dev": "ts-node-dev ./src/tasks/keycloak/keycloak.ts",
     "tasks:gitea": "node dist/tasks/gitea/gitea.js && node dist/tasks/gitea/gitea-drone-oauth.js",
+    "tasks:gitea-add-users": "node dist/tasks/gitea/gitea-add-users-to-team.js",
     "tasks:gitea-dev": "ts-node-dev ./src/tasks/gitea/gitea.ts",
+    "tasks:gitea-add-users-dev": "ts-node-dev ./src/tasks/gitea/gitea-add-users-to-team.ts",
+    "tasks:gitea-drone-auth": "node dist/tasks/gitea/gitea-drone-oauth.js",
     "tasks:gitea-drone-auth-dev": "ts-node-dev ./src/tasks/gitea/gitea-drone-oauth.ts",
     "tasks:harbor": "node dist/tasks/harbor/harbor.js",
     "tasks:harbor-dev": "ts-node-dev ./src/tasks/harbor/harbor.ts",

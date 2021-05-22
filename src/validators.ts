@@ -25,7 +25,7 @@ export const DRONE_URL = str({ desc: 'The public url of the drone server' })
 export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
 export const GITEA_URL = url({ desc: 'The gitea core service url' })
 export const KEYCLOAK_ADDRESS = str({ desc: 'The Keycloak Server address' })
-export const KEYCLOAK_ADMIN = str({ desc: 'Default admin username for KeyCloak Server' })
+export const KEYCLOAK_ADMIN = str({ desc: 'Default admin username for KeyCloak Server', default: 'admin' })
 export const KEYCLOAK_ADMIN_PASSWORD = str({ desc: 'Default password for admin' })
 export const KEYCLOAK_CLIENT_ID = str({ desc: 'Default Keycloak Client', default: 'otomi' })
 export const KEYCLOAK_CLIENT_SECRET = str({ desc: 'The keycloak client secret' })
@@ -51,3 +51,6 @@ export function cleanEnv<T>(
     return process.env as Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined }
   return clean(env, validators, options) as Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined }
 }
+
+// And to avoid npm trying to check for updates
+process.env.NO_UPDATE_NOTIFIER = 'true'

@@ -1,6 +1,7 @@
 import * as drone from 'drone-node'
 import { doApiCall, handleErrors } from '../../utils'
 import { cleanEnv, DRONE_URL, DRONE_TOKEN } from '../../validators'
+import { orgName, repoName } from '../common'
 
 const env = cleanEnv({
   DRONE_URL,
@@ -24,13 +25,13 @@ async function main(): Promise<void> {
   // https://discourse.drone.io/t/not-found-from-machine-user/7073/4?u=morriz
 
   // Sync repos
-  await doApiCall(errors, 'Syncing repos', () => client.syncRepos())
+  // await doApiCall(errors, 'Syncing repos', () => client.syncRepos())
 
   // Connect repo
-  await doApiCall(errors, 'Connecting repo', () => client.enableRepo('otomi-admin', 'values'))
+  await doApiCall(errors, 'Connecting repo', () => client.enableRepo(orgName, repoName))
 
   // Update repo: this preconfigures the repo so that it only needs activating
-  // await doApiCall(errors, 'Updating repo', () => client.updateRepo(env.DRONE_OWNER, env.DRONE_REPO, settings))
+  await doApiCall(errors, 'Updating repo', () => client.updateRepo(orgName, repoName, {}))
 
   handleErrors(errors)
 }
