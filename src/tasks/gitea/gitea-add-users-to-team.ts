@@ -1,7 +1,7 @@
 import { OrganizationApi, AdminApi, User, Team } from '@redkubes/gitea-client-node'
 import { doApiCall } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
-import { orgName, teamNameViewer, username } from '../common'
+import { orgName, teamNameOwners, username } from '../common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
@@ -20,7 +20,7 @@ export default async function main(): Promise<void> {
 
   const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
   await Promise.allSettled(
-    [teamNameViewer].map(
+    [teamNameOwners].map(
       async (teamName): Promise<any[]> => {
         const orgTeams = (await doApiCall(errors, 'Find team ID if exists', () =>
           orgApi.orgListTeams(orgName),

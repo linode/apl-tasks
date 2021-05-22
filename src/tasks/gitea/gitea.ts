@@ -37,7 +37,7 @@ export default async function main(): Promise<void> {
   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
   await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
 
-  await createTeam(orgApi)
+  // await createTeam(orgApi)
   // create the org repo
   const repoOption = { ...new CreateRepoOption(), autoInit: false, name: repoName, _private: true }
   await doApiCall(errors, `Creating org repo "${repoName}"`, () => orgApi.createOrgRepo(orgName, repoOption))
