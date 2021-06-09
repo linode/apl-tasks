@@ -105,20 +105,20 @@ export function handleErrors(errors: string[]) {
 }
 
 export async function createPullSecret({
-  teamId,
+  team,
   name,
   server,
   password,
   username = '_json_key',
 }: {
-  teamId: string
+  team: string
   name: string
   server: string
   password: string
   username?: string
 }): Promise<void> {
   const client = getApiClient()
-  const namespace = `team-${teamId}`
+  const namespace = team
   // create data structure for secret
   const data = {
     auths: {
@@ -126,7 +126,7 @@ export async function createPullSecret({
         username,
         password,
         email: 'not@val.id',
-        auth: username + Buffer.from(password).toString('base64'),
+        auth: Buffer.from(`${username}:${password}`).toString('base64'),
       },
     },
   }
@@ -134,7 +134,7 @@ export async function createPullSecret({
   const secret = {
     ...new V1Secret(),
     metadata: { ...new V1ObjectMeta(), name },
-    type: 'docker-registry',
+    type: 'kubernetes.io/dockerconfigjson',
     data: {
       '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
     },
@@ -143,7 +143,8 @@ export async function createPullSecret({
   try {
     await client.createNamespacedSecret(namespace, secret)
   } catch (e) {
-    throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
+    throw e.response.body.message
+    // throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
   }
   // get service account we want to add the secret to as pull secret
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
@@ -159,17 +160,17 @@ export async function createPullSecret({
   }
 }
 
-export async function getPullSecrets(teamId: string): Promise<Array<any>> {
+export async function getPullSecrets(team: string): Promise<Array<any>> {
   const client = getApiClient()
-  const namespace = `team-${teamId}`
+  const namespace = team
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
   return (sa.imagePullSecrets || []) as Array<any>
 }
 
-export async function deletePullSecret(teamId: string, name: string): Promise<void> {
+export async function deletePullSecret(team: string, name: string): Promise<void> {
   const client = getApiClient()
-  const namespace = `team-${teamId}`
+  const namespace = team
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
   const idx = findIndex(sa.imagePullSecrets, { name })
