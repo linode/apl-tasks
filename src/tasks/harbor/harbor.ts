@@ -9,9 +9,9 @@ import {
   RobotApi,
   Robotv1Api,
   Project,
+  RobotCreate,
 } from '@redkubes/harbor-client-node'
 
-import { integer } from 'aws-sdk/clients/cloudfront'
 import {
   cleanEnv,
   HARBOR_BASE_URL,
@@ -23,7 +23,7 @@ import {
   OIDC_VERIFY_CERT,
   TEAM_NAMES,
 } from '../../validators'
-import { createSecret, ensure, getApiClient, getSecret, doApiCall, handleErrors, createPullSecret } from '../../utils'
+import { createSecret, getApiClient, getSecret, doApiCall, handleErrors, createPullSecret } from '../../utils'
 
 const env = cleanEnv({
   HARBOR_BASE_URL,
@@ -105,15 +105,6 @@ function setAuth(secret): void {
   robotApi.setDefaultAuthentication(bearerAuth)
 }
 
-async function getProjectId(team: string): Promise<string> {
-  const project = (await doApiCall(errors, `Get project for team ${team}`, () =>
-    projectsApi.getProject(team),
-  )) as Project
-  if (!project) return ''
-  const projectId = `${ensure(project.projectId)}`
-  return projectId
-}
-
 // NOTE: assumes OIDC is not yet configured, otherwise this operation is NOT possible
 async function createSystemRobotSecret(): Promise<RobotSecret> {
   const { body: robotList } = await robotApi.listRobot()
@@ -134,10 +125,8 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
   return robotSecret
 }
 
-async function createProjectRobotSecret(team: string): Promise<RobotSecret> {
-  const projectId = await getProjectId(team)
-
-  const projectRobot: any = {
+async function createProjectRobotSecret(team: string, projectId: string): Promise<RobotSecret> {
+  const projectRobot: RobotCreate = {
     name: projectRobotName,
     duration: -1,
     description: 'Used by kubernetes to pull images from harbor in each team',
@@ -202,7 +191,7 @@ async function ensureSystemSecret(): Promise<RobotSecret> {
   return robotSecret
 }
 
-async function ensureProjectSecret(team: string): Promise<void> {
+async function ensureProjectSecret(team: string, projectId: string): Promise<void> {
   const projectNamespace = team
 
   let k8sSecret = (await getSecret(projectSecretName, team)) as RobotSecret
@@ -210,7 +199,7 @@ async function ensureProjectSecret(team: string): Promise<void> {
     await getApiClient().deleteNamespacedSecret(projectSecretName, projectNamespace)
   }
 
-  k8sSecret = await createProjectRobotSecret(team)
+  k8sSecret = await createProjectRobotSecret(team, projectId)
   await createPullSecret({
     team,
     name: projectSecretName,
@@ -238,7 +227,11 @@ async function main(): Promise<void> {
       }
       await doApiCall(errors, `Creating project for team ${team}`, () => projectsApi.createProject(projectReq))
 
-      const projectId = await getProjectId(team)
+      const project = (await doApiCall(errors, `Get project for team ${team}`, () =>
+        projectsApi.getProject(team),
+      )) as Project
+      if (!project) return ''
+      const projectId = `${project.projectId}`
 
       const projMember: ProjectMember = {
         roleId: HarborRole.developer,
@@ -261,7 +254,7 @@ async function main(): Promise<void> {
         memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
       )
 
-      await ensureProjectSecret(team)
+      await ensureProjectSecret(team, projectId)
     }),
   )
 

@@ -19,13 +19,4 @@
   "prettier.enable": true,
   "typescript.autoClosingTags": false,
   "standard.enable": false,
-  "cSpell.words": [
-    "camelcase",
-    "creds",
-    "kubernetes",
-    "openid",
-    "otomi",
-    "redkubes",
-    "robotv"
-  ]
 }
