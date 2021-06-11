@@ -21,7 +21,7 @@ import {
   OIDC_CLIENT_SECRET,
   OIDC_ENDPOINT,
   OIDC_VERIFY_CERT,
-  TEAMS,
+  TEAM_IDS,
 } from '../../validators'
 import { createSecret, getApiClient, getSecret, doApiCall, handleErrors, createPullSecret } from '../../utils'
 
@@ -33,7 +33,7 @@ const env = cleanEnv({
   OIDC_CLIENT_SECRET,
   OIDC_ENDPOINT,
   OIDC_VERIFY_CERT,
-  TEAMS,
+  TEAM_IDS,
 })
 
 const HarborRole = {
@@ -222,7 +222,7 @@ async function main(): Promise<void> {
 
   await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
   await Promise.all(
-    env.TEAMS.map(async (teamId: string) => {
+    env.TEAM_IDS.map(async (teamId: string) => {
       const namespace = `team-${teamId}`
       const projectReq: ProjectReq = {
         projectName: namespace,
