@@ -105,20 +105,20 @@ export function handleErrors(errors: string[]) {
 }
 
 export async function createPullSecret({
-  team,
+  teamId,
   name,
   server,
   password,
   username = '_json_key',
 }: {
-  team: string
+  teamId: string
   name: string
   server: string
   password: string
   username?: string
 }): Promise<void> {
   const client = getApiClient()
-  const namespace = team
+  const namespace = `team-${teamId}`
   // create data structure for secret
   const data = {
     auths: {
@@ -160,17 +160,17 @@ export async function createPullSecret({
   }
 }
 
-export async function getPullSecrets(team: string): Promise<Array<any>> {
+export async function getPullSecrets(teamId: string): Promise<Array<any>> {
   const client = getApiClient()
-  const namespace = team
+  const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
   return (sa.imagePullSecrets || []) as Array<any>
 }
 
-export async function deletePullSecret(team: string, name: string): Promise<void> {
+export async function deletePullSecret(teamId: string, name: string): Promise<void> {
   const client = getApiClient()
-  const namespace = team
+  const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
   const idx = findIndex(sa.imagePullSecrets, { name })
