@@ -1,54 +1,59 @@
 import { omit, merge } from 'lodash'
-
-const fs = require('fs')
-const yaml = require('js-yaml')
+import yaml from 'js-yaml'
+import fs from 'fs'
 
 const destinationPath = '/Users/mojtaba/opt/bootstrapfiles/env'
 const sourcePath = '/Users/mojtaba/repo/github/redkubes/otomi-core/chart'
 
+function mergeValues(cat: string, valueObject, folder: string) {
+  const bsPath = `${folder}/${cat}.yaml`
+  let bsValues = yaml.safeLoad(fs.readFileSync(bsPath), 'utf8')
+  if (!bsValues) {
+    bsValues = {}
+  }
+  merge(bsValues, valueObject)
+  if (bsValues) {
+    fs.writeFile(bsPath, yaml.safeDump(bsValues), (err) => {
+      if (err) {
+        console.log(err)
+      } else {
+        console.log(`The file ${bsPath} was saved`)
+      }
+    })
+  }
+}
+
 try {
   const values = yaml.safeLoad(fs.readFileSync(`${sourcePath}/values.yaml`, 'utf8'))
 
-  const settings = omit(values, ['charts', 'cluster', 'policies', 'teamConfig'])
-  const { charts } = values
-  const { cluster } = values
-  const { policies } = values
-  const { teamConfig } = values
+  mergeValues('cluster', { cluster: values.cluster }, destinationPath)
+  mergeValues('policies', { policies: values.policies }, destinationPath)
+  mergeValues('teams', { teamConfig: values.teamConfig }, destinationPath)
 
-  const settingsPath = `${destinationPath}/settings.yaml`
-  const clusterPath = `${destinationPath}/cluster.yaml`
-  const teamPath = `${destinationPath}/teams.yaml`
-  const policiesPath = `${destinationPath}/policies.yaml`
+  const settings = omit(values, ['cluster', 'policies', 'teamConfig', 'charts'])
+  mergeValues('settings', settings, destinationPath)
 
-  const bsSettings = yaml.safeLoad(fs.readFileSync(settingsPath, 'utf8'))
-  const bsCluster = yaml.safeLoad(fs.readFileSync(clusterPath, 'utf8'))
-  const bsTeams = yaml.safeLoad(fs.readFileSync(teamPath, 'utf8'))
-  const bsPolicies = yaml.safeLoad(fs.readFileSync(policiesPath, 'utf8'))
+  const charts = [
+    'cert-manager',
+    'drone',
+    'external-dns',
+    'gatekeeper-operator',
+    'gitea',
+    'keycloak',
+    'loki',
+    'otomi-api',
+    'sitespeed',
+    'vault',
+    'weave-scope',
+  ]
 
-  merge(bsSettings, settings)
-  merge(bsCluster, cluster)
-  merge(bsTeams, teamConfig)
-  merge(bsPolicies, policies)
-
-  fs.writeFile(settingsPath, yaml.safeDump(bsSettings), (err) => {
-    if (err) {
-      console.log(err)
+  charts.forEach((chart) => {
+    const valueObject = {
+      charts: {
+        [chart]: values.charts[chart],
+      },
     }
-  })
-  fs.writeFile(clusterPath, yaml.safeDump(bsCluster), (err) => {
-    if (err) {
-      console.log(err)
-    }
-  })
-  fs.writeFile(teamPath, yaml.safeDump(bsTeams), (err) => {
-    if (err) {
-      console.log(err)
-    }
-  })
-  fs.writeFile(policiesPath, yaml.safeDump(bsPolicies), (err) => {
-    if (err) {
-      console.log(err)
-    }
+    mergeValues(chart, valueObject, `${destinationPath}/charts`)
   })
 
   console.log('done')
