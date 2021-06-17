@@ -54,9 +54,7 @@ async function main(): Promise<void> {
     const derefSchema = await $RefParser.dereference(schema)
     const cleanSchema = omit(derefSchema, ['definitions', 'properties.teamConfig']) // FIXME: lets fix the team part later
     const secretsJsonPath = extractSecrets(cleanSchema, 'root').map((str) => str.replace('root.', ''))
-    console.log(secretsJsonPath)
     const secrets = pick(values, secretsJsonPath)
-    console.log(secrets)
     // mergeValues('secrets.team', { teamConfig: secrets.teamConfig }, destinationPath) // FIXME: lets fix the team part later
     const secretSettings = omit(secrets, ['cluster', 'policies', 'teamConfig', 'charts'])
     mergeValues('secrets.settings', secretSettings, env.OTOMI_VALUES_TARGET)
@@ -68,6 +66,8 @@ async function main(): Promise<void> {
       }
       mergeValues(`secrets.${chart}`, valueObject, `${env.OTOMI_VALUES_TARGET}/charts`)
     })
+
+    // removing secrets
     const plainValues = omit(values, secretsJsonPath) as any
 
     // creating non secret files
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
       mergeValues(chart, valueObject, `${env.OTOMI_VALUES_TARGET}/charts`)
     })
 
-    console.log('done')
+    console.log('Done.')
   } catch (e) {
     console.log(e)
   }
