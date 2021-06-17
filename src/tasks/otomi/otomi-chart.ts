@@ -13,7 +13,7 @@ const env = cleanEnv({
 
 const schemaKeywords = ['properties', 'anyOf', 'allOf', 'oneOf']
 
-export default function extractSecrets(schema: any, parentKey: string): any {
+export default function extractSecrets(schema: any, parentKey: string): Array<string> {
   return Object.keys(schema)
     .flatMap((key) => {
       const childObj = schema[key]
@@ -23,7 +23,7 @@ export default function extractSecrets(schema: any, parentKey: string): any {
       const address = schemaKeywords.includes(key) ? parentKey : `${parentKey}.${key}`
       return extractSecrets(childObj, address)
     })
-    .filter(Boolean)
+    .filter(Boolean) as Array<string>
 }
 
 function mergeValues(cat: string, valueObject, folder: string): void {
