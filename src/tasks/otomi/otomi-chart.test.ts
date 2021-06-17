@@ -1,8 +1,8 @@
 import { expect } from 'chai'
 import extractSecrets from './otomi-chart'
 
-describe('simple schema', () => {
-  it('extract secrets json paths from schema', () => {
+describe('otomi-chart', () => {
+  it('It should extract the json path of the secrets found in the schema', () => {
     const schema = {
       $schema: 'http://json-schema.org/draft-07/schema',
       additionalProperties: false,
@@ -16,39 +16,28 @@ describe('simple schema', () => {
           type: 'string',
           [`x-secret`]: 'true',
         },
-        azure: {
-          hello: {
-            description: 'console.',
-            type: 'string',
-            [`x-secret`]: 'true',
+        provider: {
+          properties: {
+            oneOf: [
+              { aws: { password: { type: 'string', [`x-secret`]: 'true' } } },
+              { google: { password: { type: 'string', [`x-secret`]: 'true' } } },
+              { azure: { password: { type: 'string', [`x-secret`]: 'true' } } },
+            ],
           },
         },
       },
     }
-    const expectedResult = ['root.pullSecret', 'root.azure.hello']
+    const expectedResult = [
+      'root.pullSecret',
+      'root.provider.aws.password',
+      'root.provider.google.password',
+      'root.provider.azure.password',
+    ]
     const x = extractSecrets(schema, 'root')
     expect(x).to.deep.equal(expectedResult)
   })
-})
 
-describe('oneOf', () => {
-  it('extract secrets json paths from schema', () => {
-    const schema = {
-      oneOf: [
-        { aws: { password: { type: 'string', [`x-secret`]: 'true' } } },
-        { google: { password: { type: 'string', [`x-secret`]: 'true' } } },
-        { azure: { password: { type: 'string', [`x-secret`]: 'true' } } },
-      ],
-    }
-
-    const expectedResult = ['root.aws.password', 'root.google.password', 'root.azure.password']
-    const x = extractSecrets(schema, 'root')
-    expect(x).to.deep.equal(expectedResult)
-  })
-})
-
-describe('empty schema', () => {
-  it('a simple schema', () => {
+  it('It should return an empty array if the input schema is empty', () => {
     const schema = {}
     const expectedResult = []
     const x = extractSecrets(schema, '')
