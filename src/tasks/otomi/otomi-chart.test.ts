@@ -14,14 +14,14 @@ describe('otomi-chart', () => {
         pullSecret: {
           description: 'console.',
           type: 'string',
-          [`x-secret`]: 'true',
+          'x-secret': 'true',
         },
         provider: {
           properties: {
             oneOf: [
-              { aws: { password: { type: 'string', [`x-secret`]: 'true' } } },
-              { google: { password: { type: 'string', [`x-secret`]: 'true' } } },
-              { azure: { password: { type: 'string', [`x-secret`]: 'true' } } },
+              { aws: { password: { type: 'string', 'x-secret': 'true' } } },
+              { google: { password: { type: 'string', 'x-secret': 'true' } } },
+              { azure: { password: { type: 'string', 'x-secret': 'true' } } },
             ],
           },
         },
