@@ -13,7 +13,7 @@ const env = cleanEnv({
 
 const schemaKeywords = ['properties', 'anyOf', 'allOf', 'oneOf']
 
-export default function extractSecrets(schema: any, parentAddress?: string): Array<string> {
+export function extractSecrets(schema: any, parentAddress?: string): Array<string> {
   return Object.keys(schema)
     .flatMap((key) => {
       const childObj = schema[key]
@@ -40,7 +40,7 @@ function mergeValues(targetPath: string, valueObject): void {
   fs.writeFileSync(targetPath, yaml.safeDump(bsValues))
 }
 
-async function main(): Promise<void> {
+export default async function main(): Promise<void> {
   const values = yaml.safeLoad(fs.readFileSync(env.OTOMI_VALUES_INPUT, 'utf8')) as any
 
   // creating secret files
@@ -83,4 +83,7 @@ async function main(): Promise<void> {
 
   console.log('otomi chart values merged with the bootstrapped values.')
 }
-main()
+
+if (typeof require !== 'undefined' && require.main === module) {
+  main()
+}
