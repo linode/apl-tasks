@@ -20,7 +20,7 @@ import {
   OIDC_VERIFY_CERT,
   TEAM_NAMES,
 } from '../../validators'
-import { createSecret, ensure, getApiClient, getSecret, doApiCall, handleErrors } from '../../utils'
+import { createSecret, ensure, getApiClient, getSecret, doApiCall, handleErrors, faultTolerantFetch } from '../../utils'
 
 const env = cleanEnv({
   HARBOR_BASE_URL,
@@ -142,6 +142,8 @@ async function ensureSecret(): Promise<RobotSecret> {
 }
 
 async function main(): Promise<void> {
+  await faultTolerantFetch(env.HARBOR_BASE_URL)
+
   await ensureSecret()
 
   // now we can set the token on our apis

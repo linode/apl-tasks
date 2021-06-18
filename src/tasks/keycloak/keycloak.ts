@@ -19,7 +19,8 @@ import {
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
 } from '../../validators'
-import { doApiCall, ensure, handleErrors } from '../../utils'
+
+import { faultTolerantFetch, doApiCall, ensure, handleErrors } from '../../utils'
 
 const env = cleanEnv({
   IDP_ALIAS,
@@ -32,6 +33,8 @@ const env = cleanEnv({
 const errors: string[] = []
 
 async function main(): Promise<void> {
+  await faultTolerantFetch(env.KEYCLOAK_ADDRESS)
+
   let basePath
   let token
   try {

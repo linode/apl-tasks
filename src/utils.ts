@@ -1,6 +1,8 @@
 import http from 'http'
 import { findIndex, mapValues } from 'lodash'
 import { CoreV1Api, KubeConfig, V1Secret, V1ObjectMeta, V1ServiceAccount } from '@kubernetes/client-node'
+import retry, { Options } from 'async-retry'
+import fetch from 'node-fetch'
 
 let apiClient: CoreV1Api
 
@@ -184,4 +186,21 @@ export async function deletePullSecret(teamId: string, name: string): Promise<vo
   } catch (e) {
     throw new Error(`Secret '${name}' does not exist in namespace '${namespace}'`)
   }
+}
+
+const retryOptions: Options = {
+  retries: 6,
+  factor: 2,
+  // minTimeout: The number of milliseconds before starting the first retry. Default is 1000.
+  minTimeout: 3000,
+}
+
+export async function faultTolerantFetch(url: string): Promise<void> {
+  await retry(async (bail) => {
+    // if anything throws, we retry
+    const res = await fetch(url)
+    if ([401, 403].includes(res.status)) {
+      bail(new Error(`HTTP code: ${res.status}`))
+    }
+  }, retryOptions)
 }
