@@ -28,12 +28,12 @@ describe('otomi-chart', () => {
       },
     }
     const expectedResult = [
-      'root.pullSecret',
-      'root.provider.aws.password',
-      'root.provider.google.password',
-      'root.provider.azure.password',
+      'pullSecret',
+      'provider.aws.password',
+      'provider.google.password',
+      'provider.azure.password',
     ]
-    const x = extractSecrets(schema, 'root')
+    const x = extractSecrets(schema)
     expect(x).to.deep.equal(expectedResult)
   })
 

@@ -13,14 +13,16 @@ const env = cleanEnv({
 
 const schemaKeywords = ['properties', 'anyOf', 'allOf', 'oneOf']
 
-export default function extractSecrets(schema: any, parentKey: string): Array<string> {
+export default function extractSecrets(schema: any, parentAddress?: string): Array<string> {
   return Object.keys(schema)
     .flatMap((key) => {
       const childObj = schema[key]
       if (typeof childObj !== 'object') return false
-      if ('x-secret' in childObj) return `${parentKey}.${key}`
-      if (key in ['anyOf', 'allOf', 'oneOf']) return extractSecrets(childObj, parentKey)
-      const address = schemaKeywords.includes(key) ? parentKey : `${parentKey}.${key}`
+      if ('x-secret' in childObj) return parentAddress ? `${parentAddress}.${key}` : key
+      let address
+      if (schemaKeywords.includes(key) || !isNaN(Number(key))) address = parentAddress
+      else if (parentAddress === undefined) address = key
+      else address = `${parentAddress}.${key}`
       return extractSecrets(childObj, address)
     })
     .filter(Boolean) as Array<string>
@@ -45,7 +47,7 @@ async function main(): Promise<void> {
   const schema = yaml.safeLoad(fs.readFileSync(env.OTOMI_SCHEMA_PATH, 'utf8')) as any
   const derefSchema = await $RefParser.dereference(schema)
   const cleanSchema = omit(derefSchema, ['definitions', 'properties.teamConfig']) // FIXME: lets fix the team part later
-  const secretsJsonPath = extractSecrets(cleanSchema, 'root').map((str) => str.replace('root.', ''))
+  const secretsJsonPath = extractSecrets(cleanSchema)
   const secrets = pick(values, secretsJsonPath)
   // mergeValues('secrets.team', { teamConfig: secrets.teamConfig }, destinationPath) // FIXME: lets fix the team part later
   const secretSettings = omit(secrets, ['cluster', 'policies', 'teamConfig', 'charts'])
