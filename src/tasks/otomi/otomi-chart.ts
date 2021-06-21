@@ -20,7 +20,7 @@ export function extractSecrets(schema: any, parentAddress?: string): Array<strin
       if (typeof childObj !== 'object') return false
       if ('x-secret' in childObj) return parentAddress ? `${parentAddress}.${key}` : key
       let address
-      if (schemaKeywords.includes(key) || !isNaN(Number(key))) address = parentAddress
+      if (schemaKeywords.includes(key) || !Number.isNaN(Number(key))) address = parentAddress
       else if (parentAddress === undefined) address = key
       else address = `${parentAddress}.${key}`
       return extractSecrets(childObj, address)
@@ -49,7 +49,7 @@ export default async function main(): Promise<void> {
   const cleanSchema = omit(derefSchema, ['definitions', 'properties.teamConfig']) // FIXME: lets fix the team part later
   const secretsJsonPath = extractSecrets(cleanSchema)
   const secrets = pick(values, secretsJsonPath)
-  // mergeValues('secrets.team', { teamConfig: secrets.teamConfig }, destinationPath) // FIXME: lets fix the team part later
+  // mergeValues(`${env.OTOMI_VALUES_TARGET}/secrets.team.yaml`, { teamConfig: secrets.teamConfig }) // FIXME: lets fix the team part later
   const secretSettings = omit(secrets, ['cluster', 'policies', 'teamConfig', 'charts'])
   mergeValues(`${env.OTOMI_VALUES_TARGET}/secrets.settings.yaml`, secretSettings)
   Object.keys(secrets.charts).forEach((chart) => {
