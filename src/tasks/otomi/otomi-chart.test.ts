@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import extractSecrets from './otomi-chart'
+import { extractSecrets } from './otomi-chart'
 
 describe('otomi-chart', () => {
   it('It should extract the json path of the secrets found in the schema', () => {
