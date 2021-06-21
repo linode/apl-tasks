@@ -257,6 +257,8 @@ async function main(): Promise<void> {
       )
 
       await ensureProjectSecret(teamId, projectId)
+
+      return null
     }),
   )
 
