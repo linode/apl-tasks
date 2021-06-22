@@ -143,8 +143,7 @@ export async function createPullSecret({
   try {
     await client.createNamespacedSecret(namespace, secret)
   } catch (e) {
-    throw e.response.body.message
-    // throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
+    throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
   }
   // get service account we want to add the secret to as pull secret
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
