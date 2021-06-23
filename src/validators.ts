@@ -41,9 +41,9 @@ export const TEAM_NAMES = json({ desc: 'A list of team names in JSON format' })
 export const TENANT_CLIENT_ID = str({ desc: 'The tenant client id' })
 export const TENANT_CLIENT_SECRET = str({ desc: 'The tenant client secret' })
 export const TENANT_ID = str({ desc: 'The tenant ID' })
-export const OTOMI_VALUES_INPUT = str({ desc: 'values.yaml file for the chart values' })
-export const OTOMI_SCHEMA_PATH = str({ desc: 'The path for the otomi value schema' })
-export const OTOMI_VALUES_TARGET = str({ desc: 'The path of the otomi value folder' })
+export const OTOMI_VALUES_INPUT = str({ desc: 'The chart values.yaml file' })
+export const OTOMI_SCHEMA_PATH = str({ desc: 'The path to the values-schema.yaml schema file' })
+export const OTOMI_ENV_DIR = str({ desc: 'The path to the otomi-values folder' })
 
 const { env } = process
 export function cleanEnv<T>(

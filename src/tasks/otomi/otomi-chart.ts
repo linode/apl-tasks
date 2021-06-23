@@ -3,12 +3,12 @@ import yaml from 'js-yaml'
 import fs from 'fs'
 import $RefParser from '@apidevtools/json-schema-ref-parser'
 
-import { cleanEnv, OTOMI_VALUES_INPUT, OTOMI_SCHEMA_PATH, OTOMI_VALUES_TARGET } from '../../validators'
+import { cleanEnv, OTOMI_VALUES_INPUT, OTOMI_SCHEMA_PATH, OTOMI_ENV_DIR } from '../../validators'
 
 const env = cleanEnv({
   OTOMI_VALUES_INPUT,
   OTOMI_SCHEMA_PATH,
-  OTOMI_VALUES_TARGET,
+  OTOMI_ENV_DIR,
 })
 
 const schemaKeywords = ['properties', 'anyOf', 'allOf', 'oneOf']
@@ -49,28 +49,31 @@ export default async function main(): Promise<void> {
   const cleanSchema = omit(derefSchema, ['definitions', 'properties.teamConfig']) // FIXME: lets fix the team part later
   const secretsJsonPath = extractSecrets(cleanSchema)
   const secrets = pick(values, secretsJsonPath)
-  // mergeValues(`${env.OTOMI_VALUES_TARGET}/secrets.team.yaml`, { teamConfig: secrets.teamConfig }) // FIXME: lets fix the team part later
+  console.log(secretsJsonPath)
+  console.log(secrets)
+
+  // mergeValues(`${env.OTOMI_ENV_DIR}/env/secrets.team.yaml`, { teamConfig: secrets.teamConfig }) // FIXME: lets fix the team part later
   const secretSettings = omit(secrets, ['cluster', 'policies', 'teamConfig', 'charts'])
-  mergeValues(`${env.OTOMI_VALUES_TARGET}/secrets.settings.yaml`, secretSettings)
+  if (secretSettings) mergeValues(`${env.OTOMI_ENV_DIR}/env/secrets.settings.yaml`, secretSettings)
   Object.keys(secrets.charts).forEach((chart) => {
     const valueObject = {
       charts: {
         [chart]: values.charts[chart],
       },
     }
-    mergeValues(`${env.OTOMI_VALUES_TARGET}/charts/secrets.${chart}.yaml`, valueObject)
+    mergeValues(`${env.OTOMI_ENV_DIR}/env/charts/secrets.${chart}.yaml`, valueObject)
   })
 
   // removing secrets
   const plainValues = omit(values, secretsJsonPath) as any
 
   // creating non secret files
-  mergeValues(`${env.OTOMI_VALUES_TARGET}/cluster.yaml`, { cluster: plainValues.cluster })
-  mergeValues(`${env.OTOMI_VALUES_TARGET}/policies.yaml`, { policies: plainValues.policies })
-  mergeValues(`${env.OTOMI_VALUES_TARGET}/teams.yaml`, { teamConfig: plainValues.teamConfig })
+  if (plainValues.cluster) mergeValues(`${env.OTOMI_ENV_DIR}/env/cluster.yaml`, { cluster: plainValues.cluster })
+  if (plainValues.policies) mergeValues(`${env.OTOMI_ENV_DIR}/env/policies.yaml`, { policies: plainValues.policies })
+  if (plainValues.teamConfig) mergeValues(`${env.OTOMI_ENV_DIR}/env/teams.yaml`, { teamConfig: plainValues.teamConfig })
 
   const settings = omit(plainValues, ['cluster', 'policies', 'teamConfig', 'charts'])
-  mergeValues(`${env.OTOMI_VALUES_TARGET}/settings.yaml`, settings)
+  if (settings) mergeValues(`${env.OTOMI_ENV_DIR}/env/settings.yaml`, settings)
 
   Object.keys(plainValues.charts).forEach((chart) => {
     const valueObject = {
@@ -78,7 +81,7 @@ export default async function main(): Promise<void> {
         [chart]: plainValues.charts[chart],
       },
     }
-    mergeValues(`${env.OTOMI_VALUES_TARGET}/charts/${chart}.yaml`, valueObject)
+    mergeValues(`${env.OTOMI_ENV_DIR}/env/charts/${chart}.yaml`, valueObject)
   })
 
   console.log('otomi chart values merged with the bootstrapped values.')
