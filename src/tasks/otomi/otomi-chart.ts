@@ -28,16 +28,30 @@ export function extractSecrets(schema: any, parentAddress?: string): Array<strin
     .filter(Boolean) as Array<string>
 }
 
-function mergeValues(targetPath: string, valueObject): void {
-  let bsValues
+function mergeValues(targetPath: string, newValues): void {
+  let values
   if (fs.existsSync(targetPath)) {
-    bsValues = yaml.load(fs.readFileSync(targetPath).toString())
+    if (targetPath.includes('/secrets.')) {
+      values = yaml.load(fs.readFileSync(`${targetPath}.dec`).toString())
+    } else {
+      values = yaml.load(fs.readFileSync(targetPath).toString())
+    }
+
+    if (!values) {
+      values = {}
+    }
+
+    merge(values, newValues)
+
+    if (targetPath.includes('/secrets.')) {
+      fs.writeFileSync(`${targetPath}.dec`, yaml.safeDump(values))
+    } else {
+      fs.writeFileSync(targetPath, yaml.safeDump(values))
+    }
+  } else {
+    // if the targetPath doesn't exist, just create it and write the valueObject on it. Doesn't matter if it is secret or not. and always write in its yaml file
+    fs.writeFileSync(targetPath, yaml.safeDump(newValues))
   }
-  if (!bsValues) {
-    bsValues = {}
-  }
-  merge(bsValues, valueObject)
-  fs.writeFileSync(targetPath, yaml.safeDump(bsValues))
 }
 
 export default async function main(): Promise<void> {
@@ -52,7 +66,7 @@ export default async function main(): Promise<void> {
   console.log(secretsJsonPath)
   console.log(secrets)
 
-  // mergeValues(`${env.OTOMI_ENV_DIR}/env/secrets.team.yaml`, { teamConfig: secrets.teamConfig }) // FIXME: lets fix the team part later
+  // mergeValues(`${env.OTOMI_ENV_DIR}/env/secrets.teams.yaml`, { teamConfig: secrets.teamConfig }) // FIXME: lets fix the team part later
   const secretSettings = omit(secrets, ['cluster', 'policies', 'teamConfig', 'charts'])
   if (secretSettings) mergeValues(`${env.OTOMI_ENV_DIR}/env/secrets.settings.yaml`, secretSettings)
   Object.keys(secrets.charts).forEach((chart) => {
