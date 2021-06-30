@@ -125,6 +125,8 @@
     "tasks:gitea-drone-auth-dev": "ts-node-dev ./src/tasks/gitea/gitea-drone-oauth.ts",
     "tasks:harbor": "node dist/tasks/harbor/harbor.js",
     "tasks:harbor-dev": "ts-node-dev ./src/tasks/harbor/harbor.ts",
+    "tasks:otomi-chart": "node dist/tasks/otomi/otomi-chart.js",
+    "tasks:otomi-chart-dev": "ts-node-dev ./src/tasks/otomi/otomi-chart.ts",
     "tasks:certs-aws": "node dist/tasks/otomi/certs-aws.js",
     "tasks:certs-aws-dev": "ts-node-dev ./src/tasks/otomi/certs-aws.ts",
     "test": "NODE_ENV=test mocha --timeout 25000 -r ts-node/register -r ts-custom-error src/**/*.test.* --exit"

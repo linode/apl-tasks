@@ -25,8 +25,7 @@ COPY . .eslintrc.yml ./
 ARG CI=true
 ENV NODE_ENV=test
 
-RUN npm run lint
-RUN npm run test
+RUN if [ "$SKIP_TESTS" = 'false' ]; then npm run lint && npm run test; fi
 RUN npm run build
 
 # --------------- Cleanup

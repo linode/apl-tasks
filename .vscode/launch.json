@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+    
     {
       "type": "node",
       "request": "launch",
@@ -106,6 +107,18 @@
       "name": "Debug Harbor task",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:harbor-dev"],
+      "cwd": "${workspaceRoot}",
+      "env": {
+        "DEBUG": "*"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug otomi-chart task",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "tasks:otomi-chart-dev"],
       "cwd": "${workspaceRoot}",
       "env": {
         "DEBUG": "*"
