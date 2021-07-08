@@ -1,5 +1,5 @@
 import http from 'http'
-import { findIndex, mapValues } from 'lodash'
+import { findIndex, isNil, mapValues, omitBy } from 'lodash'
 import { CoreV1Api, KubeConfig, V1Secret, V1ObjectMeta, V1ServiceAccount } from '@kubernetes/client-node'
 
 let apiClient: CoreV1Api
@@ -184,4 +184,12 @@ export async function deletePullSecret(teamId: string, name: string): Promise<vo
   } catch (e) {
     throw new Error(`Secret '${name}' does not exist in namespace '${namespace}'`)
   }
+}
+
+export function cleanValues(inObj) {
+  const obj = omitBy(inObj, isNil)
+  Object.keys(obj).forEach((k) => {
+    if (typeof obj[k] === 'object') obj[k] = cleanValues(obj[k])
+  })
+  return obj
 }
