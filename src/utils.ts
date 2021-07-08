@@ -2,7 +2,8 @@ import http from 'http'
 import { findIndex, mapValues } from 'lodash'
 import { CoreV1Api, KubeConfig, V1Secret, V1ObjectMeta, V1ServiceAccount } from '@kubernetes/client-node'
 import retry, { Options } from 'async-retry'
-import fetch from 'node-fetch'
+import fetch, { RequestInit } from 'node-fetch'
+import { exit } from 'process'
 
 let apiClient: CoreV1Api
 
@@ -189,18 +190,34 @@ export async function deletePullSecret(teamId: string, name: string): Promise<vo
 }
 
 const retryOptions: Options = {
-  retries: 6,
+  retries: 2,
   factor: 2,
   // minTimeout: The number of milliseconds before starting the first retry. Default is 1000.
   minTimeout: 3000,
+  // The maximum number of milliseconds between two retries.
+  maxTimeout: 10000,
 }
 
 export async function faultTolerantFetch(url: string): Promise<void> {
-  await retry(async (bail) => {
-    // if anything throws, we retry
-    const res = await fetch(url)
-    if ([401, 403].includes(res.status)) {
-      bail(new Error(`GET ${res.url} ${res.status}`))
-    }
-  }, retryOptions)
+  try {
+    await retry(async (bail) => {
+      try {
+        const fetchOptions: RequestInit = {
+          redirect: 'follow',
+        }
+        const res = await fetch(url, fetchOptions)
+        if (res.status !== 200) {
+          console.warn(`GET ${res.url} ${res.status}`)
+          bail(new Error(`Retry`))
+        }
+      } catch (e) {
+        // Print system erros like ECONNREFUSED
+        console.error(e.message)
+        throw e
+      }
+    }, retryOptions)
+  } catch (e) {
+    console.log('Max retry tries has been reached')
+    exit(1)
+  }
 }
