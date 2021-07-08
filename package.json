@@ -41,6 +41,7 @@
     "@types/lowdb": "^1.0.9",
     "@types/mocha": "^7.0.2",
     "@types/node": "^13.13.15",
+    "@types/node-fetch": "^2.5.11",
     "@types/sinon": "^9.0.4",
     "@types/sinon-chai": "^3.2.4",
     "@typescript-eslint/eslint-plugin": "^2.34.0",

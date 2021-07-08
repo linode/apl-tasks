@@ -97,7 +97,7 @@ export async function doApiCall(
   }
 }
 
-export function handleErrors(errors: string[]) {
+export function handleErrors(errors: string[]): void {
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
     process.exit(1)
@@ -200,7 +200,7 @@ export async function faultTolerantFetch(url: string): Promise<void> {
     // if anything throws, we retry
     const res = await fetch(url)
     if ([401, 403].includes(res.status)) {
-      bail(new Error(`HTTP code: ${res.status}`))
+      bail(new Error(`GET ${res.url} ${res.status}`))
     }
   }, retryOptions)
 }
