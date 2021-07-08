@@ -33,7 +33,7 @@ export function extractSecrets(schema: any, parentAddress?: string): Array<strin
 
 function mergeValues(targetPath: string, inValues: object): void {
   const newValues = cleanValues(inValues)
-  console.debug(`targetPath: ${targetPath}, values: ${JSON.stringify(newValues)}`)
+  // console.debug(`targetPath: ${targetPath}, values: ${JSON.stringify(newValues)}`)
   if (!fs.existsSync(targetPath)) {
     // If the targetPath doesn't exist, just create it and write the valueObject in it.
     // It doesn't matter if it is secret or not. and always write in its yaml file
@@ -56,8 +56,6 @@ export default async function main(): Promise<void> {
   const cleanSchema = omit(derefSchema, ['definitions', 'properties.teamConfig']) // FIXME: lets fix the team part later
   const secretsJsonPath = extractSecrets(cleanSchema)
   const secrets = pick(values, secretsJsonPath)
-  console.log(secretsJsonPath)
-  console.log(secrets)
 
   // mergeValues(`${env.OTOMI_ENV_DIR}/env/secrets.teams.yaml`, { teamConfig: secrets.teamConfig }) // FIXME: lets fix the team part later
   const secretSettings = omit(secrets, ['cluster', 'policies', 'teamConfig', 'charts'])
