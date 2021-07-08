@@ -128,7 +128,7 @@ export async function createPullSecret({
         username,
         password,
         email: 'not@val.id',
-        auth: username + Buffer.from(password).toString('base64'),
+        auth: Buffer.from(`${username}:${password}`).toString('base64'),
       },
     },
   }
@@ -136,7 +136,7 @@ export async function createPullSecret({
   const secret = {
     ...new V1Secret(),
     metadata: { ...new V1ObjectMeta(), name },
-    type: 'docker-registry',
+    type: 'kubernetes.io/dockerconfigjson',
     data: {
       '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
     },

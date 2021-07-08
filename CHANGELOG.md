@@ -2,13 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-### [0.2.6](https://github.com/redkubes/otomi-tasks/compare/v0.2.5...v0.2.6) (2021-05-22)
-
+### [0.2.7](https://github.com/redkubes/otomi-tasks/compare/v0.2.6...v0.2.7) (2021-07-05)
 
 ### Features
 
-* Gitea drone ([#33](https://github.com/redkubes/otomi-tasks/issues/33)) ([2b2d2ff](https://github.com/redkubes/otomi-tasks/commit/2b2d2ff8743b58899dd6a88878af4c9b298fd08f))
-* Gitea drone task ([#28](https://github.com/redkubes/otomi-tasks/issues/28)) ([0e58f0c](https://github.com/redkubes/otomi-tasks/commit/0e58f0c16671bf16e822b6e22c3e01b25d0a07f9))
+- merge values task for chart ([#35](https://github.com/redkubes/otomi-tasks/issues/35)) ([f28fe87](https://github.com/redkubes/otomi-tasks/commit/f28fe87c5c8215a3796fe3eb7c28d42277897a8f))
+
+### Bug Fixes
+
+- creating a robot account for each project and adding imagepullse… ([#34](https://github.com/redkubes/otomi-tasks/issues/34)) ([596152e](https://github.com/redkubes/otomi-tasks/commit/596152e054599bd858f5e1e0ddc7629a48b26966))
+- version [ci skip](<[6143dc8](https://github.com/redkubes/otomi-tasks/commit/6143dc8a8eba6f6e6579a880d6136e2a792fec22)>)
+
+### [0.2.6](https://github.com/redkubes/otomi-tasks/compare/v0.2.5...v0.2.6) (2021-05-22)
+
+### Features
+
+- Gitea drone ([#33](https://github.com/redkubes/otomi-tasks/issues/33)) ([2b2d2ff](https://github.com/redkubes/otomi-tasks/commit/2b2d2ff8743b58899dd6a88878af4c9b298fd08f))
+- Gitea drone task ([#28](https://github.com/redkubes/otomi-tasks/issues/28)) ([0e58f0c](https://github.com/redkubes/otomi-tasks/commit/0e58f0c16671bf16e822b6e22c3e01b25d0a07f9))
 
 ### [0.2.5](https://github.com/redkubes/otomi-tasks/compare/v0.2.4...v0.2.5) (2021-03-12)
 

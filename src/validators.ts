@@ -3,6 +3,7 @@ import { str, bool, json, cleanEnv as clean, CleanEnv, StrictCleanOptions, Valid
 export const CERT_ROTATION_DAYS = num({ desc: 'The amount of days for the cert rotation', default: 75 })
 export const DOMAINS = json({ desc: 'A list of domains and their cert status' })
 export const HARBOR_BASE_URL = str({ desc: 'The harbor core service URL' })
+export const HARBOR_BASE_REPO_URL = str({ desc: 'The harbor repository base URL' })
 export const HARBOR_PASSWORD = str({ desc: 'The harbor admin password' })
 export const HARBOR_USER = str({ desc: 'The harbor admin username' })
 export const IDP_ALIAS = str({ desc: 'An alias for the IDP' })
@@ -37,10 +38,13 @@ export const OIDC_VERIFY_CERT = bool({ desc: 'Wether to validate the OIDC endpoi
 export const REDIRECT_URIS = json({ desc: "A list of redirect URI's in JSON format" })
 export const REGION = str({ desc: 'The cloud region' })
 export const SECRETS_NAMESPACE = str({ desc: 'The namespace of the TLS secrets', default: 'istio-system' })
-export const TEAM_NAMES = json({ desc: 'A list of team names in JSON format' })
+export const TEAM_IDS = json({ desc: 'A list of team ids in JSON format' })
 export const TENANT_CLIENT_ID = str({ desc: 'The tenant client id' })
 export const TENANT_CLIENT_SECRET = str({ desc: 'The tenant client secret' })
 export const TENANT_ID = str({ desc: 'The tenant ID' })
+export const OTOMI_VALUES_INPUT = str({ desc: 'The chart values.yaml file' })
+export const OTOMI_SCHEMA_PATH = str({ desc: 'The path to the values-schema.yaml schema file' })
+export const OTOMI_ENV_DIR = str({ desc: 'The path to the otomi-values folder' })
 
 const { env } = process
 export function cleanEnv<T>(
