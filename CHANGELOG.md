@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.7](https://github.com/redkubes/otomi-tasks/compare/v0.2.6...v0.2.7) (2021-07-05)
+
+
+### Features
+
+* merge values task for chart ([#35](https://github.com/redkubes/otomi-tasks/issues/35)) ([f28fe87](https://github.com/redkubes/otomi-tasks/commit/f28fe87c5c8215a3796fe3eb7c28d42277897a8f))
+
+
+### Bug Fixes
+
+* creating a robot account for each project and adding imagepullse… ([#34](https://github.com/redkubes/otomi-tasks/issues/34)) ([596152e](https://github.com/redkubes/otomi-tasks/commit/596152e054599bd858f5e1e0ddc7629a48b26966))
+* version [ci skip] ([6143dc8](https://github.com/redkubes/otomi-tasks/commit/6143dc8a8eba6f6e6579a880d6136e2a792fec22))
+
 ### [0.2.6](https://github.com/redkubes/otomi-tasks/compare/v0.2.5...v0.2.6) (2021-05-22)
 
 

@@ -2,7 +2,6 @@ import { omit, merge, pick } from 'lodash'
 import yaml from 'js-yaml'
 import fs from 'fs'
 import $RefParser from '@apidevtools/json-schema-ref-parser'
-
 import { cleanEnv, OTOMI_VALUES_INPUT, OTOMI_SCHEMA_PATH, OTOMI_ENV_DIR } from '../../validators'
 import { cleanValues } from '../../utils'
 
