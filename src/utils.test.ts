@@ -4,7 +4,7 @@ import sinon from 'sinon'
 import { expect } from 'chai'
 import { cloneDeep } from 'lodash'
 import http from 'http'
-import { createPullSecret, deletePullSecret, getApiClient, objectToArray } from './utils'
+import { cleanValues, createPullSecret, deletePullSecret, getApiClient, objectToArray } from './utils'
 
 describe('Utils', () => {
   it('should convert an object to array', (done) => {
@@ -115,5 +115,12 @@ describe('Secret creation', () => {
     await deletePullSecret(teamId, name)
     expect(patchSpy).to.have.been.calledWith('default', namespace, saNewEmpty)
     expect(deleteSpy).to.have.been.calledWith(name, namespace)
+  })
+
+  it('should clean an object successfully', async () => {
+    const inp = { teamConfig: { teams: null } }
+    const out = { teamConfig: {} }
+    const res = cleanValues(inp)
+    expect(res).to.deep.equal(out)
   })
 })

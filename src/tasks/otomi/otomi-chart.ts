@@ -4,6 +4,7 @@ import fs from 'fs'
 import $RefParser from '@apidevtools/json-schema-ref-parser'
 
 import { cleanEnv, OTOMI_VALUES_INPUT, OTOMI_SCHEMA_PATH, OTOMI_ENV_DIR } from '../../validators'
+import { cleanValues } from '../../utils'
 
 const env = cleanEnv({
   OTOMI_VALUES_INPUT,
@@ -12,6 +13,9 @@ const env = cleanEnv({
 })
 
 const schemaKeywords = ['properties', 'anyOf', 'allOf', 'oneOf']
+
+let suffix = ''
+if (fs.existsSync(`${env.OTOMI_ENV_DIR}/.sops.yaml`)) suffix = '.dec'
 
 export function extractSecrets(schema: any, parentAddress?: string): Array<string> {
   return Object.keys(schema)
@@ -28,30 +32,20 @@ export function extractSecrets(schema: any, parentAddress?: string): Array<strin
     .filter(Boolean) as Array<string>
 }
 
-function mergeValues(targetPath: string, newValues): void {
-  let values
-  if (fs.existsSync(targetPath)) {
-    if (targetPath.includes('/secrets.')) {
-      values = yaml.load(fs.readFileSync(`${targetPath}.dec`).toString())
-    } else {
-      values = yaml.load(fs.readFileSync(targetPath).toString())
-    }
-
-    if (!values) {
-      values = {}
-    }
-
-    merge(values, newValues)
-
-    if (targetPath.includes('/secrets.')) {
-      fs.writeFileSync(`${targetPath}.dec`, yaml.safeDump(values))
-    } else {
-      fs.writeFileSync(targetPath, yaml.safeDump(values))
-    }
-  } else {
-    // if the targetPath doesn't exist, just create it and write the valueObject on it. Doesn't matter if it is secret or not. and always write in its yaml file
+function mergeValues(targetPath: string, inValues: object): void {
+  const newValues = cleanValues(inValues)
+  console.debug(`targetPath: ${targetPath}, values: ${JSON.stringify(newValues)}`)
+  if (!fs.existsSync(targetPath)) {
+    // If the targetPath doesn't exist, just create it and write the valueObject in it.
+    // It doesn't matter if it is secret or not. and always write in its yaml file
     fs.writeFileSync(targetPath, yaml.safeDump(newValues))
+    return
   }
+  let useSuffix = suffix
+  if (!targetPath.includes('/secrets.')) useSuffix = ''
+  const values = cleanValues(yaml.load(fs.readFileSync(`${targetPath}${useSuffix}`).toString()))
+  merge(values, newValues)
+  fs.writeFileSync(`${targetPath}${useSuffix}`, yaml.safeDump(values))
 }
 
 export default async function main(): Promise<void> {
