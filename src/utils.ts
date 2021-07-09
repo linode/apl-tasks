@@ -185,11 +185,3 @@ export async function deletePullSecret(teamId: string, name: string): Promise<vo
     throw new Error(`Secret '${name}' does not exist in namespace '${namespace}'`)
   }
 }
-
-export function cleanValues(inObj) {
-  const obj = omitBy(inObj, isNil)
-  Object.keys(obj).forEach((k) => {
-    if (typeof obj[k] === 'object') obj[k] = cleanValues(obj[k])
-  })
-  return obj
-}

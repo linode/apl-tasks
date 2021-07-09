@@ -91,8 +91,8 @@ const config: any = {
 
 const systemNamespace = 'harbor'
 const systemSecretName = 'harbor-robot-admin'
-const projectSecretName = 'image-pull-secret'
-const projectRobotName = 'kubernetes'
+const projectSecretName = 'harbor-pullsecret'
+const projectRobotName = 'otomi'
 const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
 const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, env.HARBOR_BASE_URL)
 const robotv1Api = new Robotv1Api(env.HARBOR_USER, env.HARBOR_PASSWORD, env.HARBOR_BASE_URL)
@@ -130,7 +130,7 @@ async function createProjectRobotSecret(teamId: string, projectId: string): Prom
   const projectRobot: RobotCreate = {
     name: projectRobotName,
     duration: -1,
-    description: 'Used by kubernetes to pull images from harbor in each team',
+    description: 'Created by Otomi for transparent pulling.',
     disable: false,
     level: 'project',
     permissions: [

@@ -116,11 +116,4 @@ describe('Secret creation', () => {
     expect(patchSpy).to.have.been.calledWith('default', namespace, saNewEmpty)
     expect(deleteSpy).to.have.been.calledWith(name, namespace)
   })
-
-  it('should clean an object successfully', async () => {
-    const inp = { teamConfig: { teams: null } }
-    const out = { teamConfig: {} }
-    const res = cleanValues(inp)
-    expect(res).to.deep.equal(out)
-  })
 })

@@ -3,7 +3,7 @@ import yaml from 'js-yaml'
 import fs from 'fs'
 import $RefParser from '@apidevtools/json-schema-ref-parser'
 import { cleanEnv, OTOMI_VALUES_INPUT, OTOMI_SCHEMA_PATH, OTOMI_ENV_DIR } from '../../validators'
-import { cleanValues } from '../../utils'
+import { removeEmpty } from '../../utils'
 
 const env = cleanEnv({
   OTOMI_VALUES_INPUT,
@@ -31,8 +31,7 @@ export function extractSecrets(schema: any, parentAddress?: string): Array<strin
     .filter(Boolean) as Array<string>
 }
 
-function mergeValues(targetPath: string, inValues: object): void {
-  const newValues = cleanValues(inValues)
+function mergeValues(targetPath: string, newValues: object): void {
   // console.debug(`targetPath: ${targetPath}, values: ${JSON.stringify(newValues)}`)
   if (!fs.existsSync(targetPath)) {
     // If the targetPath doesn't exist, just create it and write the valueObject in it.
@@ -42,7 +41,7 @@ function mergeValues(targetPath: string, inValues: object): void {
   }
   let useSuffix = suffix
   if (!targetPath.includes('/secrets.')) useSuffix = ''
-  const values = cleanValues(yaml.load(fs.readFileSync(`${targetPath}${useSuffix}`).toString()))
+  const values = yaml.load(fs.readFileSync(`${targetPath}${useSuffix}`).toString()) ?? {}
   merge(values, newValues)
   fs.writeFileSync(`${targetPath}${useSuffix}`, yaml.safeDump(values))
 }
