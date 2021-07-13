@@ -23,7 +23,15 @@ import {
   OIDC_VERIFY_CERT,
   TEAM_IDS,
 } from '../../validators'
-import { createSecret, getApiClient, getSecret, doApiCall, handleErrors, createPullSecret } from '../../utils'
+import {
+  createSecret,
+  createPullSecret,
+  getApiClient,
+  getSecret,
+  doApiCall,
+  handleErrors,
+  faultTolerantFetch,
+} from '../../utils'
 
 const env = cleanEnv({
   HARBOR_BASE_URL,
@@ -211,6 +219,7 @@ async function ensureProjectSecret(teamId: string, projectId: string): Promise<v
 }
 
 async function main(): Promise<void> {
+  await faultTolerantFetch(env.HARBOR_BASE_URL)
   await ensureSystemSecret()
 
   // now we can set the token on our apis

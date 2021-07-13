@@ -4,7 +4,7 @@ import sinon from 'sinon'
 import { expect } from 'chai'
 import { cloneDeep } from 'lodash'
 import http from 'http'
-import { cleanValues, createPullSecret, deletePullSecret, getApiClient, objectToArray } from './utils'
+import { createPullSecret, deletePullSecret, getApiClient, objectToArray } from './utils'
 
 describe('Utils', () => {
   it('should convert an object to array', (done) => {

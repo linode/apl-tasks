@@ -1,6 +1,9 @@
 import http from 'http'
 import { findIndex, isNil, mapValues, omitBy } from 'lodash'
 import { CoreV1Api, KubeConfig, V1Secret, V1ObjectMeta, V1ServiceAccount } from '@kubernetes/client-node'
+import retry, { Options } from 'async-retry'
+import fetch, { RequestInit } from 'node-fetch'
+import { exit } from 'process'
 
 let apiClient: CoreV1Api
 
@@ -95,7 +98,7 @@ export async function doApiCall(
   }
 }
 
-export function handleErrors(errors: string[]) {
+export function handleErrors(errors: string[]): void {
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
     process.exit(1)
@@ -183,5 +186,38 @@ export async function deletePullSecret(teamId: string, name: string): Promise<vo
     await client.deleteNamespacedSecret(name, namespace)
   } catch (e) {
     throw new Error(`Secret '${name}' does not exist in namespace '${namespace}'`)
+  }
+}
+
+const retryOptions: Options = {
+  retries: 2,
+  factor: 2,
+  // minTimeout: The number of milliseconds before starting the first retry. Default is 1000.
+  minTimeout: 3000,
+  // The maximum number of milliseconds between two retries.
+  maxTimeout: 10000,
+}
+
+export async function faultTolerantFetch(url: string): Promise<void> {
+  try {
+    await retry(async (bail) => {
+      try {
+        const fetchOptions: RequestInit = {
+          redirect: 'follow',
+        }
+        const res = await fetch(url, fetchOptions)
+        if (res.status !== 200) {
+          console.warn(`GET ${res.url} ${res.status}`)
+          bail(new Error(`Retry`))
+        }
+      } catch (e) {
+        // Print system erros like ECONNREFUSED
+        console.error(e.message)
+        throw e
+      }
+    }, retryOptions)
+  } catch (e) {
+    console.log('Max retry tries has been reached')
+    exit(1)
   }
 }
