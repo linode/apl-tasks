@@ -46,7 +46,7 @@ export function extractAllRequiredValues(schema: any, parentAddress?: string): A
     })
     .filter(Boolean) as Array<string>
 }
-export function extractAllValues(schema: any, parentAddress?: string): Array<string> {
+export function extractAllValuesPlusBranches(schema: any, parentAddress?: string): Array<string> {
   return Object.keys(schema)
     .flatMap((key) => {
       const childObj = schema[key]
@@ -59,11 +59,30 @@ export function extractAllValues(schema: any, parentAddress?: string): Array<str
 
       if ('default' in childObj || 'type' in childObj || 'description' in childObj) {
         const row = `| \`${address}\` | ${childObj?.description || ''} | ${childObj?.default || ''} |`
-        return [row].concat(extractAllValues(childObj, address))
+        return [row].concat(extractAllValuesPlusBranches(childObj, address))
       }
-      return extractAllValues(childObj, address)
+      return extractAllValuesPlusBranches(childObj, address)
     })
     .filter(Boolean)
+}
+export function extractAllValues(schema: any, parentAddress?: string): Array<string> {
+  return Object.keys(schema)
+    .flatMap((key) => {
+      if (key === 'type' && schema[key] !== 'object') {
+        const row = `| \`${parentAddress}\` | ${schema?.description || ''} | ${schema?.default || ''} |`
+        return row
+      }
+
+      const childObj = schema[key]
+      if (typeof childObj !== 'object') return false
+
+      let address
+      if (schemaKeywords.includes(key) || !Number.isNaN(Number(key))) address = parentAddress
+      else if (parentAddress === undefined) address = key
+      else address = `${parentAddress}.${key}`
+      return extractAllValues(childObj, address)
+    })
+    .filter(Boolean) as Array<string>
 }
 
 export default async function main(): Promise<void> {
