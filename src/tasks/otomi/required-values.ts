@@ -47,17 +47,6 @@ export function extractAllRequiredValues(schema: any, parentAddress?: string): A
     .filter(Boolean) as Array<string>
 }
 export function extractAllValues(schema: any, parentAddress?: string): Array<string> {
-  // if (!('properties' in schema)) {
-  //   return [`| \`${parentAddress}!\` | ${schema.description || ''} | ${schema.default || ''} | ${schema.type || ''} |`]
-  // }
-
-  // if ('properties' in schema) {
-  //   return extractAllValues(schema.properties, parentAddress || '')
-  // }
-  // return Object.keys(schema).flatMap((key) => {
-  //   return extractAllValues(schema[key], parentAddress ? `${parentAddress}.${key}` : key)
-  // })
-
   return Object.keys(schema)
     .flatMap((key) => {
       const childObj = schema[key]
@@ -75,27 +64,6 @@ export function extractAllValues(schema: any, parentAddress?: string): Array<str
       return extractAllValues(childObj, address)
     })
     .filter(Boolean)
-
-  // return Object.keys(schema)
-  //   .flatMap((key) => {
-  //     const childObj = schema[key]
-
-  //     if (key === 'required') {
-  //       return childObj.map((item) => {
-  //         const parameter = parentAddress ? `${parentAddress}.${item}` : item
-  //         return schema.properties && schema.properties[item] && schema.properties[item].description
-  //           ? `| ${parameter} | ${schema.properties[item].description} |`
-  //           : `| ${parameter} | |`
-  //       })
-  //     }
-  //     if (typeof childObj !== 'object') return false
-  //     let address
-  //     if (schemaKeywords.includes(key) || !Number.isNaN(Number(key))) address = parentAddress
-  //     else if (parentAddress === undefined) address = key
-  //     else address = `${parentAddress}.${key}`
-  //     return extractAllValues(childObj, address)
-  //   })
-  //   .filter(Boolean) as Array<string>
 }
 
 export default async function main(): Promise<void> {
