@@ -128,6 +128,18 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug required-values task",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "tasks:required-values-dev"],
+      "cwd": "${workspaceRoot}",
+      "env": {
+        "DEBUG": "*"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Debug Keycloak task",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:keycloak-dev"],
