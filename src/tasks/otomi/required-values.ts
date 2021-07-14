@@ -11,7 +11,7 @@ const env = cleanEnv({
   OTOMI_SCHEMA_PATH,
 })
 
-const schemaKeywords = ['properties', 'anyOf', 'allOf', 'oneOf', 'not', 'items']
+const schemaKeywords = ['properties', 'anyOf', 'allOf', 'oneOf', 'not']
 
 export function extractEssentialValues(schema: any, parentAddress?: string): Array<string> {
   return schema.required.flatMap((item) => {
@@ -68,8 +68,12 @@ export function extractAllValuesPlusBranches(schema: any, parentAddress?: string
 export function extractAllValues(schema: any, parentAddress?: string): Array<string> {
   return Object.keys(schema)
     .flatMap((key) => {
-      if (key === 'type' && schema[key] !== 'object') {
-        const row = `| \`${parentAddress}\` | ${schema?.description || ''} | ${schema?.default || ''} |`
+      if (key === 'type' && !(typeof schema[key] === 'object' && 'type' in schema[key])) {
+        const parameter = `\`${parentAddress?.replace(/\|/g, '\\|').replace(/items/g, '[]')}\``
+        const type = `\`${schema.type}\``
+        const description = `${schema?.description?.replace(/\n/g, ' ').replace(/\|/g, '\\|') || ''}`
+        const defaalt = `\`${schema?.default || 'nil'}\``
+        const row = `| ${parameter} | ${type} | ${description} | ${defaalt} |`
         return row
       }
 
@@ -94,9 +98,10 @@ export default async function main(): Promise<void> {
   const allValues = extractAllValues(cleanSchema)
 
   // generate markdown table string:
-  let essentials = allValues.reduce((i, j) => `${i}\n${j}`)
-  essentials = `|Parameter|Description|Default|\n|-|-|-|\n${essentials}`
-  console.log(essentials)
+  let str = allValues.reduce((i, j) => `${i}\n${j}`)
+  str = `|Parameter|Type|Description|Default|\n|-|-|-|-|\n${str}`
+  fs.writeFileSync('/Users/mojtaba/opt/allValues.md', str)
+  console.log('done')
 }
 
 if (typeof require !== 'undefined' && require.main === module) {
