@@ -68,7 +68,12 @@ export function extractAllValuesPlusBranches(schema: any, parentAddress?: string
 export function extractAllValues(schema: any, parentAddress?: string): Array<string> {
   return Object.keys(schema)
     .flatMap((key) => {
-      if (key === 'type' && !(typeof schema[key] === 'object' && 'type' in schema[key])) {
+      if (
+        key === 'type' &&
+        !(typeof schema.type === 'object' && 'type' in schema[key]) && // sometimes 'type' is a property itself
+        schema.type !== 'object' &&
+        schema.type !== 'array'
+      ) {
         const parameter = `\`${parentAddress?.replace(/\|/g, '\\|').replace(/items/g, '[]')}\``
         const type = `\`${schema.type}\``
         const description = `${schema?.description?.replace(/\n/g, ' ').replace(/\|/g, '\\|') || ''}`
