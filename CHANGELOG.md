@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.8](https://github.com/redkubes/otomi-tasks/compare/v0.2.7...v0.2.8) (2021-07-20)
+
+
+### Features
+
+* otomi chart ([#37](https://github.com/redkubes/otomi-tasks/issues/37)) ([47219a7](https://github.com/redkubes/otomi-tasks/commit/47219a7b1c184c220368242155cbd88a4dce4467))
+* retry availability of dependent services ([#36](https://github.com/redkubes/otomi-tasks/issues/36)) ([6beefec](https://github.com/redkubes/otomi-tasks/commit/6beefecc5f5d20bf1503e0c9f33dd2e4b882adab))
+
+
+### Bug Fixes
+
+* values merge logic ([f9612d8](https://github.com/redkubes/otomi-tasks/commit/f9612d8dfcda473a94036499a052c591989406b7))
+
 ### [0.2.7](https://github.com/redkubes/otomi-tasks/compare/v0.2.6...v0.2.7) (2021-07-05)
 
 ### Features
