@@ -189,16 +189,15 @@ export async function deletePullSecret(teamId: string, name: string): Promise<vo
   }
 }
 
-const retryOptions: Options = {
-  retries: 2,
-  factor: 2,
-  // minTimeout: The number of milliseconds before starting the first retry. Default is 1000.
-  minTimeout: 3000,
-  // The maximum number of milliseconds between two retries.
-  maxTimeout: 10000,
-}
-
 export async function faultTolerantFetch(url: string): Promise<void> {
+  const retryOptions: Options = {
+    retries: 10,
+    factor: 2,
+    // minTimeout: The number of milliseconds before starting the first retry. Default is 1000.
+    minTimeout: 1000,
+    // The maximum number of milliseconds between two retries.
+    maxTimeout: 30000,
+  }
   try {
     await retry(async (bail) => {
       try {
