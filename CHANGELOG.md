@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.9](https://github.com/redkubes/otomi-tasks/compare/v0.2.8...v0.2.9) (2021-07-26)
+
+
+### Bug Fixes
+
+* harbor base url ([da8ed8d](https://github.com/redkubes/otomi-tasks/commit/da8ed8d1426a853f8993e7ab3990334ce9921dee))
+* harbor health url ([b79afdf](https://github.com/redkubes/otomi-tasks/commit/b79afdf069aaca4ed665a3e686f315c024e59506))
+* harbor health url ([2d676e5](https://github.com/redkubes/otomi-tasks/commit/2d676e57f516f2d78d427cea499123d6e29f4de2))
+* harbor health url ([6dfe35e](https://github.com/redkubes/otomi-tasks/commit/6dfe35e6529fd8359d4f15e7dbe687db7b5a6088))
+* increasing timeout for retry ([29c536a](https://github.com/redkubes/otomi-tasks/commit/29c536ad7aa30c9bc7d48c61edc08e292ee5bd0c))
+* sampple value for harbor base url [ci skip] ([2ee10a9](https://github.com/redkubes/otomi-tasks/commit/2ee10a954810edc2b9a02eba5e58058e791eeca7))
+
 ### [0.2.8](https://github.com/redkubes/otomi-tasks/compare/v0.2.7...v0.2.8) (2021-07-20)
 
 
