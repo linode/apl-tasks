@@ -15,6 +15,7 @@ import {
 import {
   cleanEnv,
   HARBOR_BASE_URL,
+  HARBOR_HEALTH_URL,
   HARBOR_BASE_REPO_URL,
   HARBOR_PASSWORD,
   HARBOR_USER,
@@ -103,6 +104,7 @@ const projectSecretName = 'harbor-pullsecret'
 const projectRobotName = 'otomi'
 const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
 const harborBaseUrl = `${env.HARBOR_BASE_URL}/api/v2.0`
+const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const robotv1Api = new Robotv1Api(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const configureApi = new ConfigureApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
@@ -220,7 +222,7 @@ async function ensureProjectSecret(teamId: string, projectId: string): Promise<v
 }
 
 async function main(): Promise<void> {
-  await faultTolerantFetch(env.HARBOR_BASE_URL)
+  await faultTolerantFetch(harborHealthUrl)
   await ensureSystemSecret()
 
   // now we can set the token on our apis
