@@ -15,7 +15,6 @@ import {
 import {
   cleanEnv,
   HARBOR_BASE_URL,
-  HARBOR_HEALTH_URL,
   HARBOR_BASE_REPO_URL,
   HARBOR_PASSWORD,
   HARBOR_USER,
