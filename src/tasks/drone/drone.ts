@@ -1,5 +1,5 @@
 import * as drone from 'drone-node'
-import { doApiCall, faultTolerantFetch, handleErrors } from '../../utils'
+import { doApiCall, waitTillAvailable, handleErrors } from '../../utils'
 import { cleanEnv, DRONE_URL, DRONE_TOKEN } from '../../validators'
 import { orgName, repoName } from '../common'
 
@@ -21,7 +21,7 @@ const client = new drone.Client({
 const errors: string[] = []
 
 async function main(): Promise<void> {
-  await faultTolerantFetch(env.DRONE_URL)
+  await waitTillAvailable(env.DRONE_URL)
 
   // first two steps are not working, and drone discourse mentions only real users being able to do this:
   // https://discourse.drone.io/t/not-found-from-machine-user/7073/4?u=morriz

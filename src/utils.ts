@@ -1,9 +1,10 @@
+/* eslint-disable no-loop-func */
+/* eslint-disable no-await-in-loop */
 import http from 'http'
 import { findIndex, mapValues } from 'lodash'
 import { CoreV1Api, KubeConfig, V1Secret, V1ObjectMeta, V1ServiceAccount } from '@kubernetes/client-node'
 import retry, { Options } from 'async-retry'
 import fetch, { RequestInit } from 'node-fetch'
-import { exit } from 'process'
 
 let apiClient: CoreV1Api
 
@@ -189,7 +190,7 @@ export async function deletePullSecret(teamId: string, name: string): Promise<vo
   }
 }
 
-export async function faultTolerantFetch(url: string): Promise<void> {
+export async function waitTillAvailable(url: string, status = 200): Promise<void> {
   const retryOptions: Options = {
     retries: 10,
     factor: 2,
@@ -198,25 +199,35 @@ export async function faultTolerantFetch(url: string): Promise<void> {
     // The maximum number of milliseconds between two retries.
     maxTimeout: 30000,
   }
+  const minimumSuccessful = 10
+  let count = 0
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
   try {
-    await retry(async (bail) => {
-      try {
-        const fetchOptions: RequestInit = {
-          redirect: 'follow',
+    do {
+      console.log('retry count: ', count)
+      await retry(async (bail) => {
+        try {
+          const fetchOptions: RequestInit = {
+            redirect: 'follow',
+          }
+          const res = await fetch(url, fetchOptions)
+          if (res.status !== status) {
+            console.warn(`GET ${res.url} ${res.status}`)
+            bail(new Error(`Retry`))
+          } else {
+            count += 1
+            await delay(1000)
+          }
+        } catch (e) {
+          // Print system errors like ECONNREFUSED
+          console.error(e.message)
+          count = 0
+          throw e
         }
-        const res = await fetch(url, fetchOptions)
-        if (res.status !== 200) {
-          console.warn(`GET ${res.url} ${res.status}`)
-          bail(new Error(`Retry`))
-        }
-      } catch (e) {
-        // Print system erros like ECONNREFUSED
-        console.error(e.message)
-        throw e
-      }
-    }, retryOptions)
+      }, retryOptions)
+    } while (count < minimumSuccessful)
   } catch (e) {
-    console.log('Max retry tries has been reached')
-    exit(1)
+    console.error('Max retry tries has been reached: ', e)
+    process.exit(1)
   }
 }

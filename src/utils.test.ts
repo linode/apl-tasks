@@ -4,21 +4,8 @@ import sinon from 'sinon'
 import { expect } from 'chai'
 import { cloneDeep } from 'lodash'
 import http from 'http'
-import { createPullSecret, deletePullSecret, getApiClient, objectToArray } from './utils'
-
-describe('Utils', () => {
-  it('should convert an object to array', (done) => {
-    const obj = {
-      bla: {
-        dida: 'okidoki',
-      },
-    }
-    const res = [{ keyName: 'bla', keyValue: obj.bla }]
-    const x = objectToArray(obj, 'keyName', 'keyValue')
-    expect(x).to.deep.equal(res)
-    done()
-  })
-})
+import fetch from 'node-fetch'
+import { createPullSecret, deletePullSecret, getApiClient, objectToArray, waitTillAvailable } from './utils'
 
 describe('Secret creation', () => {
   const teamId = 'testtt'
@@ -62,15 +49,35 @@ describe('Secret creation', () => {
   })
 
   const client: CoreV1Api = getApiClient()
+  const successResp = Promise.resolve({ status: 200 })
 
   let sandbox
   beforeEach(() => {
     sandbox = sinon.createSandbox()
+    sandbox.stub(fetch, 'Promise').returns(successResp)
   })
 
   afterEach(() => {
     sandbox.restore()
   })
+
+  it('should convert an object to array', (done) => {
+    const obj = {
+      bla: {
+        dida: 'okidoki',
+      },
+    }
+    const res = [{ keyName: 'bla', keyValue: obj.bla }]
+    const x = objectToArray(obj, 'keyName', 'keyValue')
+    expect(x).to.deep.equal(res)
+    done()
+  })
+
+  // it('should pass waitTillAvailable after 4 successful hits', async (done) => {
+  //   await waitTillAvailable('bla')
+  //   expect(fetch).to.have.been.callCount(4)
+  //   done()
+  // })
 
   it('should create a valid pull secret and attach it to an SA without pullsecrets', async () => {
     sandbox.stub(client, 'createNamespacedSecret').returns(secretPromise)

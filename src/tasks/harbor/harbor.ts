@@ -30,7 +30,7 @@ import {
   getSecret,
   doApiCall,
   handleErrors,
-  faultTolerantFetch,
+  waitTillAvailable,
 } from '../../utils'
 
 const env = cleanEnv({
@@ -221,7 +221,7 @@ async function ensureProjectSecret(teamId: string, projectId: string): Promise<v
 }
 
 async function main(): Promise<void> {
-  await faultTolerantFetch(harborHealthUrl)
+  await waitTillAvailable(harborHealthUrl)
   await ensureSystemSecret()
 
   // now we can set the token on our apis

@@ -1,5 +1,5 @@
 import { OrganizationApi, CreateRepoOption, CreateOrgOption, CreateTeamOption } from '@redkubes/gitea-client-node'
-import { doApiCall, faultTolerantFetch } from '../../utils'
+import { doApiCall, waitTillAvailable } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
 import { orgName, repoName, username, teamNameViewer } from '../common'
 
@@ -27,7 +27,7 @@ export async function createTeam(orgApi: OrganizationApi): Promise<void> {
 }
 
 export default async function main(): Promise<void> {
-  await faultTolerantFetch(env.GITEA_URL)
+  await waitTillAvailable(env.GITEA_URL)
 
   let giteaUrl = env.GITEA_URL
   if (giteaUrl.endsWith('/')) {
