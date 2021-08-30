@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.10](https://github.com/redkubes/otomi-tasks/compare/v0.2.9...v0.2.10) (2021-08-30)
+
+
+### Bug Fixes
+
+* waitTillAvailable ([062bd82](https://github.com/redkubes/otomi-tasks/commit/062bd82a3c86fcc72ce93a3c85e2304658152d1b))
+
 ### [0.2.9](https://github.com/redkubes/otomi-tasks/compare/v0.2.8...v0.2.9) (2021-07-26)
 
 
