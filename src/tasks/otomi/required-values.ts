@@ -87,7 +87,7 @@ export function extractAllValues(schema: any, parentAddress?: string): Array<str
 
       let address
       if (schemaKeywords.includes(key) || !Number.isNaN(Number(key))) address = parentAddress
-      else if (parentAddress === undefined) address = key
+      else if (!parentAddress) address = key
       else address = `${parentAddress}.${key}`
       return extractAllValues(childObj, address)
     })
