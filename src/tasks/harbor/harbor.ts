@@ -23,7 +23,15 @@ import {
   OIDC_VERIFY_CERT,
   TEAM_IDS,
 } from '../../validators'
-import { createSecret, getApiClient, getSecret, doApiCall, handleErrors, createPullSecret } from '../../utils'
+import {
+  createSecret,
+  createPullSecret,
+  getApiClient,
+  getSecret,
+  doApiCall,
+  handleErrors,
+  waitTillAvailable,
+} from '../../utils'
 
 const env = cleanEnv({
   HARBOR_BASE_URL,
@@ -91,14 +99,16 @@ const config: any = {
 
 const systemNamespace = 'harbor'
 const systemSecretName = 'harbor-robot-admin'
-const projectSecretName = 'image-pull-secret'
-const projectRobotName = 'kubernetes'
+const projectSecretName = 'harbor-pullsecret'
+const projectRobotName = 'otomi'
 const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
-const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, env.HARBOR_BASE_URL)
-const robotv1Api = new Robotv1Api(env.HARBOR_USER, env.HARBOR_PASSWORD, env.HARBOR_BASE_URL)
-const configureApi = new ConfigureApi(env.HARBOR_USER, env.HARBOR_PASSWORD, env.HARBOR_BASE_URL)
-const projectsApi = new ProjectApi(env.HARBOR_USER, env.HARBOR_PASSWORD, env.HARBOR_BASE_URL)
-const memberApi = new MemberApi(env.HARBOR_USER, env.HARBOR_PASSWORD, env.HARBOR_BASE_URL)
+const harborBaseUrl = `${env.HARBOR_BASE_URL}/api/v2.0`
+const harborHealthUrl = `${harborBaseUrl}/systeminfo`
+const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
+const robotv1Api = new Robotv1Api(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
+const configureApi = new ConfigureApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
+const projectsApi = new ProjectApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
+const memberApi = new MemberApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 
 function setAuth(secret): void {
   bearerAuth.accessToken = secret
@@ -130,7 +140,7 @@ async function createProjectRobotSecret(teamId: string, projectId: string): Prom
   const projectRobot: RobotCreate = {
     name: projectRobotName,
     duration: -1,
-    description: 'Used by kubernetes to pull images from harbor in each team',
+    description: 'Created by Otomi for transparent pulling.',
     disable: false,
     level: 'project',
     permissions: [
@@ -211,6 +221,7 @@ async function ensureProjectSecret(teamId: string, projectId: string): Promise<v
 }
 
 async function main(): Promise<void> {
+  await waitTillAvailable(harborHealthUrl)
   await ensureSystemSecret()
 
   // now we can set the token on our apis

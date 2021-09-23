@@ -5,7 +5,7 @@ import cookie from 'cookie'
 import { UserApi, CreateOAuth2ApplicationOptions } from '@redkubes/gitea-client-node'
 
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL, DRONE_URL } from '../../validators'
-import { createSecret, doApiCall, getApiClient, getSecret } from '../../utils'
+import { createSecret, doApiCall, waitTillAvailable, getApiClient, getSecret } from '../../utils'
 import { GiteaDroneError } from './common'
 import { username } from '../common'
 
@@ -93,6 +93,8 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  await waitTillAvailable(env.GITEA_URL)
+
   // fresh cluster: no secret no oauth app
   // already exists: cluster with predeployed secret and oauth app
   const remoteSecret = (await getSecret(secretName, namespace)) as DroneSecret

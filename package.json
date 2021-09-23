@@ -14,7 +14,7 @@
     "@redkubes/gitea-client-node": "1.1.1",
     "@redkubes/harbor-client-node": "^2.2.1",
     "@redkubes/keycloak-client-node": "^11.0.0",
-    "@types/lodash": "^4.14.158",
+    "async-retry": "^1.3.1",
     "aws-sdk": "^2.742.0",
     "axios": "^0.21.1",
     "bluebird": "^3.7.2",
@@ -25,6 +25,7 @@
     "lodash": "^4.17.21",
     "lowdb": "^1.0.0",
     "morgan": "^1.10.0",
+    "node-fetch": "^2.6.1",
     "ts-custom-error": "^3.2.0"
   },
   "description": "Tasks needed by the Otomi Container Platform to glue all the pieces together.",
@@ -32,12 +33,15 @@
     "@commitlint/cli": "^11.0.0",
     "@commitlint/config-conventional": "^11.0.0",
     "@hkdobrev/run-if-changed": "^0.3.1",
+    "@types/async-retry": "^1.4.2",
     "@types/chai": "^4.2.12",
     "@types/chai-as-promised": "^7.1.3",
     "@types/express": "^4.17.7",
+    "@types/lodash": "^4.14.158",
     "@types/lowdb": "^1.0.9",
     "@types/mocha": "^7.0.2",
     "@types/node": "^13.13.15",
+    "@types/node-fetch": "^2.5.11",
     "@types/sinon": "^9.0.4",
     "@types/sinon-chai": "^3.2.4",
     "@typescript-eslint/eslint-plugin": "^2.34.0",
@@ -138,5 +142,5 @@
       "tag": true
     }
   },
-  "version": "0.2.6"
+  "version": "0.2.10"
 }

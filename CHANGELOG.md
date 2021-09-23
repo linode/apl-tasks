@@ -2,26 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-### [0.2.7](https://github.com/redkubes/otomi-tasks/compare/v0.2.6...v0.2.7) (2021-07-05)
-
-
-### Features
-
-* merge values task for chart ([#35](https://github.com/redkubes/otomi-tasks/issues/35)) ([f28fe87](https://github.com/redkubes/otomi-tasks/commit/f28fe87c5c8215a3796fe3eb7c28d42277897a8f))
+### [0.2.10](https://github.com/redkubes/otomi-tasks/compare/v0.2.9...v0.2.10) (2021-08-30)
 
 
 ### Bug Fixes
 
-* creating a robot account for each project and adding imagepullse… ([#34](https://github.com/redkubes/otomi-tasks/issues/34)) ([596152e](https://github.com/redkubes/otomi-tasks/commit/596152e054599bd858f5e1e0ddc7629a48b26966))
-* version [ci skip] ([6143dc8](https://github.com/redkubes/otomi-tasks/commit/6143dc8a8eba6f6e6579a880d6136e2a792fec22))
+* waitTillAvailable ([062bd82](https://github.com/redkubes/otomi-tasks/commit/062bd82a3c86fcc72ce93a3c85e2304658152d1b))
 
-### [0.2.6](https://github.com/redkubes/otomi-tasks/compare/v0.2.5...v0.2.6) (2021-05-22)
+### [0.2.9](https://github.com/redkubes/otomi-tasks/compare/v0.2.8...v0.2.9) (2021-07-26)
+
+
+### Bug Fixes
+
+* harbor base url ([da8ed8d](https://github.com/redkubes/otomi-tasks/commit/da8ed8d1426a853f8993e7ab3990334ce9921dee))
+* harbor health url ([b79afdf](https://github.com/redkubes/otomi-tasks/commit/b79afdf069aaca4ed665a3e686f315c024e59506))
+* harbor health url ([2d676e5](https://github.com/redkubes/otomi-tasks/commit/2d676e57f516f2d78d427cea499123d6e29f4de2))
+* harbor health url ([6dfe35e](https://github.com/redkubes/otomi-tasks/commit/6dfe35e6529fd8359d4f15e7dbe687db7b5a6088))
+* increasing timeout for retry ([29c536a](https://github.com/redkubes/otomi-tasks/commit/29c536ad7aa30c9bc7d48c61edc08e292ee5bd0c))
+* sampple value for harbor base url [ci skip] ([2ee10a9](https://github.com/redkubes/otomi-tasks/commit/2ee10a954810edc2b9a02eba5e58058e791eeca7))
+
+### [0.2.8](https://github.com/redkubes/otomi-tasks/compare/v0.2.7...v0.2.8) (2021-07-20)
 
 
 ### Features
 
-* Gitea drone ([#33](https://github.com/redkubes/otomi-tasks/issues/33)) ([2b2d2ff](https://github.com/redkubes/otomi-tasks/commit/2b2d2ff8743b58899dd6a88878af4c9b298fd08f))
-* Gitea drone task ([#28](https://github.com/redkubes/otomi-tasks/issues/28)) ([0e58f0c](https://github.com/redkubes/otomi-tasks/commit/0e58f0c16671bf16e822b6e22c3e01b25d0a07f9))
+* otomi chart ([#37](https://github.com/redkubes/otomi-tasks/issues/37)) ([47219a7](https://github.com/redkubes/otomi-tasks/commit/47219a7b1c184c220368242155cbd88a4dce4467))
+* retry availability of dependent services ([#36](https://github.com/redkubes/otomi-tasks/issues/36)) ([6beefec](https://github.com/redkubes/otomi-tasks/commit/6beefecc5f5d20bf1503e0c9f33dd2e4b882adab))
+
+
+### Bug Fixes
+
+* values merge logic ([f9612d8](https://github.com/redkubes/otomi-tasks/commit/f9612d8dfcda473a94036499a052c591989406b7))
+
+### [0.2.7](https://github.com/redkubes/otomi-tasks/compare/v0.2.6...v0.2.7) (2021-07-05)
+
+### Features
+
+- merge values task for chart ([#35](https://github.com/redkubes/otomi-tasks/issues/35)) ([f28fe87](https://github.com/redkubes/otomi-tasks/commit/f28fe87c5c8215a3796fe3eb7c28d42277897a8f))
+
+### Bug Fixes
+
+- creating a robot account for each project and adding imagepullse… ([#34](https://github.com/redkubes/otomi-tasks/issues/34)) ([596152e](https://github.com/redkubes/otomi-tasks/commit/596152e054599bd858f5e1e0ddc7629a48b26966))
+- version [ci skip](<[6143dc8](https://github.com/redkubes/otomi-tasks/commit/6143dc8a8eba6f6e6579a880d6136e2a792fec22)>)
+
+### [0.2.6](https://github.com/redkubes/otomi-tasks/compare/v0.2.5...v0.2.6) (2021-05-22)
+
+### Features
+
+- Gitea drone ([#33](https://github.com/redkubes/otomi-tasks/issues/33)) ([2b2d2ff](https://github.com/redkubes/otomi-tasks/commit/2b2d2ff8743b58899dd6a88878af4c9b298fd08f))
+- Gitea drone task ([#28](https://github.com/redkubes/otomi-tasks/issues/28)) ([0e58f0c](https://github.com/redkubes/otomi-tasks/commit/0e58f0c16671bf16e822b6e22c3e01b25d0a07f9))
 
 ### [0.2.5](https://github.com/redkubes/otomi-tasks/compare/v0.2.4...v0.2.5) (2021-03-12)
 

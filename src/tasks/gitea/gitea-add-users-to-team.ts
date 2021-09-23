@@ -1,5 +1,5 @@
 import { OrganizationApi, AdminApi, User, Team } from '@redkubes/gitea-client-node'
-import { doApiCall } from '../../utils'
+import { doApiCall, waitTillAvailable } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
 import { orgName, teamNameOwners, username } from '../common'
 
@@ -9,6 +9,7 @@ const env = cleanEnv({
 })
 const errors: string[] = []
 export default async function main(): Promise<void> {
+  await waitTillAvailable(env.GITEA_URL)
   let giteaUrl = env.GITEA_URL
   if (giteaUrl.endsWith('/')) {
     giteaUrl = giteaUrl.slice(0, -1)
