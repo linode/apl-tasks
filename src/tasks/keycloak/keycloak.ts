@@ -118,48 +118,50 @@ async function main(): Promise<void> {
   // Create Identity Provider
   const idp = await realmConfig.createIdProvider()
 
-  const existingProviders = (await doApiCall(errors, 'Geting identity provider', async () => {
-    return providers.realmIdentityProviderInstancesGet(env.KEYCLOAK_REALM)
-  })) as Array<IdentityProviderRepresentation>
+  if (idp) {
+    const existingProviders = (await doApiCall(errors, 'Geting identity provider', async () => {
+      return providers.realmIdentityProviderInstancesGet(env.KEYCLOAK_REALM)
+    })) as Array<IdentityProviderRepresentation>
 
-  if (existingProviders.some((el) => el.alias === idp.alias)) {
-    await doApiCall(errors, 'Updating identity provider', async () => {
-      return providers.realmIdentityProviderInstancesAliasPut(env.KEYCLOAK_REALM, ensure(idp.alias), idp)
-    })
-  } else {
-    await doApiCall(errors, 'Creating identity provider', async () => {
-      return providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, idp)
-    })
-  }
+    if (existingProviders.some((el) => el.alias === idp.alias)) {
+      await doApiCall(errors, 'Updating identity provider', async () => {
+        return providers.realmIdentityProviderInstancesAliasPut(env.KEYCLOAK_REALM, ensure(idp.alias), idp)
+      })
+    } else {
+      await doApiCall(errors, 'Creating identity provider', async () => {
+        return providers.realmIdentityProviderInstancesPost(env.KEYCLOAK_REALM, idp)
+      })
+    }
 
-  // Create Identity Provider Mappers
-  // @NOTE - PUT involves adding strict required properties not in the factory
-  const idpMappers = realmConfig.createIdpMappers()
+    // Create Identity Provider Mappers
+    // @NOTE - PUT involves adding strict required properties not in the factory
+    const idpMappers = realmConfig.createIdpMappers()
 
-  const existingMappers = (await doApiCall(errors, `Getting role mappers`, () =>
-    providers.realmIdentityProviderInstancesAliasMappersGet(env.KEYCLOAK_REALM, env.IDP_ALIAS),
-  )) as IdentityProviderMapperRepresentation[]
+    const existingMappers = (await doApiCall(errors, `Getting role mappers`, () =>
+      providers.realmIdentityProviderInstancesAliasMappersGet(env.KEYCLOAK_REALM, env.IDP_ALIAS),
+    )) as IdentityProviderMapperRepresentation[]
 
-  await Promise.all(
-    idpMappers.map((idpMapper) => {
-      const existingMapper: IdentityProviderMapperRepresentation | undefined = (existingMappers || []).find(
-        (m) => m.name === idpMapper.name,
-      )
-      if (existingMapper) {
-        return doApiCall(errors, `Updating mapper ${idpMapper.name!}`, () =>
-          providers.realmIdentityProviderInstancesAliasMappersIdPut(
-            env.KEYCLOAK_REALM,
-            env.IDP_ALIAS,
-            existingMapper.id!,
-            { ...existingMapper, ...idpMapper },
-          ),
+    await Promise.all(
+      idpMappers.map((idpMapper) => {
+        const existingMapper: IdentityProviderMapperRepresentation | undefined = (existingMappers || []).find(
+          (m) => m.name === idpMapper.name,
         )
-      }
-      return doApiCall(errors, `Creating mapper ${idpMapper.name!}`, () =>
-        providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper),
-      )
-    }),
-  )
+        if (existingMapper) {
+          return doApiCall(errors, `Updating mapper ${idpMapper.name!}`, () =>
+            providers.realmIdentityProviderInstancesAliasMappersIdPut(
+              env.KEYCLOAK_REALM,
+              env.IDP_ALIAS,
+              existingMapper.id!,
+              { ...existingMapper, ...idpMapper },
+            ),
+          )
+        }
+        return doApiCall(errors, `Creating mapper ${idpMapper.name!}`, () =>
+          providers.realmIdentityProviderInstancesAliasMappersPost(env.KEYCLOAK_REALM, env.IDP_ALIAS, idpMapper),
+        )
+      }),
+    )
+  }
   // Create Otomi Client
   const client = realmConfig.createClient()
   const allClients = (await doApiCall(errors, 'Getting otomi client', () =>

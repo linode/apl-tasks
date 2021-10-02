@@ -84,17 +84,20 @@ export function createIdpMappers(): Array<api.IdentityProviderMapperRepresentati
   return teamMappers.concat(defaultMapper).concat(adminMapper).concat(teamAdminMapper)
 }
 
-export async function createIdProvider(): Promise<api.IdentityProviderRepresentation> {
-  const tenantId = env.TENANT_ID
-  const clientId = env.TENANT_CLIENT_ID
-  const alias = env.IDP_ALIAS
-  const clientSecret = env.TENANT_CLIENT_SECRET
-  const oidcUrl = env.IDP_OIDC_URL
-  const otomiClientIdp = defaultsDeep(
-    new api.IdentityProviderRepresentation(),
-    await idpProviderCfgTpl(alias, tenantId, clientId, clientSecret, oidcUrl),
-  )
-  return otomiClientIdp
+export async function createIdProvider(): Promise<api.IdentityProviderRepresentation | undefined> {
+  if (env.TENANT_CLIENT_ID && env.TENANT_CLIENT_SECRET && env.TENANT_ID) {
+    const tenantId = env.TENANT_ID
+    const clientId = env.TENANT_CLIENT_ID
+    const alias = env.IDP_ALIAS
+    const clientSecret = env.TENANT_CLIENT_SECRET
+    const oidcUrl = env.IDP_OIDC_URL
+    const otomiClientIdp = defaultsDeep(
+      new api.IdentityProviderRepresentation(),
+      await idpProviderCfgTpl(alias, tenantId, clientId, clientSecret, oidcUrl),
+    )
+    return otomiClientIdp
+  }
+  return undefined
 }
 
 export function createProtocolMappersForClientScope(): Array<api.ProtocolMapperRepresentation> {
