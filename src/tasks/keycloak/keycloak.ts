@@ -83,7 +83,6 @@ async function main(): Promise<void> {
   forEach(api, (a) => (a.accessToken = String(token.access_token)))
 
   // Create realm 'otomi'
-  // const adminUser = realmConfig.createAdminUser(env.KEYCLOAK_ADMIN)
   const realmConf = realmConfig.createRealm(keyCloakRealm)
   const existingRealm = (await doApiCall(errors, `Getting realm ${keyCloakRealm}`, () =>
     api.realms.realmGet(keyCloakRealm),
