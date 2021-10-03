@@ -6,11 +6,14 @@ export const HARBOR_BASE_URL = str({ desc: 'The harbor core service URL' })
 export const HARBOR_BASE_REPO_URL = str({ desc: 'The harbor repository base URL' })
 export const HARBOR_PASSWORD = str({ desc: 'The harbor admin password' })
 export const HARBOR_USER = str({ desc: 'The harbor admin username' })
-export const IDP_ALIAS = str({ desc: 'An alias for the IDP' })
-export const IDP_GROUP_MAPPINGS_TEAMS = json({ desc: 'A list of team names mapping to group IDs from the IDP' })
-export const IDP_GROUP_TEAM_ADMIN = str({ desc: 'Otomi team-admin group name' })
-export const IDP_GROUP_OTOMI_ADMIN = str({ desc: 'Otomi admin group name' })
-export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url" })
+export const IDP_ALIAS = str({ desc: 'An alias for the IDP', default: undefined })
+export const IDP_GROUP_MAPPINGS_TEAMS = json({
+  desc: 'A list of team names mapping to group IDs from the IDP',
+  default: undefined,
+})
+export const IDP_GROUP_TEAM_ADMIN = str({ desc: 'Otomi team-admin group name', default: undefined })
+export const IDP_GROUP_OTOMI_ADMIN = str({ desc: 'Otomi admin group name', default: undefined })
+export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url", default: undefined })
 export const IDP_USERNAME_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to username mapper string",
   // eslint-disable-next-line no-template-curly-in-string

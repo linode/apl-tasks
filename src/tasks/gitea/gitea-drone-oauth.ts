@@ -35,11 +35,8 @@ const oauthOpts = { ...new CreateOAuth2ApplicationOptions(), name: 'otomi-drone'
 export async function getGiteaAuthorizationHeaderCookies(oauthData: DroneSecret): Promise<string[]> {
   const options: AxiosRequestConfig = {
     params: {
-      // eslint-disable-next-line @typescript-eslint/camelcase
       client_id: oauthData.clientId,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       redirect_uri: droneLoginUrl,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       response_type: 'code',
     },
     maxRedirects: 1,
@@ -82,9 +79,7 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
     // Data for this post query must be stringified https://github.com/axios/axios#using-applicationx-www-form-urlencoded-format
     data: querystring.stringify({
       [csrfCookieName]: csrfToken,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       client_id: `${oauthData.clientId}`,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       redirect_uri: droneLoginUrl,
     }),
   }

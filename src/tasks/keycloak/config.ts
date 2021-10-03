@@ -1,8 +1,9 @@
 /* eslint-disable no-template-curly-in-string */
 /* eslint-disable camelcase */
+import { ProtocolMapperRepresentation } from '@redkubes/keycloak-client-node'
 import axios from 'axios'
 
-export const defaultsIdpMapperTpl = (env): Array<object> => [
+export const defaultsIdpMapperTpl = (env: Record<string, unknown>): Array<Record<string, unknown>> => [
   {
     name: 'upn to email',
     identityProviderAlias: env.IDP_ALIAS,
@@ -34,7 +35,7 @@ export const defaultsIdpMapperTpl = (env): Array<object> => [
   },
 ]
 
-export const idpMapperTpl = (name: string, alias: string, role: string, claim: string): object => ({
+export const idpMapperTpl = (name: string, alias: string, role: string, claim: string): Record<string, unknown> => ({
   name,
   identityProviderAlias: alias,
   identityProviderMapper: 'oidc-role-idp-mapper',
@@ -46,7 +47,28 @@ export const idpMapperTpl = (name: string, alias: string, role: string, claim: s
   },
 })
 
-export const clientScopeCfgTpl = (protocolMappers: object): object => ({
+export const adminUserCfgTpl = (username: string): Record<string, unknown> => ({
+  username,
+  clientRoles: ['manage-realm'],
+  realmRoles: ['otomi-admin'],
+})
+
+export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
+  id: realm,
+  realm,
+  displayName: realm,
+  enabled: true,
+  sslRequired: 'external',
+  loginTheme: 'otomi',
+  registrationAllowed: false,
+  loginWithEmailAllowed: true,
+  duplicateEmailsAllowed: false,
+  resetPasswordAllowed: true,
+  editUsernameAllowed: false,
+  bruteForceProtected: true,
+})
+
+export const clientScopeCfgTpl = (protocolMappers: ProtocolMapperRepresentation[]): Record<string, unknown> => ({
   name: 'openid',
   protocol: 'openid-connect',
   attributes: {
@@ -56,7 +78,7 @@ export const clientScopeCfgTpl = (protocolMappers: object): object => ({
   protocolMappers,
 })
 
-export const protocolMappersList: Array<object> = [
+export const protocolMappersList: Array<Record<string, unknown>> = [
   {
     name: 'groups',
     protocol: 'openid-connect',
@@ -128,16 +150,16 @@ export const protocolMappersList: Array<object> = [
   },
 ]
 
-export const roleTpl = (name: string, groupMapping: string, containerId: string): object => ({
+export const roleTpl = (name: string, groupMapping: string, containerId: string): Record<string, unknown> => ({
   name,
-  description: `Mapped for incoming IDP GROUP_ID: ${groupMapping}`,
+  description: `Created by Otomi${groupMapping ? `- mapped for incoming IDP GROUP_ID: ${groupMapping}` : ''}`,
   composite: false,
   clientRole: false,
   containerId,
   attributes: {},
 })
 
-export const clientEmailClaimMapper = (): object => ({
+export const clientEmailClaimMapper = (): Record<string, unknown> => ({
   name: 'email',
   protocol: 'openid-connect',
   protocolMapper: 'oidc-usermodel-property-mapper',
@@ -157,7 +179,7 @@ export const oidcCfg = (
   tenantId: string,
   clientId: string,
   clientSecret: string,
-): object => ({
+): Record<string, unknown> => ({
   userInfoUrl: providerCfg.userinfo_endpoint,
   validateSignature: 'true',
   clientId,
@@ -185,7 +207,7 @@ export const idpProviderCfgTpl = async (
   clientId: string,
   clientSecret: string,
   oidcUrl: string,
-): Promise<object> => {
+): Promise<Record<string, unknown>> => {
   // currently tested only on Azure AD
   const oidcCfgObj = await getDiscoveryUrls(oidcUrl)
   return {
@@ -199,7 +221,7 @@ export const idpProviderCfgTpl = async (
   }
 }
 
-export const otomiClientCfgTpl = (secret: string, redirectUris: object): object => ({
+export const otomiClientCfgTpl = (secret: string, redirectUris: string[]): Record<string, unknown> => ({
   id: 'otomi',
   secret,
   defaultClientScopes: ['openid', 'email', 'profile'],
