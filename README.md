@@ -20,10 +20,10 @@ Then start a proxy to the api you wish to target:
 
 Or start them all with `bin/start-proxies.sh`
 
-Now you can execute a task locally: 
+Now you can execute a task locally:
 
 ```
-npm run task:(gitea*|harbor|keycloak|certs-aws|...)-dev
+npm run tasks:(gitea*|harbor|keycloak|certs-aws|...)-dev
 ```
 
 Or you can start them in the vscode debugger.
@@ -31,6 +31,7 @@ Or you can start them in the vscode debugger.
 **Skipping TLS (like for staging certs):**
 
 Run the next line in your shell to skip TLS cert validation, like when using self-signed certs like letsencrypt staging:
+
 ```bash
 export NODE_TLS_REJECT_UNAUTHORIZED='0'
 ```
@@ -38,14 +39,16 @@ export NODE_TLS_REJECT_UNAUTHORIZED='0'
 **Setting debug level:**
 
 For all packages to turn on debug:
+
 ```bash
 export DEBUG='*'
 ```
+
 To limit scope please read [the debug docs](https://github.com/visionmedia/debug).
 
 ## Unit tests
 
-There are not many unit tests, as the tasks are *very* robust and idempotent. You can run them as always with:
+There are not many unit tests, as the tasks are _very_ robust and idempotent. You can run them as always with:
 
 ```
 npm test

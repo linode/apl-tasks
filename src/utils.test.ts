@@ -1,11 +1,11 @@
-import { V1Secret, V1ServiceAccount, V1ObjectMeta, CoreV1Api } from '@kubernetes/client-node'
-import './test-init'
-import sinon from 'sinon'
+import { CoreV1Api, V1ObjectMeta, V1Secret, V1ServiceAccount } from '@kubernetes/client-node'
 import { expect } from 'chai'
-import { cloneDeep } from 'lodash'
 import http from 'http'
+import { cloneDeep } from 'lodash'
 import fetch from 'node-fetch'
-import { createPullSecret, deletePullSecret, getApiClient, objectToArray, waitTillAvailable } from './utils'
+import sinon from 'sinon'
+import './test-init'
+import { createPullSecret, deletePullSecret, getApiClient, objectToArray } from './utils'
 
 describe('Secret creation', () => {
   const teamId = 'testtt'

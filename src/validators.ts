@@ -1,4 +1,16 @@
-import { str, bool, json, cleanEnv as clean, CleanEnv, StrictCleanOptions, ValidatorSpec, num, url } from 'envalid'
+/* eslint-disable no-param-reassign */
+/* eslint-disable no-return-assign */
+import { bool, cleanEnv as clean, CleanEnv, json, num, str, StrictCleanOptions, url, ValidatorSpec } from 'envalid'
+
+const { env } = process
+
+// START feature toggles determine default value requirements of env vars below
+export const FEAT_EXTERNAL_IDP = bool({
+  desc: 'Determines wether configuration for an external IDP was provided',
+  default: false,
+})
+const feat = cleanEnv({ FEAT_EXTERNAL_IDP })
+// END
 
 export const CERT_ROTATION_DAYS = num({ desc: 'The amount of days for the cert rotation', default: 75 })
 export const DOMAINS = json({ desc: 'A list of domains and their cert status' })
@@ -7,10 +19,13 @@ export const HARBOR_BASE_REPO_URL = str({ desc: 'The harbor repository base URL'
 export const HARBOR_PASSWORD = str({ desc: 'The harbor admin password' })
 export const HARBOR_USER = str({ desc: 'The harbor admin username' })
 export const IDP_ALIAS = str({ desc: 'An alias for the IDP' })
-export const IDP_GROUP_MAPPINGS_TEAMS = json({ desc: 'A list of team names mapping to group IDs from the IDP' })
+export const IDP_GROUP_MAPPINGS_TEAMS = json({
+  desc: 'A list of team names mapping to group IDs from the IDP',
+  default: undefined,
+})
 export const IDP_GROUP_TEAM_ADMIN = str({ desc: 'Otomi team-admin group name' })
-export const IDP_GROUP_OTOMI_ADMIN = str({ desc: 'Otomi admin group name' })
-export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url" })
+export const IDP_GROUP_OTOMI_ADMIN = str({ desc: 'Otomi admin group name', default: undefined })
+export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url", default: undefined })
 export const IDP_USERNAME_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to username mapper string",
   // eslint-disable-next-line no-template-curly-in-string
@@ -46,7 +61,25 @@ export const OTOMI_VALUES_INPUT = str({ desc: 'The chart values.yaml file' })
 export const OTOMI_SCHEMA_PATH = str({ desc: 'The path to the values-schema.yaml schema file' })
 export const OTOMI_ENV_DIR = str({ desc: 'The path to the otomi-values folder' })
 
-const { env } = process
+// set default to undefined based on feature flags:
+if (!feat.FEAT_EXTERNAL_IDP) {
+  ;[
+    IDP_ALIAS,
+    IDP_GROUP_TEAM_ADMIN,
+    IDP_GROUP_OTOMI_ADMIN,
+    IDP_OIDC_URL,
+    IDP_USERNAME_CLAIM_MAPPER,
+    IDP_SUB_CLAIM_MAPPER,
+    OIDC_CLIENT_SECRET,
+    OIDC_ENDPOINT,
+    OIDC_VERIFY_CERT,
+    TENANT_ID,
+    TENANT_CLIENT_ID,
+    TENANT_CLIENT_SECRET,
+  ].map((f) => (f.default = undefined))
+}
+
+// export env
 export function cleanEnv<T>(
   validators: { [K in keyof T]: ValidatorSpec<T[K]> },
   options: StrictCleanOptions = { strict: true },

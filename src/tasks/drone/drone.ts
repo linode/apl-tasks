@@ -14,7 +14,6 @@ const client = new drone.Client({
 })
 
 // const settings = {
-//   // eslint-disable-next-line @typescript-eslint/camelcase
 //   config_path: env.DRONE_CONFIG_PATH,
 // }
 

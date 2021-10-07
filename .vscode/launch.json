@@ -71,7 +71,8 @@
       "runtimeArgs": ["run-script", "tasks:drone-dev"],
       "cwd": "${workspaceRoot}",
       "env": {
-        "DEBUG": "*"
+        "DEBUG": "*",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       },
       "console": "integratedTerminal"
     },
@@ -83,7 +84,8 @@
       "runtimeArgs": ["run-script", "tasks:gitea-dev"],
       "cwd": "${workspaceRoot}",
       "env": {
-        "DEBUG": "*"
+        "DEBUG": "*",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       },
       "console": "integratedTerminal"
     },
@@ -95,7 +97,8 @@
       "runtimeArgs": ["run-script", "tasks:gitea-drone-auth-dev"],
       "cwd": "${workspaceRoot}",
       "env": {
-        "DEBUG": "*"
+        "DEBUG": "*",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       },
       "console": "integratedTerminal"
     },
@@ -107,7 +110,8 @@
       "runtimeArgs": ["run-script", "tasks:harbor-dev"],
       "cwd": "${workspaceRoot}",
       "env": {
-        "DEBUG": "*"
+        "DEBUG": "*",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       },
       "console": "integratedTerminal"
     },
@@ -119,7 +123,8 @@
       "runtimeArgs": ["run-script", "tasks:otomi-chart-dev"],
       "cwd": "${workspaceRoot}",
       "env": {
-        "DEBUG": "*"
+        "DEBUG": "*",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       },
       "console": "integratedTerminal"
     },
@@ -131,7 +136,8 @@
       "runtimeArgs": ["run-script", "tasks:keycloak-dev"],
       "cwd": "${workspaceRoot}",
       "env": {
-        "DEBUG": "*"
+        "DEBUG": "*",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       },
       "console": "integratedTerminal"
     },
@@ -143,6 +149,7 @@
       "runtimeArgs": ["run-script", "tasks:certs-aws-dev"],
       "env": {
         "DEBUG": "*",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
         "REGION": "eu-central-1"
       },
       "cwd": "${workspaceRoot}",

@@ -30,7 +30,7 @@ export function extractSecrets(schema: any, parentAddress?: string): Array<strin
     .filter(Boolean) as Array<string>
 }
 
-function mergeValues(targetPath: string, newValues: object): void {
+function mergeValues(targetPath: string, newValues: Record<string, unknown>): void {
   // console.debug(`targetPath: ${targetPath}, values: ${JSON.stringify(newValues)}`)
   if (!fs.existsSync(targetPath)) {
     // If the targetPath doesn't exist, just create it and write the valueObject in it.

@@ -19,7 +19,7 @@ kc.loadFromDefault()
 const client = kc.makeApiClient(k8s.CoreV1Api)
 const netClient = kc.makeApiClient(k8s.NetworkingV1beta1Api)
 
-async function getDomains(): Promise<object> {
+async function getDomains(): Promise<Record<string, unknown>> {
   try {
     const res = await client.readNamespacedConfigMap(cmName, 'maintenance')
     const { body }: { body: k8s.V1ConfigMap } = res
@@ -29,18 +29,18 @@ async function getDomains(): Promise<object> {
   }
 }
 
-async function updateConfig(domains): Promise<object> {
+async function updateConfig(domains): Promise<k8s.V1Secret> {
   const body = { data: { domains: JSON.stringify(domains) } }
   const res = await client.patchNamespacedConfigMap(cmName, 'maintenance', body)
   const { body: data }: { body: k8s.V1Secret } = res
   return data
 }
 
-async function getTLSSecret(secretName: string): Promise<object | undefined> {
+async function getTLSSecret(secretName: string): Promise<Record<string, unknown> | undefined> {
   try {
     const res = await client.readNamespacedSecret(secretName, env.SECRETS_NAMESPACE)
     const { body: secret }: { body: k8s.V1Secret } = res
-    return secret.data as object
+    return secret.data as Record<string, unknown>
   } catch (e) {
     console.error(`Secret not found: ${secretName}`, e)
     return undefined

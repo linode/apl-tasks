@@ -1,9 +1,9 @@
 /* eslint-disable no-loop-func */
 /* eslint-disable no-await-in-loop */
+import { CoreV1Api, KubeConfig, V1ObjectMeta, V1Secret, V1ServiceAccount } from '@kubernetes/client-node'
+import retry, { Options } from 'async-retry'
 import http from 'http'
 import { findIndex, mapValues } from 'lodash'
-import { CoreV1Api, KubeConfig, V1Secret, V1ObjectMeta, V1ServiceAccount } from '@kubernetes/client-node'
-import retry, { Options } from 'async-retry'
 import fetch, { RequestInit } from 'node-fetch'
 
 let apiClient: CoreV1Api
@@ -16,7 +16,7 @@ export function getApiClient(): CoreV1Api {
   return apiClient
 }
 
-export function objectToArray(obj: object, keyName: string, keyValue: string): any[] {
+export function objectToArray(obj: any, keyName: string, keyValue: string): any[] {
   const arr = Object.keys(obj).map((key) => {
     const tmp = {}
     tmp[keyName] = key
@@ -34,7 +34,7 @@ export function ensure<T>(argument: T | undefined | null, message = 'This value 
   return argument
 }
 
-export async function createSecret(name: string, namespace: string, data: object): Promise<void> {
+export async function createSecret(name: string, namespace: string, data: any): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
     ...new V1Secret(),
@@ -58,7 +58,7 @@ export type ServiceAccountPromise = Promise<{
   body: V1ServiceAccount
 }>
 
-export async function getSecret(name: string, namespace: string): Promise<object | undefined> {
+export async function getSecret(name: string, namespace: string): Promise<unknown> {
   const b64dec = (val): string => Buffer.from(val, 'base64').toString()
   try {
     const response = await getApiClient().readNamespacedSecret(name, namespace)
@@ -91,6 +91,7 @@ export async function doApiCall(
     const { body } = res
     return body
   } catch (e) {
+    console.warn(e.body ?? `${e}`)
     if (e.statusCode) {
       if (e.statusCode === statusCodeExists) console.warn(`${action} > already exists.`)
       else errors.push(`${action} > HTTP error ${e.statusCode}: ${e.message}`)
