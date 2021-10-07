@@ -14,6 +14,7 @@ import { defaultsDeep } from 'lodash'
 import * as utils from '../../utils'
 import {
   cleanEnv,
+  FEAT_EXTERNAL_IDP,
   IDP_ALIAS,
   IDP_GROUP_MAPPINGS_TEAMS,
   IDP_GROUP_OTOMI_ADMIN,
@@ -44,6 +45,7 @@ import {
 } from './config'
 
 const env = cleanEnv({
+  FEAT_EXTERNAL_IDP,
   TENANT_ID,
   TENANT_CLIENT_ID,
   TENANT_CLIENT_SECRET,
@@ -153,9 +155,15 @@ export function mapTeamsToRoles(): Array<RoleRepresentation> {
     }, {})
   const realm = env.KEYCLOAK_REALM
   // create static admin teams
-  const otomiAdmin = Object.create({ name: 'otomi-admin', groupMapping: env.IDP_GROUP_OTOMI_ADMIN }) as TeamMapping
   const teamAdmin = Object.create({ name: 'team-admin', groupMapping: env.IDP_GROUP_TEAM_ADMIN }) as TeamMapping
-  const adminTeams = [otomiAdmin, teamAdmin]
+  const adminTeams = [teamAdmin]
+  // we don't wish to add the 'otomi-admin' role when we act as IDP, as we need it to be 'admin' on the claim
+  // when brokering for an external IDP we already have a mapper that maps group 'otomi-admin' to role 'admin' in the claim
+  const otomiAdmin = Object.create({
+    name: env.FEAT_EXTERNAL_IDP ? 'otomi-admin' : 'admin',
+    groupMapping: env.IDP_GROUP_OTOMI_ADMIN,
+  }) as TeamMapping
+  adminTeams.push(otomiAdmin)
   // iterate through all the teams and map groups
   const teamList = utils.objectToArray(teams || [], 'name', 'groupMapping') as TeamMapping[]
   const teamRoleRepresentations = adminTeams.concat(teamList).map((team) => {

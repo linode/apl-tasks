@@ -1,8 +1,7 @@
-import { Issuer, TokenSet } from 'openid-client'
 import {
   ClientRepresentation,
-  ClientsApi,
   ClientRoleMappingsApi,
+  ClientsApi,
   ClientScopeRepresentation,
   ClientScopesApi,
   GroupRepresentation,
@@ -19,18 +18,19 @@ import {
   RolesApi,
 } from '@redkubes/keycloak-client-node'
 import { forEach } from 'lodash'
-import * as realmConfig from './realm-factory'
+import { Issuer, TokenSet } from 'openid-client'
+import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
   cleanEnv,
+  FEAT_EXTERNAL_IDP,
   IDP_ALIAS,
   IDP_OIDC_URL,
+  KEYCLOAK_ADDRESS,
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
-  KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
 } from '../../validators'
-
-import { waitTillAvailable, doApiCall, handleErrors } from '../../utils'
+import * as realmConfig from './realm-factory'
 
 const env = cleanEnv({
   IDP_ALIAS,
@@ -39,6 +39,7 @@ const env = cleanEnv({
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
+  FEAT_EXTERNAL_IDP,
 })
 
 const errors: string[] = []
@@ -98,7 +99,9 @@ async function main(): Promise<void> {
   // Create Client Scopes
   const scope = realmConfig.createClientScopes()
 
-  const clientScopes = (await doApiCall(errors, 'Getting openid client scope', () =>
+  // the api does not offer a list method, and trying to get by id throws an error
+  // so we run the next command without the errors array, as we expect this error to occur
+  const clientScopes = (await doApiCall([], 'Getting openid client scope', () =>
     api.clientScope.realmClientScopesGet(keyCloakRealm),
   )) as Array<ClientScopeRepresentation>
   const existingScope = clientScopes.find((el) => el.name === scope.name)
@@ -148,7 +151,7 @@ async function main(): Promise<void> {
     await doApiCall(errors, 'Creating otomi client', () => api.clients.realmClientsPost(keyCloakRealm, client))
   }
 
-  const allClaims = (await doApiCall(errors, 'Getting client email claim', () =>
+  const allClaims = (await doApiCall(errors, 'Getting client email claim mapper', () =>
     api.protocols.realmClientsIdProtocolMappersModelsGet(keyCloakRealm, client.id!),
   )) as Array<ProtocolMapperRepresentation>
   const mapper = realmConfig.createClientEmailClaimMapper()
@@ -163,7 +166,7 @@ async function main(): Promise<void> {
     api.realms.realmPut(env.KEYCLOAK_REALM, realmConfig.createLoginThemeConfig('otomi')),
   )
 
-  if (env.IDP_OIDC_URL) {
+  if (env.FEAT_EXTERNAL_IDP) {
     // Keycloak acts as broker
     // Create Identity Provider
     const idp = await realmConfig.createIdProvider()
@@ -183,7 +186,6 @@ async function main(): Promise<void> {
     }
 
     // Create Identity Provider Mappers
-    // @NOTE - PUT involves adding strict required properties not in the factory
     const idpMappers = realmConfig.createIdpMappers()
 
     const existingMappers = (await doApiCall(errors, `Getting role mappers`, () =>
@@ -284,8 +286,15 @@ async function main(): Promise<void> {
         const existingRoleMapping = existingRoleMappings.find((el) => el.name === groupName)
         if (!existingRoleMapping) {
           // set realm roles
-          const existingRole = updatedExistingRealmRoles.find((el) => el.name === groupName) as RoleRepresentation
-          const roles: Array<RoleRepresentation> = [existingRole]
+          const roles: Array<RoleRepresentation> = []
+          // make an exception for otomi-admin group as it gets the default keycloak 'admin' role
+          if (groupName === 'otomi-admin') {
+            const adminRole = updatedExistingRealmRoles.find((el) => el.name === 'admin') as RoleRepresentation
+            roles.push(adminRole)
+          } else {
+            const existingRole = updatedExistingRealmRoles.find((el) => el.name === groupName) as RoleRepresentation
+            roles.push(existingRole)
+          }
           await doApiCall(errors, `Creating role mapping for group ${groupName}`, async () =>
             api.roleMapper.realmGroupsIdRoleMappingsRealmPost(keyCloakRealm, group.id!, roles),
           )

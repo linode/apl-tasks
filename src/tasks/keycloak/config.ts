@@ -50,7 +50,7 @@ export const idpMapperTpl = (name: string, alias: string, role: string, claim: s
 export const adminUserCfgTpl = (username: string): Record<string, unknown> => ({
   username,
   clientRoles: ['manage-realm'],
-  realmRoles: ['otomi-admin'],
+  realmRoles: ['admin'],
 })
 
 export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
@@ -152,7 +152,7 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
 
 export const roleTpl = (name: string, groupMapping: string, containerId: string): Record<string, unknown> => ({
   name,
-  description: `Created by Otomi${groupMapping ? `- mapped for incoming IDP GROUP_ID: ${groupMapping}` : ''}`,
+  description: `Created by Otomi${groupMapping ? ` - mapped for incoming IDP GROUP_ID: ${groupMapping}` : ''}`,
   composite: false,
   clientRole: false,
   containerId,
