@@ -19,10 +19,12 @@ export function extractAllValues(schema: any, parentAddress?: string): Array<str
         schema.type !== 'object' &&
         schema.type !== 'array'
       ) {
+        const e = ''
         const parameter = `\`${parentAddress?.replace(/\|/g, '\\|').replace(/items/g, '[]')}\``
         const type = `\`${schema.type}\``
         const description = `${schema?.description?.replace(/\n/g, ' ').replace(/\|/g, '\\|') || ''}`
-        const defaalt = `\`${schema?.default || 'nil'}\``
+        let defaalt = `\`${schema?.default}\``
+        if (defaalt === '\`undefined\`') defaalt = ''
         const row = `| ${parameter} | ${type} | ${description} | ${defaalt} |`
         return row
       }
