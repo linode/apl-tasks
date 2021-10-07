@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.11](https://github.com/redkubes/otomi-tasks/compare/v0.2.10...v0.2.11) (2021-10-07)
+
+
+### Features
+
+* allow keycloak to act as idp ([#45](https://github.com/redkubes/otomi-tasks/issues/45)) ([3c4684a](https://github.com/redkubes/otomi-tasks/commit/3c4684a974650f8751497e0701942c04d1cfb8db))
+
 ### [0.2.10](https://github.com/redkubes/otomi-tasks/compare/v0.2.9...v0.2.10) (2021-08-30)
 
 
