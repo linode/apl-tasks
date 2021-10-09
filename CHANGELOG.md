@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.13](https://github.com/redkubes/otomi-tasks/compare/v0.2.12...v0.2.13) (2021-10-09)
+
+
+### Bug Fixes
+
+* first error now gone [ci skip] ([ff17a4d](https://github.com/redkubes/otomi-tasks/commit/ff17a4df13b8770abd65d432c2b2cb64b8987447))
+
 ### [0.2.12](https://github.com/redkubes/otomi-tasks/compare/v0.2.11...v0.2.12) (2021-10-09)
 
 ### [0.2.11](https://github.com/redkubes/otomi-tasks/compare/v0.2.10...v0.2.11) (2021-10-07)
