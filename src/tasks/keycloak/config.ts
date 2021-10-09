@@ -176,7 +176,6 @@ export const clientEmailClaimMapper = (): Record<string, unknown> => ({
 
 export const oidcCfg = (
   providerCfg: OidcProviderCfg,
-  tenantId: string,
   clientId: string,
   clientSecret: string,
 ): Record<string, unknown> => ({
@@ -203,7 +202,6 @@ export async function getDiscoveryUrls(oidcUrl: string, version = 'v2.0'): Promi
 
 export const idpProviderCfgTpl = async (
   alias: string,
-  tenantId: string,
   clientId: string,
   clientSecret: string,
   oidcUrl: string,
@@ -217,7 +215,7 @@ export const idpProviderCfgTpl = async (
     enabled: true,
     trustEmail: true,
     firstBrokerLoginFlowAlias: 'first broker login',
-    config: oidcCfg(oidcCfgObj, tenantId, clientId, clientSecret),
+    config: oidcCfg(oidcCfgObj, clientId, clientSecret),
   }
 }
 

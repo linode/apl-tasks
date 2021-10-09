@@ -16,6 +16,8 @@ import {
   cleanEnv,
   FEAT_EXTERNAL_IDP,
   IDP_ALIAS,
+  IDP_CLIENT_ID,
+  IDP_CLIENT_SECRET,
   IDP_GROUP_MAPPINGS_TEAMS,
   IDP_GROUP_OTOMI_ADMIN,
   IDP_GROUP_TEAM_ADMIN,
@@ -26,9 +28,6 @@ import {
   KEYCLOAK_REALM,
   REDIRECT_URIS,
   TEAM_IDS,
-  TENANT_CLIENT_ID,
-  TENANT_CLIENT_SECRET,
-  TENANT_ID,
 } from '../../validators'
 import {
   adminUserCfgTpl,
@@ -46,9 +45,8 @@ import {
 
 const env = cleanEnv({
   FEAT_EXTERNAL_IDP,
-  TENANT_ID,
-  TENANT_CLIENT_ID,
-  TENANT_CLIENT_SECRET,
+  IDP_CLIENT_ID,
+  IDP_CLIENT_SECRET,
   IDP_ALIAS,
   KEYCLOAK_CLIENT_SECRET,
   KEYCLOAK_REALM,
@@ -103,14 +101,13 @@ export function createIdpMappers(): Array<IdentityProviderMapperRepresentation> 
 }
 
 export async function createIdProvider(): Promise<IdentityProviderRepresentation> {
-  const tenantId = env.TENANT_ID
-  const clientId = env.TENANT_CLIENT_ID
+  const clientId = env.IDP_CLIENT_ID
   const alias = env.IDP_ALIAS
-  const clientSecret = env.TENANT_CLIENT_SECRET
+  const clientSecret = env.IDP_CLIENT_SECRET
   const oidcUrl = env.IDP_OIDC_URL
   const otomiClientIdp = defaultsDeep(
     new IdentityProviderRepresentation(),
-    await idpProviderCfgTpl(alias, tenantId, clientId, clientSecret, oidcUrl),
+    await idpProviderCfgTpl(alias, clientId, clientSecret, oidcUrl),
   )
   return otomiClientIdp
 }
