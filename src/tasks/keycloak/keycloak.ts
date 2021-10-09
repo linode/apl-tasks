@@ -85,6 +85,8 @@ async function main(): Promise<void> {
 
   // Create realm 'otomi'
   const realmConf = realmConfig.createRealm(keyCloakRealm)
+  // the api does not offer a list method, and trying to get by id throws an error
+  // which we wan to discard, so we run the next command with an empty errors array
   const existingRealm = (await doApiCall([], `Getting realm ${keyCloakRealm}`, () =>
     api.realms.realmGet(keyCloakRealm),
   )) as RealmRepresentation
@@ -98,9 +100,6 @@ async function main(): Promise<void> {
 
   // Create Client Scopes
   const scope = realmConfig.createClientScopes()
-
-  // the api does not offer a list method, and trying to get by id throws an error
-  // so we run the next command without the errors array, as we expect this error to occur
   const clientScopes = (await doApiCall(errors, 'Getting openid client scope', () =>
     api.clientScope.realmClientScopesGet(keyCloakRealm),
   )) as Array<ClientScopeRepresentation>
