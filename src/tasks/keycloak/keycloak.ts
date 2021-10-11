@@ -115,15 +115,14 @@ async function main(): Promise<void> {
     )
   }
 
-  // Create Roles
-  const teamRoles = realmConfig.mapTeamsToRoles()
+  // Create realm roles
   interface RealmRole {
     name: string
   }
-  const existingRealmRoles = (await doApiCall(errors, `Getting all roles from realm ${keyCloakRealm}`, async () =>
+  const teamRoles = realmConfig.mapTeamsToRoles()
+  const existingRealmRoles = ((await doApiCall(errors, `Getting all roles from realm ${keyCloakRealm}`, async () =>
     api.roles.realmRolesGet(keyCloakRealm),
-  )) as Array<RealmRole>
-
+  )) || []) as Array<RealmRole>
   await Promise.all(
     teamRoles.map((role) => {
       const exists = existingRealmRoles.some((el) => el.name === role.name!)
@@ -138,10 +137,9 @@ async function main(): Promise<void> {
 
   // Create Otomi Client
   const client = realmConfig.createClient()
-  const allClients = (await doApiCall(errors, 'Getting otomi client', () =>
+  const allClients = ((await doApiCall(errors, 'Getting otomi client', () =>
     api.clients.realmClientsGet(keyCloakRealm),
-  )) as Array<ClientRepresentation>
-
+  )) || []) as Array<ClientRepresentation>
   if (allClients.some((el) => el.name === client.name)) {
     await doApiCall(errors, 'Updating otomi client', () =>
       api.clients.realmClientsIdPut(keyCloakRealm, client.id!, client),
@@ -150,9 +148,9 @@ async function main(): Promise<void> {
     await doApiCall(errors, 'Creating otomi client', () => api.clients.realmClientsPost(keyCloakRealm, client))
   }
 
-  const allClaims = (await doApiCall(errors, 'Getting client email claim mapper', () =>
+  const allClaims = ((await doApiCall(errors, 'Getting client email claim mapper', () =>
     api.protocols.realmClientsIdProtocolMappersModelsGet(keyCloakRealm, client.id!),
-  )) as Array<ProtocolMapperRepresentation>
+  )) || []) as Array<ProtocolMapperRepresentation>
   const mapper = realmConfig.createClientEmailClaimMapper()
   if (!allClaims.some((el) => el.name === mapper.name)) {
     await doApiCall(errors, 'Creating client email claim mapper', () =>
@@ -170,9 +168,9 @@ async function main(): Promise<void> {
     // Create Identity Provider
     const idp = await realmConfig.createIdProvider()
 
-    const existingProviders = (await doApiCall(errors, 'Geting identity provider', async () =>
+    const existingProviders = ((await doApiCall(errors, 'Geting identity provider', async () =>
       api.providers.realmIdentityProviderInstancesGet(keyCloakRealm),
-    )) as Array<IdentityProviderRepresentation>
+    )) || []) as Array<IdentityProviderRepresentation>
 
     if (existingProviders.some((el) => el.alias === idp.alias)) {
       await doApiCall(errors, 'Updating identity provider', async () =>
@@ -187,13 +185,13 @@ async function main(): Promise<void> {
     // Create Identity Provider Mappers
     const idpMappers = realmConfig.createIdpMappers()
 
-    const existingMappers = (await doApiCall(errors, `Getting role mappers`, () =>
+    const existingMappers = ((await doApiCall(errors, `Getting role mappers`, () =>
       api.providers.realmIdentityProviderInstancesAliasMappersGet(keyCloakRealm, env.IDP_ALIAS),
-    )) as IdentityProviderMapperRepresentation[]
+    )) || []) as IdentityProviderMapperRepresentation[]
 
     await Promise.all(
       idpMappers.map((idpMapper) => {
-        const existingMapper: IdentityProviderMapperRepresentation | undefined = (existingMappers || []).find(
+        const existingMapper: IdentityProviderMapperRepresentation | undefined = existingMappers.find(
           (m) => m.name === idpMapper.name,
         )
         if (existingMapper) {
@@ -222,9 +220,9 @@ async function main(): Promise<void> {
     groups.accessToken = String(token.access_token)
     const teamGroups = realmConfig.createGroups()
 
-    const existingGroups = (await doApiCall(errors, 'Getting realm groups', () =>
+    const existingGroups = ((await doApiCall(errors, 'Getting realm groups', () =>
       groups.realmGroupsGet(keyCloakRealm),
-    )) as Array<GroupRepresentation>
+    )) || []) as Array<GroupRepresentation>
 
     await Promise.all(
       teamGroups.map((group) => {
@@ -241,33 +239,33 @@ async function main(): Promise<void> {
       }),
     )
 
-    const updatedExistingGroups = (await doApiCall(errors, 'Getting realm groups', () =>
+    const updatedExistingGroups = ((await doApiCall(errors, 'Getting realm groups', () =>
       groups.realmGroupsGet(keyCloakRealm),
-    )) as Array<GroupRepresentation>
+    )) || []) as Array<GroupRepresentation>
 
     // get updated existing roles
-    const updatedExistingRealmRoles = (await doApiCall(
+    const updatedExistingRealmRoles = ((await doApiCall(
       errors,
       `Getting all roles from realm ${keyCloakRealm}`,
       async () => api.roles.realmRolesGet(keyCloakRealm),
-    )) as Array<RealmRole>
+    )) || []) as Array<RealmRole>
 
     // get clients for access roles
-    const realmManagementClients = (await doApiCall(
+    const realmManagementClients = ((await doApiCall(
       errors,
       `Getting client realm-management from realm ${keyCloakRealm}`,
       async () => api.clients.realmClientsGet(keyCloakRealm, 'realm-management'),
-    )) as Array<ClientRepresentation>
+    )) || []) as Array<ClientRepresentation>
     const realmManagementClient = realmManagementClients.find(
       (el) => el.clientId === 'realm-management',
     ) as ClientRepresentation
 
     // get access roles
-    const realmManagementRoles = (await doApiCall(
+    const realmManagementRoles = ((await doApiCall(
       errors,
       `Getting realm-management roles from realm ${keyCloakRealm}`,
       async () => api.roles.realmClientsIdRolesGet(keyCloakRealm, realmManagementClient.id!),
-    )) as Array<RealmRole>
+    )) || []) as Array<RealmRole>
     // const realmManagementRole = realmManagementRoles.find((el) => el.name === 'manage-realm') as RoleRepresentation
     const userManagementRole = realmManagementRoles.find((el) => el.name === 'manage-users') as RoleRepresentation
     const userViewerRole = realmManagementRoles.find((el) => el.name === 'view-users') as RoleRepresentation
@@ -277,11 +275,11 @@ async function main(): Promise<void> {
       updatedExistingGroups.map(async (group) => {
         const groupName = group.name!
         // get realm roles for group
-        const existingRoleMappings = (await doApiCall(
+        const existingRoleMappings = ((await doApiCall(
           errors,
           `Getting all roles from realm ${keyCloakRealm} for group ${groupName}`,
           async () => api.roleMapper.realmGroupsIdRoleMappingsRealmGet(keyCloakRealm, group.id!),
-        )) as Array<RoleRepresentation>
+        )) || []) as Array<RoleRepresentation>
         const existingRoleMapping = existingRoleMappings.find((el) => el.name === groupName)
         if (!existingRoleMapping) {
           // set realm roles
@@ -299,7 +297,7 @@ async function main(): Promise<void> {
           )
         }
         // get client roles for group
-        const existingClientRoleMappings = (await doApiCall(
+        const existingClientRoleMappings = ((await doApiCall(
           errors,
           `Getting all client roles from realm ${keyCloakRealm} for group ${groupName}`,
           async () =>
@@ -308,7 +306,7 @@ async function main(): Promise<void> {
               group.id!,
               realmManagementClient.id!,
             ),
-        )) as Array<RoleRepresentation>
+        )) || []) as Array<RoleRepresentation>
         const existingClientRoleMapping = existingClientRoleMappings.find((el) => el.name === groupName)
         if (!existingClientRoleMapping) {
           // let team members see other users
