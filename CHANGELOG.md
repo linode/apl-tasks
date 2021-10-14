@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.14](https://github.com/redkubes/otomi-tasks/compare/v0.2.13...v0.2.14) (2021-10-14)
+
+
+### Bug Fixes
+
+* oidc role mapping ([e3bdbe4](https://github.com/redkubes/otomi-tasks/commit/e3bdbe437ce8359156c46ff4d168e6ac90999549))
+
 ### [0.2.13](https://github.com/redkubes/otomi-tasks/compare/v0.2.12...v0.2.13) (2021-10-09)
 
 
