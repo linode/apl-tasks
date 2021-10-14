@@ -54,4 +54,4 @@ ENV NODE_ENV=production
 # suppress npm update check 
 ENV npm_config_update_notifier=false
 # suppress npm warnings
-ENV NODE_NO_WARNINGS=true
+ENV NODE_NO_WARNINGS='1'
