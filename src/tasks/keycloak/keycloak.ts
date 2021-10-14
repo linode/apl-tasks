@@ -260,13 +260,12 @@ async function main(): Promise<void> {
       (el) => el.clientId === 'realm-management',
     ) as ClientRepresentation
 
-    // get access roles
     const realmManagementRoles = ((await doApiCall(
       errors,
       `Getting realm-management roles from realm ${keyCloakRealm}`,
       async () => api.roles.realmClientsIdRolesGet(keyCloakRealm, realmManagementClient.id!),
     )) || []) as Array<RealmRole>
-    // const realmManagementRole = realmManagementRoles.find((el) => el.name === 'manage-realm') as RoleRepresentation
+    const realmManagementRole = realmManagementRoles.find((el) => el.name === 'manage-realm') as RoleRepresentation
     const userManagementRole = realmManagementRoles.find((el) => el.name === 'manage-users') as RoleRepresentation
     const userViewerRole = realmManagementRoles.find((el) => el.name === 'view-users') as RoleRepresentation
 
@@ -284,14 +283,8 @@ async function main(): Promise<void> {
         if (!existingRoleMapping) {
           // set realm roles
           const roles: Array<RoleRepresentation> = []
-          // make an exception for otomi-admin group as it gets the default keycloak 'admin' role
-          if (groupName === 'otomi-admin') {
-            const adminRole = updatedExistingRealmRoles.find((el) => el.name === 'admin') as RoleRepresentation
-            roles.push(adminRole)
-          } else {
-            const existingRole = updatedExistingRealmRoles.find((el) => el.name === groupName) as RoleRepresentation
-            roles.push(existingRole)
-          }
+          const existingRole = updatedExistingRealmRoles.find((el) => el.name === groupName) as RoleRepresentation
+          roles.push(existingRole)
           await doApiCall(errors, `Creating role mapping for group ${groupName}`, async () =>
             api.roleMapper.realmGroupsIdRoleMappingsRealmPost(keyCloakRealm, group.id!, roles),
           )
@@ -313,7 +306,8 @@ async function main(): Promise<void> {
           const accessRoles: Array<RoleRepresentation> = [userViewerRole]
           // both otomi-admin and team-admin role will get access to manage users
           // so the otomi-admin can login to the 'otomi' realm just like team-admin and see the same
-          if (['otomi-admin', 'team-admin'].includes(groupName)) accessRoles.push(userManagementRole)
+          if (groupName === 'team-admin') accessRoles.push(userManagementRole)
+          if (groupName === 'otomi-admin') accessRoles.push(realmManagementRole)
           await doApiCall(
             errors,
             `Creating access roles [${accessRoles.map((r) => r.name).join(',')}] mapping for group ${groupName}`,

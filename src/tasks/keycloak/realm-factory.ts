@@ -154,10 +154,8 @@ export function mapTeamsToRoles(): Array<RoleRepresentation> {
   // create static admin teams
   const teamAdmin = Object.create({ name: 'team-admin', groupMapping: env.IDP_GROUP_TEAM_ADMIN }) as TeamMapping
   const adminTeams = [teamAdmin]
-  // we don't wish to add the 'otomi-admin' role when we act as IDP, as we need it to be 'admin' on the claim
-  // when brokering for an external IDP we already have a mapper that maps group 'otomi-admin' to role 'admin' in the claim
   const otomiAdmin = Object.create({
-    name: env.FEAT_EXTERNAL_IDP ? 'otomi-admin' : 'admin',
+    name: 'admin',
     groupMapping: env.IDP_GROUP_OTOMI_ADMIN,
   }) as TeamMapping
   adminTeams.push(otomiAdmin)
