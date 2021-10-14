@@ -51,5 +51,7 @@ COPY package.json .
 
 USER node
 ENV NODE_ENV=production
-# Prevent npm update check while running any npm run <task>
+# suppress npm update check 
 ENV npm_config_update_notifier=false
+# suppress npm warnings
+ENV NODE_NO_WARNINGS=true

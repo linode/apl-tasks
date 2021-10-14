@@ -5,6 +5,9 @@ import retry, { Options } from 'async-retry'
 import http from 'http'
 import { findIndex, mapValues } from 'lodash'
 import fetch, { RequestInit } from 'node-fetch'
+import { cleanEnv } from './validators'
+
+const env = cleanEnv({})
 
 let apiClient: CoreV1Api
 
@@ -192,6 +195,7 @@ export async function deletePullSecret(teamId: string, name: string): Promise<vo
 }
 
 export async function waitTillAvailable(url: string, status = 200): Promise<void> {
+  if (env.isDev) return
   const retryOptions: Options = {
     retries: 10,
     factor: 2,
