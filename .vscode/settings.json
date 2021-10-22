@@ -38,5 +38,8 @@
   "mochaExplorer.timeout": 20000,
   "prettier.enable": true,
   "standard.enable": false,
-  "typescript.autoClosingTags": false
+  "typescript.autoClosingTags": false,
+  "[dotenv]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format"
+  }
 }

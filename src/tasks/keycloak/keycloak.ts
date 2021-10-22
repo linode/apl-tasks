@@ -283,7 +283,9 @@ async function main(): Promise<void> {
         if (!existingRoleMapping) {
           // set realm roles
           const roles: Array<RoleRepresentation> = []
-          const existingRole = updatedExistingRealmRoles.find((el) => el.name === groupName) as RoleRepresentation
+          const existingRole = updatedExistingRealmRoles.find(
+            (el) => el.name === (groupName === 'otomi-admin' ? 'admin' : groupName),
+          ) as RoleRepresentation
           roles.push(existingRole)
           await doApiCall(errors, `Creating role mapping for group ${groupName}`, async () =>
             api.roleMapper.realmGroupsIdRoleMappingsRealmPost(keyCloakRealm, group.id!, roles),

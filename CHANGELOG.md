@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.15](https://github.com/redkubes/otomi-tasks/compare/v0.2.14...v0.2.15) (2021-10-22)
+
+
+### Bug Fixes
+
+* disabled startup warnings [ci skip] ([dee3db8](https://github.com/redkubes/otomi-tasks/commit/dee3db8fe363327f66e97e2095c38e457b778243))
+* disabled startup warnings, wait not needed for isDev [ci skip] ([d137cb9](https://github.com/redkubes/otomi-tasks/commit/d137cb908e7e1d60a56444ed02de2f4c97ec4544))
+* husky [ci skip] ([4ba8ded](https://github.com/redkubes/otomi-tasks/commit/4ba8dede4b855d7ad3431c99048502c3fae1d364))
+* role name for otomi-admin is admin ([ffd7f63](https://github.com/redkubes/otomi-tasks/commit/ffd7f63fb4a1bdedeb4e79d8b6588f81a2ca32ce))
+
 ### [0.2.14](https://github.com/redkubes/otomi-tasks/compare/v0.2.13...v0.2.14) (2021-10-14)
 
 
