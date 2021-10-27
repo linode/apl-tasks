@@ -31,7 +31,7 @@ export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url", default: 
 export const IDP_USERNAME_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to username mapper string",
   // eslint-disable-next-line no-template-curly-in-string
-  default: '${CLAIM.email}',
+  default: '${CLAIM.upn}',
 })
 export const IDP_SUB_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to sub mapper",
