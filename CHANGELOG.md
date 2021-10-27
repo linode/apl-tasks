@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.16](https://github.com/redkubes/otomi-tasks/compare/v0.2.15...v0.2.16) (2021-10-27)
+
+
+### Bug Fixes
+
+* username mapper ([5c17c53](https://github.com/redkubes/otomi-tasks/commit/5c17c53439f0e6ef8f7ab57aa940336667d6f8e2))
+
 ### [0.2.15](https://github.com/redkubes/otomi-tasks/compare/v0.2.14...v0.2.15) (2021-10-22)
 
 
