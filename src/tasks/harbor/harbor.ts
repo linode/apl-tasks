@@ -1,20 +1,28 @@
 import {
   ConfigureApi,
-  MemberApi,
   HttpBearerAuth,
+  MemberApi,
+  Project,
   ProjectApi,
   ProjectMember,
   ProjectReq,
   RobotApi,
-  Robotv1Api,
-  Project,
   RobotCreate,
+  Robotv1Api,
 } from '@redkubes/harbor-client-node'
-
+import {
+  createPullSecret,
+  createSecret,
+  doApiCall,
+  getApiClient,
+  getSecret,
+  handleErrors,
+  waitTillAvailable,
+} from '../../utils'
 import {
   cleanEnv,
-  HARBOR_BASE_URL,
   HARBOR_BASE_REPO_URL,
+  HARBOR_BASE_URL,
   HARBOR_PASSWORD,
   HARBOR_USER,
   OIDC_CLIENT_SECRET,
@@ -22,15 +30,6 @@ import {
   OIDC_VERIFY_CERT,
   TEAM_IDS,
 } from '../../validators'
-import {
-  createSecret,
-  createPullSecret,
-  getApiClient,
-  getSecret,
-  doApiCall,
-  handleErrors,
-  waitTillAvailable,
-} from '../../utils'
 
 const env = cleanEnv({
   HARBOR_BASE_URL,
@@ -83,6 +82,7 @@ const systemRobot: any = {
   ],
 }
 
+const robotPrefix = 'otomi-'
 const config: any = {
   auth_mode: 'oidc_auth',
   oidc_admin_group: 'admin',
@@ -93,6 +93,8 @@ const config: any = {
   oidc_name: 'otomi',
   oidc_scope: 'openid',
   oidc_verify_cert: env.OIDC_VERIFY_CERT,
+  project_creation_restriction: 'adminonly',
+  robot_name_prefix: robotPrefix,
   self_registration: false,
 }
 
@@ -117,7 +119,7 @@ function setAuth(secret): void {
 // NOTE: assumes OIDC is not yet configured, otherwise this operation is NOT possible
 async function createSystemRobotSecret(): Promise<RobotSecret> {
   const { body: robotList } = await robotApi.listRobot()
-  const existing = robotList.find((i) => i.name === `robot$${systemRobot.name}`)
+  const existing = robotList.find((i) => i.name === `${robotPrefix}${systemRobot.name}`)
   if (existing?.id) {
     const existingId = existing.id
     await doApiCall(errors, `Deleting previous robot account ${systemRobot.name}`, () =>
@@ -157,13 +159,11 @@ async function createProjectRobotSecret(teamId: string, projectId: string): Prom
   }
 
   const { body: robotList } = await robotv1Api.listRobotV1(projectId)
-  const existing = robotList.find((i) => i.name === `robot$${namespace}+${projectRobot.name}`)
+  const existing = robotList.find((i) => i.name === `${robotPrefix}${namespace}+${projectRobot.name}`)
 
   if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous robot account ${existing.name}`, () =>
-      robotv1Api.deleteRobotV1(projectId, existingId),
-    )
+    await doApiCall(errors, `Deleting previous robot account ${existing.name}`, () => robotApi.deleteRobot(existingId))
   }
 
   const { id, name, secret } = await doApiCall(
@@ -187,7 +187,7 @@ async function ensureSystemSecret(): Promise<RobotSecret> {
       setAuth(robotSecret.secret)
       robotApi.listRobot()
     } catch (e) {
-      // throw everything expect 401, which is what we test for
+      // throw everything except 401, which is what we test for
       if (e.status !== 401) throw e
       // unauthenticated, so remove and recreate secret
       await getApiClient().deleteNamespacedSecret(systemSecretName, systemNamespace)
@@ -214,7 +214,7 @@ async function ensureProjectSecret(teamId: string, projectId: string): Promise<v
     teamId,
     name: projectSecretName,
     server: `${env.HARBOR_BASE_REPO_URL}`,
-    username: `robot$${namespace}+${projectRobotName}`,
+    username: `${robotPrefix}${namespace}+${projectRobotName}`,
     password: k8sSecret.secret,
   })
 }
