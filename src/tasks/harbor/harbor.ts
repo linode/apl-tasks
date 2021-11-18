@@ -14,7 +14,6 @@ import {
   RobotCreate,
   // eslint-disable-next-line no-unused-vars
   RobotCreated,
-  Robotv1Api,
 } from '@redkubes/harbor-client-node'
 import {
   createPullSecret,
@@ -123,7 +122,6 @@ const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
 const harborBaseUrl = `${env.HARBOR_BASE_URL}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
-const robotv1Api = new Robotv1Api(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const configureApi = new ConfigureApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const projectsApi = new ProjectApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const memberApi = new MemberApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
@@ -184,9 +182,9 @@ async function createTeamRobotAccount(projectName: string): Promise<RobotCreated
       },
     ],
   }
-  const fullName = `${robotPrefix}+${projectRobot.name}`
+  const fullName = `${robotPrefix}${projectRobot.name}`
 
-  const { body: robotList } = await robotv1Api.listRobotV1(projectName)
+  const { body: robotList } = await robotApi.listRobot()
   const existing = robotList.find((i) => i.name === fullName)
 
   if (existing?.id) {
@@ -194,14 +192,16 @@ async function createTeamRobotAccount(projectName: string): Promise<RobotCreated
     await doApiCall(errors, `Deleting previous robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
   }
 
-  const robotAccount = (await doApiCall(
-    errors,
-    `Create project robot account ${fullName} with project level perms`,
-    () => robotApi.createRobot(projectRobot),
+  const robotAccount = (await doApiCall(errors, `Create robot account ${fullName} with project level perms`, () =>
+    robotApi.createRobot(projectRobot),
   )) as RobotCreated
   return robotAccount
 }
 
+/**
+ * Create Harbor system robot account that is used to perform all further API calls
+ * @param projectName Harbor project name
+ */
 async function ensureSystemSecret(): Promise<RobotSecret> {
   let robotSecret = (await getSecret(systemSecretName, systemNamespace)) as RobotSecret
   if (!robotSecret) {
@@ -257,7 +257,6 @@ async function main(): Promise<void> {
   configureApi.setDefaultAuthentication(bearerAuth)
   projectsApi.setDefaultAuthentication(bearerAuth)
   memberApi.setDefaultAuthentication(bearerAuth)
-  robotv1Api.setDefaultAuthentication(bearerAuth)
 
   await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
   await Promise.all(
