@@ -118,18 +118,12 @@ const config: any = {
 const systemNamespace = 'harbor'
 const systemSecretName = 'harbor-robot-admin'
 const projectSecretName = 'harbor-pullsecret'
-const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
 const harborBaseUrl = `${env.HARBOR_BASE_URL}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const configureApi = new ConfigureApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const projectsApi = new ProjectApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const memberApi = new MemberApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
-
-function setAuth(secret): void {
-  bearerAuth.accessToken = secret
-  robotApi.setDefaultAuthentication(bearerAuth)
-}
 
 /**
  * Create Harbor robot account that is used by Otomi tasks
@@ -192,17 +186,19 @@ async function createTeamRobotAccount(projectName: string): Promise<RobotCreated
     await doApiCall(errors, `Deleting previous robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
   }
 
-  const robotAccount = (await doApiCall(errors, `Create robot account ${fullName} with project level perms`, () =>
+  const robotAccount = (await doApiCall(errors, `Creating robot account ${fullName} with project level perms`, () =>
     robotApi.createRobot(projectRobot),
   )) as RobotCreated
   return robotAccount
 }
 
 /**
- * Create Harbor system robot account that is used to perform all further API calls
- * @param projectName Harbor project name
+ * Get token by reading access token from kubernetes secret.
+ * If the secret does not exists then create Harbor robot account and populate credentials to kubernetes secret.
  */
-async function ensureSystemSecret(): Promise<RobotSecret> {
+async function getBearerToken(): Promise<HttpBearerAuth> {
+  const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
+
   let robotSecret = (await getSecret(systemSecretName, systemNamespace)) as RobotSecret
   if (!robotSecret) {
     // not existing yet, create robot account and keep creds in secret
@@ -210,7 +206,8 @@ async function ensureSystemSecret(): Promise<RobotSecret> {
   } else {
     // test if secret still works
     try {
-      setAuth(robotSecret.secret)
+      bearerAuth.accessToken = robotSecret.secret
+      robotApi.setDefaultAuthentication(bearerAuth)
       robotApi.listRobot()
     } catch (e) {
       // throw everything except 401, which is what we test for
@@ -223,8 +220,8 @@ async function ensureSystemSecret(): Promise<RobotSecret> {
       robotSecret = await createSystemRobotSecret()
     }
   }
-  setAuth(robotSecret.secret)
-  return robotSecret
+  bearerAuth.accessToken = robotSecret.secret
+  return bearerAuth
 }
 
 /**
@@ -235,10 +232,12 @@ async function ensureSystemSecret(): Promise<RobotSecret> {
 async function ensureTeamRobotAccountSecret(namespace: string, projectName): Promise<void> {
   const k8sSecret = await getSecret(projectSecretName, namespace)
   if (k8sSecret) {
+    console.debug(`Deleting secret/${projectSecretName} from ${namespace} namespace`)
     await getApiClient().deleteNamespacedSecret(projectSecretName, namespace)
   }
 
   const robotAccount = await createTeamRobotAccount(projectName)
+  console.debug(`Creating secret/${projectSecretName} at ${namespace} namespace`)
   await createPullSecret({
     namespace,
     name: projectSecretName,
@@ -250,10 +249,8 @@ async function ensureTeamRobotAccountSecret(namespace: string, projectName): Pro
 
 async function main(): Promise<void> {
   await waitTillAvailable(harborHealthUrl)
-  await ensureSystemSecret()
-
-  // now we can set the token on our apis
-  // too bad we can't set it globally
+  const bearerAuth = await getBearerToken()
+  robotApi.setDefaultAuthentication(bearerAuth)
   configureApi.setDefaultAuthentication(bearerAuth)
   projectsApi.setDefaultAuthentication(bearerAuth)
   memberApi.setDefaultAuthentication(bearerAuth)
