@@ -83,7 +83,7 @@ describe('Secret creation', () => {
     sandbox.stub(client, 'createNamespacedSecret').returns(secretPromise)
     sandbox.stub(client, 'readNamespacedServiceAccount').returns(newServiceAccountPromise)
     const patchSpy = sandbox.stub(client, 'patchNamespacedServiceAccount').returns(undefined as any)
-    await createPullSecret({ teamId, name, server, password: data.password, username: data.username })
+    await createPullSecret({ namespace, name, server, password: data.password, username: data.username })
     expect(patchSpy).to.have.been.calledWith('default', namespace, saWithExistingSecret)
   })
 
@@ -91,7 +91,7 @@ describe('Secret creation', () => {
     sandbox.stub(client, 'createNamespacedSecret').returns(secretPromise)
     sandbox.stub(client, 'readNamespacedServiceAccount').returns(newEmptyServiceAccountPromise)
     const patchSpy = sandbox.stub(client, 'patchNamespacedServiceAccount').returns(undefined as any)
-    await createPullSecret({ teamId, name, server, password: data.password, username: data.username })
+    await createPullSecret({ namespace, name, server, password: data.password, username: data.username })
     expect(patchSpy).to.have.been.calledWith('default', namespace, saWithExistingSecret)
   })
 
@@ -99,14 +99,14 @@ describe('Secret creation', () => {
     sandbox.stub(client, 'createNamespacedSecret').returns(secretPromise)
     sandbox.stub(client, 'readNamespacedServiceAccount').returns(withOtherSecretServiceAccountPromise)
     const patchSpy = sandbox.stub(client, 'patchNamespacedServiceAccount').returns(undefined as any)
-    await createPullSecret({ teamId, name, server, password: data.password, username: data.username })
+    await createPullSecret({ namespace, name, server, password: data.password, username: data.username })
     expect(patchSpy).to.have.been.calledWith('default', namespace, saCombinedWithOtherSecret)
   })
 
   it('should throw exception on secret creation for existing name', () => {
     sandbox.stub(client, 'createNamespacedSecret').throws(409)
     const check = createPullSecret({
-      teamId,
+      namespace,
       name,
       server,
       password: data.password,

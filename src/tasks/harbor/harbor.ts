@@ -2,13 +2,29 @@ import {
   ConfigureApi,
   HttpBearerAuth,
   MemberApi,
+  // eslint-disable-next-line no-unused-vars
+  Project,
   ProjectApi,
+  // eslint-disable-next-line no-unused-vars
+  ProjectMember,
+  // eslint-disable-next-line no-unused-vars
+  ProjectReq,
   RobotApi,
+  // eslint-disable-next-line no-unused-vars
   RobotCreate,
+  // eslint-disable-next-line no-unused-vars
   RobotCreated,
   Robotv1Api,
 } from '@redkubes/harbor-client-node'
-import { createPullSecret, createSecret, doApiCall, getApiClient, getSecret } from '../../utils'
+import {
+  createPullSecret,
+  createSecret,
+  doApiCall,
+  getApiClient,
+  getSecret,
+  handleErrors,
+  waitTillAvailable,
+} from '../../utils'
 import {
   cleanEnv,
   HARBOR_BASE_REPO_URL,
@@ -72,41 +88,31 @@ const systemRobot: any = {
   ],
 }
 
-const getTeamRobotAccountPayload = (name: string, namespace: string) => {
-  return {
-    name: `${name}-pull`,
-    duration: -1,
-    description: 'Allow team to pull from its own registry',
-    disable: false,
-    level: 'system',
-    permissions: [
-      {
-        kind: 'project',
-        namespace,
-        access: [
-          {
-            resource: 'repository',
-            action: 'pull',
-          },
-        ],
-      },
-    ],
-  }
-}
-
 const robotPrefix = 'otomi-'
 const config: any = {
+  // eslint-disable-next-line @typescript-eslint/camelcase
   auth_mode: 'oidc_auth',
+  // eslint-disable-next-line @typescript-eslint/camelcase
   oidc_admin_group: 'admin',
+  // eslint-disable-next-line @typescript-eslint/camelcase
   oidc_client_id: 'otomi',
+  // eslint-disable-next-line @typescript-eslint/camelcase
   oidc_client_secret: env.OIDC_CLIENT_SECRET,
+  // eslint-disable-next-line @typescript-eslint/camelcase
   oidc_endpoint: env.OIDC_ENDPOINT,
+  // eslint-disable-next-line @typescript-eslint/camelcase
   oidc_groups_claim: 'groups',
+  // eslint-disable-next-line @typescript-eslint/camelcase
   oidc_name: 'otomi',
+  // eslint-disable-next-line @typescript-eslint/camelcase
   oidc_scope: 'openid',
+  // eslint-disable-next-line @typescript-eslint/camelcase
   oidc_verify_cert: env.OIDC_VERIFY_CERT,
+  // eslint-disable-next-line @typescript-eslint/camelcase
   project_creation_restriction: 'adminonly',
+  // eslint-disable-next-line @typescript-eslint/camelcase
   robot_name_prefix: robotPrefix,
+  // eslint-disable-next-line @typescript-eslint/camelcase
   self_registration: false,
 }
 
