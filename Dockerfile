@@ -3,7 +3,7 @@ FROM node:14-alpine as dev
 ARG NPM_TOKEN
 RUN test -n "$NPM_TOKEN"
 
-RUN apk --no-cache add make gcc g++ python git jq
+RUN apk --no-cache add make gcc g++ python3 git jq
 
 ENV NODE_ENV=development
 ENV BLUEBIRD_DEBUG=0
