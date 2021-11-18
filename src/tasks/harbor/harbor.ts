@@ -2,23 +2,13 @@ import {
   ConfigureApi,
   HttpBearerAuth,
   MemberApi,
-  Project,
   ProjectApi,
-  ProjectMember,
-  ProjectReq,
   RobotApi,
   RobotCreate,
+  RobotCreated,
   Robotv1Api,
 } from '@redkubes/harbor-client-node'
-import {
-  createPullSecret,
-  createSecret,
-  doApiCall,
-  getApiClient,
-  getSecret,
-  handleErrors,
-  waitTillAvailable,
-} from '../../utils'
+import { createPullSecret, createSecret, doApiCall, getApiClient, getSecret } from '../../utils'
 import {
   cleanEnv,
   HARBOR_BASE_REPO_URL,
@@ -82,6 +72,28 @@ const systemRobot: any = {
   ],
 }
 
+const getTeamRobotAccountPayload = (name: string, namespace: string) => {
+  return {
+    name: `${name}-pull`,
+    duration: -1,
+    description: 'Allow team to pull from its own registry',
+    disable: false,
+    level: 'system',
+    permissions: [
+      {
+        kind: 'project',
+        namespace,
+        access: [
+          {
+            resource: 'repository',
+            action: 'pull',
+          },
+        ],
+      },
+    ],
+  }
+}
+
 const robotPrefix = 'otomi-'
 const config: any = {
   auth_mode: 'oidc_auth',
@@ -101,7 +113,6 @@ const config: any = {
 const systemNamespace = 'harbor'
 const systemSecretName = 'harbor-robot-admin'
 const projectSecretName = 'harbor-pullsecret'
-const projectRobotName = 'otomi'
 const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
 const harborBaseUrl = `${env.HARBOR_BASE_URL}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
@@ -116,7 +127,10 @@ function setAuth(secret): void {
   robotApi.setDefaultAuthentication(bearerAuth)
 }
 
-// NOTE: assumes OIDC is not yet configured, otherwise this operation is NOT possible
+/**
+ * Create Harbor robot account that is used by Otomi tasks
+ * @note assumes OIDC is not yet configured, otherwise this operation is NOT possible
+ */
 async function createSystemRobotSecret(): Promise<RobotSecret> {
   const { body: robotList } = await robotApi.listRobot()
   const existing = robotList.find((i) => i.name === `${robotPrefix}${systemRobot.name}`)
@@ -126,28 +140,35 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
       robotApi.deleteRobot(existingId),
     )
   }
-  const { id, name, secret } = await doApiCall(
+  const robotAccount = (await doApiCall(
     errors,
     `Create robot account ${systemRobot.name} with system level perms`,
     () => robotApi.createRobot(systemRobot),
-  )
-  const robotSecret: RobotSecret = { id, name, secret }
-  await createSecret(systemSecretName, systemNamespace, robotSecret)
+  )) as RobotCreated
+  const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
+  await createSecret(systemSecretName, systemNamespace, {
+    id: robotAccount.id!,
+    name: robotAccount.name!,
+    secret: robotAccount.secret!,
+  })
   return robotSecret
 }
 
-async function createProjectRobotSecret(teamId: string, projectId: string): Promise<RobotSecret> {
-  const namespace = `team-${teamId}`
+/**
+ * Create Harbor system robot account that is scoped to a given Harbor project
+ * @param projectName Harbor project name
+ */
+async function createTeamRobotAccount(projectName: string): Promise<RobotCreated> {
   const projectRobot: RobotCreate = {
-    name: projectRobotName,
+    name: `${projectName}-pull`,
     duration: -1,
-    description: 'Created by Otomi for transparent pulling.',
+    description: 'Allow team to pull from its own registry',
     disable: false,
-    level: 'project',
+    level: 'system',
     permissions: [
       {
         kind: 'project',
-        namespace,
+        namespace: projectName,
         access: [
           {
             resource: 'repository',
@@ -157,23 +178,22 @@ async function createProjectRobotSecret(teamId: string, projectId: string): Prom
       },
     ],
   }
+  const fullName = `${robotPrefix}+${projectRobot.name}`
 
-  const { body: robotList } = await robotv1Api.listRobotV1(projectId)
-  const existing = robotList.find((i) => i.name === `${robotPrefix}${namespace}+${projectRobot.name}`)
+  const { body: robotList } = await robotv1Api.listRobotV1(projectName)
+  const existing = robotList.find((i) => i.name === fullName)
 
   if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous robot account ${existing.name}`, () => robotApi.deleteRobot(existingId))
+    await doApiCall(errors, `Deleting previous robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
   }
 
-  const { id, name, secret } = await doApiCall(
+  const robotAccount = (await doApiCall(
     errors,
-    `Create project robot account ${projectRobot.name} with project level perms`,
-    // () => robotv1Api.createRobotV1(projectId, projectRobot), // this function didn't work. I couldn't fix the expiration time with this function. I have to use the robotApi
+    `Create project robot account ${fullName} with project level perms`,
     () => robotApi.createRobot(projectRobot),
-  )
-  const robotSecret: RobotSecret = { id, name, secret }
-  return robotSecret
+  )) as RobotCreated
+  return robotAccount
 }
 
 async function ensureSystemSecret(): Promise<RobotSecret> {
@@ -201,21 +221,24 @@ async function ensureSystemSecret(): Promise<RobotSecret> {
   return robotSecret
 }
 
-async function ensureProjectSecret(teamId: string, projectId: string): Promise<void> {
-  const namespace = `team-${teamId}`
-
-  let k8sSecret = (await getSecret(projectSecretName, namespace)) as RobotSecret
+/**
+ * Ensure that Harbor robot account and corresponding Kubernetes pull secret exist
+ * @param namespace Kubernetes namespace where pull secret is created
+ * @param projectName Harbor project name
+ */
+async function ensureTeamRobotAccountSecret(namespace: string, projectName): Promise<void> {
+  const k8sSecret = await getSecret(projectSecretName, namespace)
   if (k8sSecret) {
     await getApiClient().deleteNamespacedSecret(projectSecretName, namespace)
   }
 
-  k8sSecret = await createProjectRobotSecret(teamId, projectId)
+  const robotAccount = await createTeamRobotAccount(projectName)
   await createPullSecret({
-    teamId,
+    namespace,
     name: projectSecretName,
     server: `${env.HARBOR_BASE_REPO_URL}`,
-    username: `${robotPrefix}${namespace}+${projectRobotName}`,
-    password: k8sSecret.secret,
+    username: robotAccount.name!,
+    password: robotAccount.secret!,
   })
 }
 
@@ -233,14 +256,15 @@ async function main(): Promise<void> {
   await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
   await Promise.all(
     env.TEAM_IDS.map(async (teamId: string) => {
-      const namespace = `team-${teamId}`
+      const projectName = `team-${teamId}`
+      const teamNamespce = projectName
       const projectReq: ProjectReq = {
-        projectName: namespace,
+        projectName,
       }
       await doApiCall(errors, `Creating project for team ${teamId}`, () => projectsApi.createProject(projectReq))
 
       const project = (await doApiCall(errors, `Get project for team ${teamId}`, () =>
-        projectsApi.getProject(namespace),
+        projectsApi.getProject(projectName),
       )) as Project
       if (!project) return ''
       const projectId = `${project.projectId}`
@@ -248,7 +272,7 @@ async function main(): Promise<void> {
       const projMember: ProjectMember = {
         roleId: HarborRole.developer,
         memberGroup: {
-          groupName: namespace,
+          groupName: projectName,
           groupType: HarborGroupType.http,
         },
       }
@@ -259,14 +283,18 @@ async function main(): Promise<void> {
           groupType: HarborGroupType.http,
         },
       }
-      await doApiCall(errors, `Associating "developer" role for team "${teamId}" with harbor project "${teamId}"`, () =>
-        memberApi.createProjectMember(projectId, undefined, undefined, projMember),
+      await doApiCall(
+        errors,
+        `Associating "developer" role for team "${teamId}" with harbor project "${projectName}"`,
+        () => memberApi.createProjectMember(projectId, undefined, undefined, projMember),
       )
-      await doApiCall(errors, `Associating "project-admin" role for "team-admin" with harbor project "${teamId}"`, () =>
-        memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
+      await doApiCall(
+        errors,
+        `Associating "project-admin" role for "team-admin" with harbor project "${projectName}"`,
+        () => memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
       )
 
-      await ensureProjectSecret(teamId, projectId)
+      await ensureTeamRobotAccountSecret(teamNamespce, projectName)
 
       return null
     }),

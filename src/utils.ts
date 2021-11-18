@@ -36,7 +36,12 @@ export function ensure<T>(argument: T | undefined | null, message = 'This value 
 
   return argument
 }
-
+/**
+ * Create Kubernetes secret
+ * @param name Secret name
+ * @param namespace Kubernetes namespace
+ * @param data Secret data (non encoded with base64)
+ */
 export async function createSecret(name: string, namespace: string, data: any): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
@@ -113,20 +118,19 @@ export function handleErrors(errors: string[]): void {
 }
 
 export async function createPullSecret({
-  teamId,
+  namespace,
   name,
   server,
   password,
   username = '_json_key',
 }: {
-  teamId: string
+  namespace: string
   name: string
   server: string
   password: string
   username?: string
 }): Promise<void> {
   const client = getApiClient()
-  const namespace = `team-${teamId}`
   // create data structure for secret
   const data = {
     auths: {
