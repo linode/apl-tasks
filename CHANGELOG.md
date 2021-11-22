@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.18](https://github.com/redkubes/otomi-tasks/compare/v0.2.17...v0.2.18) (2021-11-22)
+
+
+### Features
+
+* added copy-certs and wait-for ([#48](https://github.com/redkubes/otomi-tasks/issues/48)) ([f46c27a](https://github.com/redkubes/otomi-tasks/commit/f46c27a39a97bac0fe3ea6c0a6941e45dede5e87))
+
 ### [0.2.17](https://github.com/redkubes/otomi-tasks/compare/v0.2.16...v0.2.17) (2021-10-31)
 
 
