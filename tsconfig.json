@@ -5,20 +5,21 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
+    "lib": ["ES2021", "ESNext"],
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "dist",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "sourceMap": true,
-    "strictNullChecks": true,
     "strict": false,
-    "target": "esnext"
+    "strictNullChecks": true,
+    "target": "ES2021"
   },
   "exclude": ["node_modules", "dist"],
   "include": ["./src/**/*.ts"],
   "parserOptions": {
-    "ecmaVersion": 2018,
+    "ecmaVersion": 2021,
     "sourceType": "module"
   }
 }

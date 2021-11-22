@@ -1,24 +1,27 @@
 /* eslint-disable no-loop-func */
 /* eslint-disable no-await-in-loop */
-import { CoreV1Api, KubeConfig, V1ObjectMeta, V1Secret, V1ServiceAccount } from '@kubernetes/client-node'
+import {
+  CoreV1Api,
+  KubeConfig,
+  NetworkingV1beta1Api,
+  V1ObjectMeta,
+  V1Secret,
+  V1ServiceAccount,
+} from '@kubernetes/client-node'
 import retry, { Options } from 'async-retry'
 import http from 'http'
-import { findIndex, mapValues } from 'lodash'
+import { findIndex } from 'lodash'
 import fetch, { RequestInit } from 'node-fetch'
 import { cleanEnv } from './validators'
 
 const env = cleanEnv({})
 
-let apiClient: CoreV1Api
+const kc = new KubeConfig()
+kc.loadFromDefault()
+export const k8sCoreClient: CoreV1Api = kc.makeApiClient(CoreV1Api)
+export const k8sNetworkingApi = kc.makeApiClient(NetworkingV1beta1Api)
 
-export function getApiClient(): CoreV1Api {
-  if (apiClient) return apiClient
-  const kc = new KubeConfig()
-  kc.loadFromDefault()
-  apiClient = kc.makeApiClient(CoreV1Api)
-  return apiClient
-}
-
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function objectToArray(obj: any, keyName: string, keyValue: string): any[] {
   const arr = Object.keys(obj).map((key) => {
     const tmp = {}
@@ -35,46 +38,6 @@ export function ensure<T>(argument: T | undefined | null, message = 'This value 
   }
 
   return argument
-}
-
-export async function createSecret(name: string, namespace: string, data: any): Promise<void> {
-  const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
-  const secret: V1Secret = {
-    ...new V1Secret(),
-    metadata: { ...new V1ObjectMeta(), name },
-    data: mapValues(data, b64enc) as {
-      [key: string]: string
-    },
-  }
-
-  await getApiClient().createNamespacedSecret(namespace, secret)
-  console.info(`New secret ${name} has been created in the namespace ${namespace}`)
-}
-
-export type SecretPromise = Promise<{
-  response: http.IncomingMessage
-  body: V1Secret
-}>
-
-export type ServiceAccountPromise = Promise<{
-  response: http.IncomingMessage
-  body: V1ServiceAccount
-}>
-
-export async function getSecret(name: string, namespace: string): Promise<unknown> {
-  const b64dec = (val): string => Buffer.from(val, 'base64').toString()
-  try {
-    const response = await getApiClient().readNamespacedSecret(name, namespace)
-    const {
-      body: { data },
-    } = response
-    const secret = mapValues(data, b64dec)
-    console.debug(`Found: secret ${name} in namespace ${namespace}`)
-    return secret
-  } catch (e) {
-    console.info(`Not found: secret ${name} in namespace ${namespace}`)
-    return undefined
-  }
 }
 
 export type openapiResponse = {
@@ -125,7 +88,7 @@ export async function createPullSecret({
   password: string
   username?: string
 }): Promise<void> {
-  const client = getApiClient()
+  const client = k8sCoreClient
   const namespace = `team-${teamId}`
   // create data structure for secret
   const data = {
@@ -168,7 +131,7 @@ export async function createPullSecret({
 }
 
 export async function getPullSecrets(teamId: string): Promise<Array<any>> {
-  const client = getApiClient()
+  const client = k8sCoreClient
   const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
@@ -176,7 +139,7 @@ export async function getPullSecrets(teamId: string): Promise<Array<any>> {
 }
 
 export async function deletePullSecret(teamId: string, name: string): Promise<void> {
-  const client = getApiClient()
+  const client = k8sCoreClient
   const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes

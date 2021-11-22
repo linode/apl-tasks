@@ -79,6 +79,33 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug certs-aws Tasks",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "tasks:certs-aws-dev"],
+      "env": {
+        "DEBUG": "*",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
+        "REGION": "eu-central-1"
+      },
+      "cwd": "${workspaceRoot}",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug copy-certs task",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "tasks:copy-certs-dev"],
+      "cwd": "${workspaceRoot}",
+      "env": {
+        "DEBUG": "*",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Debug Gitea task",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:gitea-dev"],
@@ -131,15 +158,14 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug certs-aws Tasks",
+      "name": "Debug wait-for task",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:certs-aws-dev"],
+      "runtimeArgs": ["run-script", "tasks:wait-for-dev"],
+      "cwd": "${workspaceRoot}",
       "env": {
         "DEBUG": "*",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
-        "REGION": "eu-central-1"
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       },
-      "cwd": "${workspaceRoot}",
       "console": "integratedTerminal"
     }
   ]
