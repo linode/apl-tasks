@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-return-assign */
-import { bool, cleanEnv as clean, CleanEnv, json, num, str, StrictCleanOptions, url, ValidatorSpec } from 'envalid'
+import { bool, cleanEnv as clean, json, num, str, StrictCleanOptions, url, ValidatorSpec } from 'envalid'
 
 const { env } = process
 
@@ -59,6 +59,9 @@ export const TEAM_IDS = json({ desc: 'A list of team ids in JSON format' })
 export const OTOMI_VALUES_INPUT = str({ desc: 'The chart values.yaml file' })
 export const OTOMI_SCHEMA_PATH = str({ desc: 'The path to the values-schema.yaml schema file' })
 export const OTOMI_ENV_DIR = str({ desc: 'The path to the otomi-values folder' })
+export const OTOMI_FLAGS = json({ default: '{}' })
+export const WAIT_URL = str({ desc: 'The URL to wait for.' })
+export const WAIT_OPTIONS = json({ desc: 'The wait-for optionss', default: '{}' })
 
 // set default to undefined based on feature flags:
 if (!feat.FEAT_EXTERNAL_IDP) {
@@ -81,10 +84,8 @@ if (!feat.FEAT_EXTERNAL_IDP) {
 export function cleanEnv<T>(
   validators: { [K in keyof T]: ValidatorSpec<T[K]> },
   options: StrictCleanOptions = { strict: true },
-): Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined } {
-  if (env.NODE_ENV === 'test')
-    return process.env as Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined }
-  return clean(env, validators, options) as Readonly<T> & CleanEnv & { readonly [varName: string]: string | undefined }
+): any {
+  return clean(env, validators, options) as any
 }
 
 // And to avoid npm trying to check for updates

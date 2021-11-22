@@ -8,70 +8,51 @@ import {
   V1Secret,
   V1ServiceAccount,
 } from '@kubernetes/client-node'
-import retry, { Options } from 'async-retry'
-import http from 'http'
-import { findIndex } from 'lodash'
-import fetch, { RequestInit } from 'node-fetch'
-import { cleanEnv } from './validators'
-
-const env = cleanEnv({})
+import { IncomingMessage } from 'http'
+import { findIndex, mapValues } from 'lodash'
 
 const kc = new KubeConfig()
 kc.loadFromDefault()
 export const k8sCoreClient: CoreV1Api = kc.makeApiClient(CoreV1Api)
 export const k8sNetworkingApi = kc.makeApiClient(NetworkingV1beta1Api)
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export function objectToArray(obj: any, keyName: string, keyValue: string): any[] {
-  const arr = Object.keys(obj).map((key) => {
-    const tmp = {}
-    tmp[keyName] = key
-    tmp[keyValue] = obj[key]
-    return tmp
-  })
-  return arr
-}
-
-export function ensure<T>(argument: T | undefined | null, message = 'This value was promised to be there.'): T {
-  if (argument === undefined || argument === null) {
-    throw new TypeError(message)
+export async function createSecret(name: string, namespace: string, data: Record<string, any>): Promise<void> {
+  const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
+  const secret: V1Secret = {
+    ...new V1Secret(),
+    metadata: { ...new V1ObjectMeta(), name },
+    data: mapValues(data, b64enc) as {
+      [key: string]: string
+    },
   }
 
-  return argument
+  await k8sCoreClient.createNamespacedSecret(namespace, secret)
+  console.info(`New secret ${name} has been created in the namespace ${namespace}`)
 }
 
-export type openapiResponse = {
-  response: http.IncomingMessage
-  body?: any
-}
+export type SecretPromise = Promise<{
+  response: IncomingMessage
+  body: V1Secret
+}>
 
-export async function doApiCall(
-  errors: string[],
-  action: string,
-  fn: () => Promise<openapiResponse>,
-  statusCodeExists = 409,
-): Promise<any | undefined> {
-  console.info(action)
+export type ServiceAccountPromise = Promise<{
+  response: IncomingMessage
+  body: V1ServiceAccount
+}>
+
+export async function getSecret(name: string, namespace: string): Promise<unknown> {
+  const b64dec = (val): string => Buffer.from(val, 'base64').toString()
   try {
-    const res = await fn()
-    const { body } = res
-    return body
+    const response = await k8sCoreClient.readNamespacedSecret(name, namespace)
+    const {
+      body: { data },
+    } = response
+    const secret = mapValues(data, b64dec)
+    console.debug(`Found: secret ${name} in namespace ${namespace}`)
+    return secret
   } catch (e) {
-    console.warn(e.body ?? `${e}`)
-    if (e.statusCode) {
-      if (e.statusCode === statusCodeExists) console.warn(`${action} > already exists.`)
-      else errors.push(`${action} > HTTP error ${e.statusCode}: ${e.message}`)
-    } else errors.push(`${action} > Unknown error: ${e.message}`)
+    console.info(`Not found: secret ${name} in namespace ${namespace}`)
     return undefined
-  }
-}
-
-export function handleErrors(errors: string[]): void {
-  if (errors.length) {
-    console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
-    process.exit(1)
-  } else {
-    console.info('Success!')
   }
 }
 
@@ -154,48 +135,5 @@ export async function deletePullSecret(teamId: string, name: string): Promise<vo
     await client.deleteNamespacedSecret(name, namespace)
   } catch (e) {
     throw new Error(`Secret '${name}' does not exist in namespace '${namespace}'`)
-  }
-}
-
-export async function waitTillAvailable(url: string, status = 200): Promise<void> {
-  if (env.isDev) return
-  const retryOptions: Options = {
-    retries: 10,
-    factor: 2,
-    // minTimeout: The number of milliseconds before starting the first retry. Default is 1000.
-    minTimeout: 1000,
-    // The maximum number of milliseconds between two retries.
-    maxTimeout: 30000,
-  }
-  const minimumSuccessful = 10
-  let count = 0
-  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-  try {
-    do {
-      console.log('retry count: ', count)
-      await retry(async (bail) => {
-        try {
-          const fetchOptions: RequestInit = {
-            redirect: 'follow',
-          }
-          const res = await fetch(url, fetchOptions)
-          if (res.status !== status) {
-            console.warn(`GET ${res.url} ${res.status}`)
-            bail(new Error(`Retry`))
-          } else {
-            count += 1
-            await delay(1000)
-          }
-        } catch (e) {
-          // Print system errors like ECONNREFUSED
-          console.error(e.message)
-          count = 0
-          throw e
-        }
-      }, retryOptions)
-    } while (count < minimumSuccessful)
-  } catch (e) {
-    console.error('Max retry tries has been reached: ', e)
-    process.exit(1)
   }
 }

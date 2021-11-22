@@ -1,8 +1,9 @@
 import * as k8s from '@kubernetes/client-node'
-import { forIn } from 'lodash'
 import AWS, { ACM } from 'aws-sdk'
 import { ImportCertificateRequest, ImportCertificateResponse } from 'aws-sdk/clients/acm'
-import { cleanEnv, CERT_ROTATION_DAYS, DOMAINS, REGION, SECRETS_NAMESPACE } from '../../validators'
+import { forIn } from 'lodash'
+import { k8sCoreClient, k8sNetworkingApi } from '../../utils'
+import { CERT_ROTATION_DAYS, cleanEnv, DOMAINS, REGION, SECRETS_NAMESPACE } from '../../validators'
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const env = cleanEnv({
   CERT_ROTATION_DAYS,
@@ -14,14 +15,10 @@ AWS.config.update({ region: env.REGION })
 const acm = new ACM()
 const cmName = 'cert-arns'
 const errors: string[] = []
-const kc = new k8s.KubeConfig()
-kc.loadFromDefault()
-const client = kc.makeApiClient(k8s.CoreV1Api)
-const netClient = kc.makeApiClient(k8s.NetworkingV1beta1Api)
 
 async function getDomains(): Promise<Record<string, unknown>> {
   try {
-    const res = await client.readNamespacedConfigMap(cmName, 'maintenance')
+    const res = await k8sCoreClient.readNamespacedConfigMap(cmName, 'maintenance')
     const { body }: { body: k8s.V1ConfigMap } = res
     return JSON.parse(body.data?.domains || '{}')
   } catch (e) {
@@ -31,14 +28,14 @@ async function getDomains(): Promise<Record<string, unknown>> {
 
 async function updateConfig(domains): Promise<k8s.V1Secret> {
   const body = { data: { domains: JSON.stringify(domains) } }
-  const res = await client.patchNamespacedConfigMap(cmName, 'maintenance', body)
+  const res = await k8sCoreClient.patchNamespacedConfigMap(cmName, 'maintenance', body)
   const { body: data }: { body: k8s.V1Secret } = res
   return data
 }
 
 async function getTLSSecret(secretName: string): Promise<Record<string, unknown> | undefined> {
   try {
-    const res = await client.readNamespacedSecret(secretName, env.SECRETS_NAMESPACE)
+    const res = await k8sCoreClient.readNamespacedSecret(secretName, env.SECRETS_NAMESPACE)
     const { body: secret }: { body: k8s.V1Secret } = res
     return secret.data as Record<string, unknown>
   } catch (e) {
@@ -78,7 +75,7 @@ async function patchIngress(arns): Promise<void> {
       },
     },
   }
-  await netClient.patchNamespacedIngress('merged-ingress', 'ingress', params)
+  await k8sNetworkingApi.patchNamespacedIngress('merged-ingress', 'ingress', params)
 }
 
 async function main() {

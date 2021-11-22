@@ -5,7 +5,7 @@ import { cloneDeep } from 'lodash'
 import fetch from 'node-fetch'
 import sinon from 'sinon'
 import './test-init'
-import { createPullSecret, deletePullSecret, getApiClient, objectToArray } from './utils'
+import { createPullSecret, deletePullSecret, k8sCoreClient, objectToArray } from './utils'
 
 describe('Secret creation', () => {
   const teamId = 'testtt'
@@ -48,7 +48,7 @@ describe('Secret creation', () => {
     body: cloneDeep(saWithExistingSecret),
   })
 
-  const client: CoreV1Api = getApiClient()
+  const client: CoreV1Api = k8sCoreClient
   const successResp = Promise.resolve({ status: 200 })
 
   let sandbox
