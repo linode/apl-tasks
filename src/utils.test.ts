@@ -4,8 +4,9 @@ import http from 'http'
 import { cloneDeep } from 'lodash'
 import fetch from 'node-fetch'
 import sinon from 'sinon'
+import { createPullSecret, deletePullSecret, k8sCoreClient } from './k8s'
 import './test-init'
-import { createPullSecret, deletePullSecret, getApiClient, objectToArray } from './utils'
+import { objectToArray } from './utils'
 
 describe('Secret creation', () => {
   const teamId = 'testtt'
@@ -48,7 +49,7 @@ describe('Secret creation', () => {
     body: cloneDeep(saWithExistingSecret),
   })
 
-  const client: CoreV1Api = getApiClient()
+  const client: CoreV1Api = k8sCoreClient
   const successResp = Promise.resolve({ status: 200 })
 
   let sandbox
@@ -112,14 +113,14 @@ describe('Secret creation', () => {
       password: data.password,
       username: data.username,
     })
-    return expect(check).to.eventually.be.rejectedWith(`Secret '${name}' already exists in namespace 'team-${teamId}'`)
+    return expect(check).to.eventually.be.rejectedWith(`Secret '${name}' already exists in namespace '${namespace}'`)
   })
 
   it('should delete an existing pull secret successfully', async () => {
     sandbox.stub(client, 'readNamespacedServiceAccount').returns(withExistingSecretServiceAccountPromise)
     const patchSpy = sandbox.stub(client, 'patchNamespacedServiceAccount').returns(undefined as any)
     const deleteSpy = sandbox.stub(client, 'deleteNamespacedSecret').returns(undefined as any)
-    await deletePullSecret(teamId, name)
+    await deletePullSecret(namespace, name)
     expect(patchSpy).to.have.been.calledWith('default', namespace, saNewEmpty)
     expect(deleteSpy).to.have.been.calledWith(name, namespace)
   })
