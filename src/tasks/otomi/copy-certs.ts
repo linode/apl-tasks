@@ -1,6 +1,6 @@
 import { V1Secret, V1SecretList } from '@kubernetes/client-node'
 import { IncomingMessage } from 'http'
-import { k8sCoreClient } from '../../utils'
+import { k8sCoreClient } from '../../k8s'
 import { cleanEnv, OTOMI_FLAGS, TEAM_IDS } from '../../validators'
 
 const env = cleanEnv({

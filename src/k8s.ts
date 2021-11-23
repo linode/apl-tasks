@@ -6,7 +6,7 @@ import {
   NetworkingV1beta1Api,
   V1ObjectMeta,
   V1Secret,
-  V1ServiceAccount
+  V1ServiceAccount,
 } from '@kubernetes/client-node'
 import { IncomingMessage } from 'http'
 import { findIndex, mapValues } from 'lodash'

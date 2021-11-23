@@ -2,7 +2,7 @@ import * as k8s from '@kubernetes/client-node'
 import AWS, { ACM } from 'aws-sdk'
 import { ImportCertificateRequest, ImportCertificateResponse } from 'aws-sdk/clients/acm'
 import { forIn } from 'lodash'
-import { k8sCoreClient, k8sNetworkingApi } from '../../utils'
+import { k8sCoreClient, k8sNetworkingApi } from '../../k8s'
 import { CERT_ROTATION_DAYS, cleanEnv, DOMAINS, REGION, SECRETS_NAMESPACE } from '../../validators'
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const env = cleanEnv({
