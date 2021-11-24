@@ -1,6 +1,6 @@
 import { V1Secret, V1SecretList } from '@kubernetes/client-node'
 import { IncomingMessage } from 'http'
-import { k8sCoreClient } from '../../k8s'
+import { k8s } from '../../k8s'
 import { cleanEnv, OTOMI_FLAGS, TEAM_IDS } from '../../validators'
 
 const env = cleanEnv({
@@ -17,13 +17,9 @@ export const targetTlsSecretsFilter = ({ metadata }: V1Secret): boolean =>
 
 // Returns list of names of all TLS secrets in the target namespace that were created before.
 export const getTargetTlsSecretNames = async (): Promise<string[]> => {
-  const targetTlsSecretsRes = await k8sCoreClient.listNamespacedSecret(
-    targetNamespace,
-    undefined,
-    undefined,
-    undefined,
-    'type=kubernetes.io/tls',
-  )
+  const targetTlsSecretsRes = await k8s
+    .core()
+    .listNamespacedSecret(targetNamespace, undefined, undefined, undefined, 'type=kubernetes.io/tls')
   const { body: tlsSecrets }: { body: V1SecretList } = targetTlsSecretsRes
   const targetTlsSecretNames = tlsSecrets.items.filter(targetTlsSecretsFilter).map((s: V1Secret) => s.metadata!.name!)
   console.debug(`Found the following TLS secrets in the namespace "${targetNamespace}": ${targetTlsSecretNames}`)
@@ -49,7 +45,7 @@ export const createTargetTlsSecret = (
     type: 'kubernetes.io/tls',
     data,
   }
-  return k8sCoreClient.createNamespacedSecret(targetNamespace, newSecret)
+  return k8s.core().createNamespacedSecret(targetNamespace, newSecret)
 }
 
 export const copyTeamTlsSecrets = async (teamId: string, targetTlsSecretNames: string[]): Promise<void> => {
@@ -59,7 +55,7 @@ export const copyTeamTlsSecrets = async (teamId: string, targetTlsSecretNames: s
   // get all target namespace TLS secrets
   const {
     body: { items: teamTlsSecrets },
-  } = await k8sCoreClient.listNamespacedSecret(namespace, undefined, undefined, undefined, 'type=kubernetes.io/tls')
+  } = await k8s.core().listNamespacedSecret(namespace, undefined, undefined, undefined, 'type=kubernetes.io/tls')
   // create new ones if not existing
   await Promise.all(
     teamTlsSecrets
@@ -79,7 +75,7 @@ export const pruneTlsSecrets = async (targetTlsSecretNames: string[]): Promise<v
   await Promise.all(
     prunableTargetSecrets.map((name) => {
       console.info(`Pruning TLS secret "${targetNamespace}/${name}"`)
-      return k8sCoreClient.deleteNamespacedSecret(name, targetNamespace)
+      return k8s.core().deleteNamespacedSecret(name, targetNamespace)
     }),
   )
 }

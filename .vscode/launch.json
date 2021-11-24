@@ -21,20 +21,8 @@
       "type": "node",
       "request": "launch",
       "name": "Mocha Tests",
-      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-      "args": [
-        "--require",
-        "dotenv/config",
-        "--require",
-        "ts-node/register",
-        "-u",
-        "bdd",
-        "--timeout",
-        "999999",
-        "--colors",
-        "--recursive",
-        "${workspaceFolder}/src/**/*.ts"
-      ],
+      "program": "${workspaceFolder}/node_modules/.bin/mocha",
+      "args": ["src/**/*.test.ts"],
       "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
       "env": {
         "NODE_ENV": "test"
@@ -46,17 +34,7 @@
       "request": "launch",
       "name": "Mocha Current File",
       "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-      "args": [
-        "--require",
-        "dotenv/config",
-        "--require",
-        "ts-node/register",
-        "--timeout",
-        "999999",
-        "--colors",
-        "--recursive",
-        "${file}"
-      ],
+      "args": ["${file}"],
       "env": {
         "NODE_ENV": "test"
       },

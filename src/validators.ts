@@ -85,6 +85,9 @@ export function cleanEnv<T>(
   validators: { [K in keyof T]: ValidatorSpec<T[K]> },
   options: StrictCleanOptions = { strict: true },
 ): any {
+  // skip loading local .env in test context, and instead load the sample env
+  console.log('process.env.NODE_ENV: ', process.env.NODE_ENV)
+  if (process.env.NODE_ENV === 'test') options.dotEnvPath = '.env.sample'
   return clean(env, validators, options) as any
 }
 

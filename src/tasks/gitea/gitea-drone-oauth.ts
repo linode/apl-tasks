@@ -2,7 +2,7 @@ import { CreateOAuth2ApplicationOptions, UserApi } from '@redkubes/gitea-client-
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import cookie from 'cookie'
 import querystring from 'querystring'
-import { createSecret, getSecret, k8sCoreClient } from '../../k8s'
+import { createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall, waitTillAvailable } from '../../utils'
 import { cleanEnv, DRONE_URL, GITEA_PASSWORD, GITEA_URL } from '../../validators'
 import { username } from '../common'
@@ -105,7 +105,7 @@ async function main(): Promise<void> {
 
   // Otherwise, clear old stuff (if necessary)
   if (remoteSecret)
-    await doApiCall(errors, 'Deleting old secret', () => k8sCoreClient.deleteNamespacedSecret(secretName, namespace))
+    await doApiCall(errors, 'Deleting old secret', () => k8s.core().deleteNamespacedSecret(secretName, namespace))
   if (previousOauth2App?.id)
     await doApiCall(errors, 'Deleting old oauth2 app', () => userApi.userDeleteOAuth2Application(previousOauth2App.id))
 

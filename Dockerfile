@@ -22,6 +22,7 @@ FROM dev as ci
 
 COPY . .eslintrc.yml ./
 
+ARG SKIP_TESTS='false'
 ARG CI=true
 ENV NODE_ENV=test
 

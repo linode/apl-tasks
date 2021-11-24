@@ -1,9 +1,10 @@
-import * as k8s from '@kubernetes/client-node'
+import { V1ConfigMap, V1Secret } from '@kubernetes/client-node'
 import AWS, { ACM } from 'aws-sdk'
 import { ImportCertificateRequest, ImportCertificateResponse } from 'aws-sdk/clients/acm'
 import { forIn } from 'lodash'
-import { k8sCoreClient, k8sNetworkingApi } from '../../k8s'
+import { k8s } from '../../k8s'
 import { CERT_ROTATION_DAYS, cleanEnv, DOMAINS, REGION, SECRETS_NAMESPACE } from '../../validators'
+
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const env = cleanEnv({
   CERT_ROTATION_DAYS,
@@ -18,25 +19,25 @@ const errors: string[] = []
 
 async function getDomains(): Promise<Record<string, unknown>> {
   try {
-    const res = await k8sCoreClient.readNamespacedConfigMap(cmName, 'maintenance')
-    const { body }: { body: k8s.V1ConfigMap } = res
+    const res = await k8s.core().readNamespacedConfigMap(cmName, 'maintenance')
+    const { body }: { body: V1ConfigMap } = res
     return JSON.parse(body.data?.domains || '{}')
   } catch (e) {
     return {}
   }
 }
 
-async function updateConfig(domains): Promise<k8s.V1Secret> {
+async function updateConfig(domains): Promise<V1Secret> {
   const body = { data: { domains: JSON.stringify(domains) } }
-  const res = await k8sCoreClient.patchNamespacedConfigMap(cmName, 'maintenance', body)
-  const { body: data }: { body: k8s.V1Secret } = res
+  const res = await k8s.core().patchNamespacedConfigMap(cmName, 'maintenance', body)
+  const { body: data }: { body: V1Secret } = res
   return data
 }
 
 async function getTLSSecret(secretName: string): Promise<Record<string, unknown> | undefined> {
   try {
-    const res = await k8sCoreClient.readNamespacedSecret(secretName, env.SECRETS_NAMESPACE)
-    const { body: secret }: { body: k8s.V1Secret } = res
+    const res = await k8s.core().readNamespacedSecret(secretName, env.SECRETS_NAMESPACE)
+    const { body: secret }: { body: V1Secret } = res
     return secret.data as Record<string, unknown>
   } catch (e) {
     console.error(`Secret not found: ${secretName}`, e)
@@ -75,7 +76,7 @@ async function patchIngress(arns): Promise<void> {
       },
     },
   }
-  await k8sNetworkingApi.patchNamespacedIngress('merged-ingress', 'ingress', params)
+  await k8s.networking().patchNamespacedIngress('merged-ingress', 'ingress', params)
 }
 
 async function main() {

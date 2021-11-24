@@ -17,7 +17,7 @@ import {
   // eslint-disable-next-line no-unused-vars
   RobotCreated,
 } from '@redkubes/harbor-client-node'
-import { createPullSecret, createSecret, getSecret, k8sCoreClient } from '../../k8s'
+import { createPullSecret, createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
   cleanEnv,
@@ -196,7 +196,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
       // throw everything except 401, which is what we test for
       if (e.status !== 401) throw e
       // unauthenticated, so remove and recreate secret
-      await k8sCoreClient.deleteNamespacedSecret(systemSecretName, systemNamespace)
+      await k8s.core().deleteNamespacedSecret(systemSecretName, systemNamespace)
       // now, the next call might throw IF:
       // - authMode oidc was already turned on and an otomi admin accidentally removed the secret
       // but that is very unlikely, an unresolvable problem and needs a manual db fix
@@ -216,7 +216,7 @@ async function ensureTeamRobotAccountSecret(namespace: string, projectName): Pro
   const k8sSecret = await getSecret(projectSecretName, namespace)
   if (k8sSecret) {
     console.debug(`Deleting secret/${projectSecretName} from ${namespace} namespace`)
-    await k8sCoreClient.deleteNamespacedSecret(projectSecretName, namespace)
+    await k8s.core().deleteNamespacedSecret(projectSecretName, namespace)
   }
 
   const robotAccount = await createTeamRobotAccount(projectName)
