@@ -10,8 +10,8 @@ import {
   RobotCreate,
   Robotv1Api,
 } from '@redkubes/harbor-client-node'
-import { createSecret, getSecret } from '../../k8s'
-import { createPullSecret, doApiCall, handleErrors, k8sCoreClient, waitTillAvailable } from '../../utils'
+import { createSecret, getSecret, k8s } from '../../k8s'
+import { createPullSecret, doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
   cleanEnv,
   HARBOR_BASE_REPO_URL,
@@ -183,7 +183,7 @@ async function ensureSystemSecret(): Promise<RobotSecret> {
       // throw everything except 401, which is what we test for
       if (e.status !== 401) throw e
       // unauthenticated, so remove and recreate secret
-      await k8sCoreClient.deleteNamespacedSecret(systemSecretName, systemNamespace)
+      await k8s.core().deleteNamespacedSecret(systemSecretName, systemNamespace)
       // now, the next call might throw IF:
       // - authMode oidc was already turned on and an otomi admin accidentally removed the secret
       // but that is very unlikely, an unresolvable problem and needs a manual db fix
@@ -199,7 +199,7 @@ async function ensureProjectSecret(teamId: string, projectId: string): Promise<v
 
   let k8sSecret = (await getSecret(projectSecretName, namespace)) as RobotSecret
   if (k8sSecret) {
-    await k8sCoreClient.deleteNamespacedSecret(projectSecretName, namespace)
+    await k8s.core().deleteNamespacedSecret(projectSecretName, namespace)
   }
 
   k8sSecret = await createProjectRobotSecret(teamId, projectId)
