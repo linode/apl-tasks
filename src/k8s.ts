@@ -74,21 +74,26 @@ export async function getSecret(name: string, namespace: string): Promise<unknow
   }
 }
 
+/**
+ * Create Kubernetes secret
+ * @param name Secret name
+ * @param namespace Kubernetes namespace
+ * @param data Secret data (non encoded with base64)
+ */
 export async function createPullSecret({
-  teamId,
+  namespace,
   name,
   server,
   password,
   username = '_json_key',
 }: {
-  teamId: string
+  namespace: string
   name: string
   server: string
   password: string
   username?: string
 }): Promise<void> {
   const client = k8s.core()
-  const namespace = `team-${teamId}`
   // create data structure for secret
   const data = {
     auths: {
@@ -129,17 +134,15 @@ export async function createPullSecret({
   }
 }
 
-export async function getPullSecrets(teamId: string): Promise<Array<any>> {
+export async function getPullSecrets(namespace: string): Promise<Array<any>> {
   const client = k8s.core()
-  const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
   return (sa.imagePullSecrets || []) as Array<any>
 }
 
-export async function deletePullSecret(teamId: string, name: string): Promise<void> {
+export async function deletePullSecret(namespace: string, name: string): Promise<void> {
   const client = k8s.core()
-  const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
   const idx = findIndex(sa.imagePullSecrets, { name })
