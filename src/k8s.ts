@@ -11,10 +11,28 @@ import {
 import { IncomingMessage } from 'http'
 import { findIndex, mapValues } from 'lodash'
 
-const kc = new KubeConfig()
-kc.loadFromDefault()
-export const k8sCoreClient: CoreV1Api = kc.makeApiClient(CoreV1Api)
-export const k8sNetworkingApi = kc.makeApiClient(NetworkingV1beta1Api)
+let kc: KubeConfig
+let coreClient: CoreV1Api
+let networkingClient: NetworkingV1beta1Api
+
+export const k8s = {
+  kc: (): KubeConfig => {
+    if (kc) return kc
+    kc = new KubeConfig()
+    kc.loadFromDefault()
+    return kc
+  },
+  core: (): CoreV1Api => {
+    if (coreClient) return coreClient
+    coreClient = k8s.kc().makeApiClient(CoreV1Api)
+    return coreClient
+  },
+  networking: (): NetworkingV1beta1Api => {
+    if (networkingClient) return networkingClient
+    networkingClient = k8s.kc().makeApiClient(NetworkingV1beta1Api)
+    return networkingClient
+  },
+}
 
 export async function createSecret(name: string, namespace: string, data: Record<string, any>): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
@@ -26,7 +44,7 @@ export async function createSecret(name: string, namespace: string, data: Record
     },
   }
 
-  await k8sCoreClient.createNamespacedSecret(namespace, secret)
+  await k8s.core().createNamespacedSecret(namespace, secret)
   console.info(`New secret ${name} has been created in the namespace ${namespace}`)
 }
 
@@ -43,7 +61,7 @@ export type ServiceAccountPromise = Promise<{
 export async function getSecret(name: string, namespace: string): Promise<unknown> {
   const b64dec = (val): string => Buffer.from(val, 'base64').toString()
   try {
-    const response = await k8sCoreClient.readNamespacedSecret(name, namespace)
+    const response = await k8s.core().readNamespacedSecret(name, namespace)
     const {
       body: { data },
     } = response
@@ -69,7 +87,7 @@ export async function createPullSecret({
   password: string
   username?: string
 }): Promise<void> {
-  const client = k8sCoreClient
+  const client = k8s.core()
   const namespace = `team-${teamId}`
   // create data structure for secret
   const data = {
@@ -112,7 +130,7 @@ export async function createPullSecret({
 }
 
 export async function getPullSecrets(teamId: string): Promise<Array<any>> {
-  const client = k8sCoreClient
+  const client = k8s.core()
   const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
@@ -120,7 +138,7 @@ export async function getPullSecrets(teamId: string): Promise<Array<any>> {
 }
 
 export async function deletePullSecret(teamId: string, name: string): Promise<void> {
-  const client = k8sCoreClient
+  const client = k8s.core()
   const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes

@@ -1,11 +1,11 @@
-import { CoreV1Api, V1ObjectMeta, V1Secret, V1ServiceAccount } from '@kubernetes/client-node'
+import { V1ObjectMeta, V1Secret, V1ServiceAccount } from '@kubernetes/client-node'
 import { expect } from 'chai'
 import http from 'http'
 import { cloneDeep } from 'lodash'
 import fetch from 'node-fetch'
 import sinon from 'sinon'
-import './test-init'
-import { createPullSecret, deletePullSecret, k8sCoreClient, objectToArray } from './utils'
+import { k8s } from './k8s'
+import { createPullSecret, deletePullSecret, objectToArray } from './utils'
 
 describe('Secret creation', () => {
   const teamId = 'testtt'
@@ -48,7 +48,6 @@ describe('Secret creation', () => {
     body: cloneDeep(saWithExistingSecret),
   })
 
-  const client: CoreV1Api = k8sCoreClient
   const successResp = Promise.resolve({ status: 200 })
 
   let sandbox
@@ -80,31 +79,31 @@ describe('Secret creation', () => {
   // })
 
   it('should create a valid pull secret and attach it to an SA without pullsecrets', async () => {
-    sandbox.stub(client, 'createNamespacedSecret').returns(secretPromise)
-    sandbox.stub(client, 'readNamespacedServiceAccount').returns(newServiceAccountPromise)
-    const patchSpy = sandbox.stub(client, 'patchNamespacedServiceAccount').returns(undefined as any)
+    sandbox.stub(k8s.core(), 'createNamespacedSecret').returns(secretPromise)
+    sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(newServiceAccountPromise)
+    const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
     await createPullSecret({ teamId, name, server, password: data.password, username: data.username })
     expect(patchSpy).to.have.been.calledWith('default', namespace, saWithExistingSecret)
   })
 
   it('should create a valid pull secret and attach it to an SA that has an empty pullsecrets array', async () => {
-    sandbox.stub(client, 'createNamespacedSecret').returns(secretPromise)
-    sandbox.stub(client, 'readNamespacedServiceAccount').returns(newEmptyServiceAccountPromise)
-    const patchSpy = sandbox.stub(client, 'patchNamespacedServiceAccount').returns(undefined as any)
+    sandbox.stub(k8s.core(), 'createNamespacedSecret').returns(secretPromise)
+    sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(newEmptyServiceAccountPromise)
+    const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
     await createPullSecret({ teamId, name, server, password: data.password, username: data.username })
     expect(patchSpy).to.have.been.calledWith('default', namespace, saWithExistingSecret)
   })
 
   it('should create a valid pull secret and attach it to an SA that already has a pullsecret', async () => {
-    sandbox.stub(client, 'createNamespacedSecret').returns(secretPromise)
-    sandbox.stub(client, 'readNamespacedServiceAccount').returns(withOtherSecretServiceAccountPromise)
-    const patchSpy = sandbox.stub(client, 'patchNamespacedServiceAccount').returns(undefined as any)
+    sandbox.stub(k8s.core(), 'createNamespacedSecret').returns(secretPromise)
+    sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(withOtherSecretServiceAccountPromise)
+    const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
     await createPullSecret({ teamId, name, server, password: data.password, username: data.username })
     expect(patchSpy).to.have.been.calledWith('default', namespace, saCombinedWithOtherSecret)
   })
 
   it('should throw exception on secret creation for existing name', () => {
-    sandbox.stub(client, 'createNamespacedSecret').throws(409)
+    sandbox.stub(k8s.core(), 'createNamespacedSecret').throws(409)
     const check = createPullSecret({
       teamId,
       name,
@@ -116,9 +115,9 @@ describe('Secret creation', () => {
   })
 
   it('should delete an existing pull secret successfully', async () => {
-    sandbox.stub(client, 'readNamespacedServiceAccount').returns(withExistingSecretServiceAccountPromise)
-    const patchSpy = sandbox.stub(client, 'patchNamespacedServiceAccount').returns(undefined as any)
-    const deleteSpy = sandbox.stub(client, 'deleteNamespacedSecret').returns(undefined as any)
+    sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(withExistingSecretServiceAccountPromise)
+    const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
+    const deleteSpy = sandbox.stub(k8s.core(), 'deleteNamespacedSecret').returns(undefined as any)
     await deletePullSecret(teamId, name)
     expect(patchSpy).to.have.been.calledWith('default', namespace, saNewEmpty)
     expect(deleteSpy).to.have.been.calledWith(name, namespace)

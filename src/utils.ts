@@ -1,25 +1,14 @@
 /* eslint-disable no-loop-func */
 /* eslint-disable no-await-in-loop */
-import {
-  CoreV1Api,
-  KubeConfig,
-  NetworkingV1beta1Api,
-  V1ObjectMeta,
-  V1Secret,
-  V1ServiceAccount,
-} from '@kubernetes/client-node'
+import { V1ObjectMeta, V1Secret, V1ServiceAccount } from '@kubernetes/client-node'
 import retry, { Options } from 'async-retry'
 import http from 'http'
 import { findIndex } from 'lodash'
 import fetch, { RequestInit } from 'node-fetch'
+import { k8s } from './k8s'
 import { cleanEnv } from './validators'
 
 const env = cleanEnv({})
-
-const kc = new KubeConfig()
-kc.loadFromDefault()
-export const k8sCoreClient: CoreV1Api = kc.makeApiClient(CoreV1Api)
-export const k8sNetworkingApi = kc.makeApiClient(NetworkingV1beta1Api)
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function objectToArray(obj: any, keyName: string, keyValue: string): any[] {
@@ -88,7 +77,7 @@ export async function createPullSecret({
   password: string
   username?: string
 }): Promise<void> {
-  const client = k8sCoreClient
+  const client = k8s.core()
   const namespace = `team-${teamId}`
   // create data structure for secret
   const data = {
@@ -131,7 +120,7 @@ export async function createPullSecret({
 }
 
 export async function getPullSecrets(teamId: string): Promise<Array<any>> {
-  const client = k8sCoreClient
+  const client = k8s.core()
   const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
@@ -139,7 +128,7 @@ export async function getPullSecrets(teamId: string): Promise<Array<any>> {
 }
 
 export async function deletePullSecret(teamId: string, name: string): Promise<void> {
-  const client = k8sCoreClient
+  const client = k8s.core()
   const namespace = `team-${teamId}`
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes

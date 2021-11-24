@@ -2,13 +2,19 @@ import { use } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
+import { k8s } from './k8s'
 
 use(chaiAsPromised)
 use(sinonChai)
 
-before(() => {
-  sinon.stub(console, 'log')
-  sinon.stub(console, 'debug')
-  sinon.stub(console, 'info')
-  sinon.stub(console, 'warn')
-})
+export const mochaGlobalSetup = (): void => {
+  const kc = k8s.kc()
+  // by default makeApiClient will try to connect to a the default k8s context
+  // (TODO: check if something is done: https://github.com/kubernetes-client/javascript/issues/744)
+  // so mock makeApiClient to return just a new instance of the requested api
+  kc.makeApiClient = (Api) => new Api('test')
+  sinon.stub(k8s, 'kc').returns(kc)
+}
+export const mochaGlobalTeardown = (): void => {
+  sinon.restore()
+}
