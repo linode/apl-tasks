@@ -18,7 +18,7 @@ import {
   RobotCreated,
 } from '@redkubes/harbor-client-node'
 import { createPullSecret, createSecret, getSecret, k8s } from '../../k8s'
-import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
+import { doApiCall, handleErrors } from '../../utils'
 import {
   cleanEnv,
   HARBOR_BASE_REPO_URL,
@@ -30,6 +30,7 @@ import {
   OIDC_VERIFY_CERT,
   TEAM_IDS,
 } from '../../validators'
+import { waitTillAvailable } from '../otomi/wait-for'
 
 const env = cleanEnv({
   HARBOR_BASE_URL,

@@ -19,7 +19,7 @@ import {
 } from '@redkubes/keycloak-client-node'
 import { forEach } from 'lodash'
 import { Issuer, TokenSet } from 'openid-client'
-import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
+import { doApiCall, handleErrors } from '../../utils'
 import {
   cleanEnv,
   FEAT_EXTERNAL_IDP,
@@ -30,6 +30,7 @@ import {
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_REALM,
 } from '../../validators'
+import { waitTillAvailable } from '../otomi/wait-for'
 import * as realmConfig from './realm-factory'
 
 const env = cleanEnv({

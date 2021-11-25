@@ -1,7 +1,8 @@
 import { AdminApi, OrganizationApi, Team, User } from '@redkubes/gitea-client-node'
-import { doApiCall, waitTillAvailable } from '../../utils'
+import { doApiCall } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
 import { orgName, teamNameOwners, username } from '../common'
+import { waitTillAvailable } from '../otomi/wait-for'
 
 const env = cleanEnv({
   GITEA_PASSWORD,

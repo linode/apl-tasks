@@ -1,7 +1,8 @@
 import * as drone from 'drone-node'
-import { doApiCall, waitTillAvailable, handleErrors } from '../../utils'
-import { cleanEnv, DRONE_URL, DRONE_TOKEN } from '../../validators'
+import { doApiCall, handleErrors } from '../../utils'
+import { cleanEnv, DRONE_TOKEN, DRONE_URL } from '../../validators'
 import { orgName, repoName } from '../common'
+import { waitTillAvailable } from '../otomi/wait-for'
 
 const env = cleanEnv({
   DRONE_URL,

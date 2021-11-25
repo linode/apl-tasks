@@ -3,9 +3,10 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import cookie from 'cookie'
 import querystring from 'querystring'
 import { createSecret, getSecret, k8s } from '../../k8s'
-import { doApiCall, waitTillAvailable } from '../../utils'
+import { doApiCall } from '../../utils'
 import { cleanEnv, DRONE_URL, GITEA_PASSWORD, GITEA_URL } from '../../validators'
 import { username } from '../common'
+import { waitTillAvailable } from '../otomi/wait-for'
 import { GiteaDroneError } from './common'
 
 const env = cleanEnv({
