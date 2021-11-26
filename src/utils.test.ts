@@ -1,67 +1,11 @@
-import { V1ObjectMeta, V1Secret, V1ServiceAccount } from '@kubernetes/client-node'
 import { expect } from 'chai'
-import http from 'http'
-import { cloneDeep } from 'lodash'
 import fetch from 'node-fetch'
 import sinon from 'sinon'
-import { createPullSecret, deletePullSecret, k8s } from './k8s'
 import './test-init'
-import { objectToArray } from './utils'
+import { objectToArray, waitTillAvailable } from './utils'
 
-describe('Secret creation', () => {
-  const teamId = 'testtt'
-  const namespace = `team-${teamId}`
-  const name = 'somesecreettt'
-  const server = 'eu.gcr.io'
-  const data = { username: 'someusernameee', password: 'somepassworddd' }
-
-  const secret: V1Secret = {
-    ...new V1Secret(),
-    metadata: { ...new V1ObjectMeta(), name },
-    type: 'docker-registry',
-    data: {
-      '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
-    },
-  }
-  const secretPromise: Promise<{ response: http.IncomingMessage | undefined; body: V1Secret }> = Promise.resolve({
-    response: undefined,
-    body: secret,
-  })
-  const saNew: V1ServiceAccount = { ...new V1ServiceAccount(), metadata: { name: 'default' } }
-  const saNewEmpty = { ...saNew, imagePullSecrets: [] }
-  const saWithOtherSecret = { ...saNew, imagePullSecrets: [{ name: 'bla' }] }
-  const saCombinedWithOtherSecret = { ...saNew, imagePullSecrets: [{ name: 'bla' }, { name }] }
-  const saWithExistingSecret = { ...saNew, imagePullSecrets: [{ name }] }
-  const newServiceAccountPromise = Promise.resolve({
-    response: undefined as any,
-    body: cloneDeep(saNew),
-  })
-  const newEmptyServiceAccountPromise = Promise.resolve({
-    response: undefined as any,
-    body: cloneDeep(saNewEmpty),
-  })
-  const withOtherSecretServiceAccountPromise = Promise.resolve({
-    response: undefined as any,
-    body: cloneDeep(saWithOtherSecret),
-  })
-  const withExistingSecretServiceAccountPromise = Promise.resolve({
-    response: undefined as any,
-    body: cloneDeep(saWithExistingSecret),
-  })
-
-  const successResp = Promise.resolve({ status: 200 })
-
-  let sandbox
-  beforeEach(() => {
-    sandbox = sinon.createSandbox()
-    sandbox.stub(fetch, 'Promise').returns(successResp)
-  })
-
-  afterEach(() => {
-    sandbox.restore()
-  })
-
-  it('should convert an object to array', (done) => {
+describe('utils', () => {
+  it('objectToArray should convert an object to array', (done) => {
     const obj = {
       bla: {
         dida: 'okidoki',
@@ -73,54 +17,73 @@ describe('Secret creation', () => {
     done()
   })
 
-  // it('should pass waitTillAvailable after 4 successful hits', async (done) => {
-  //   await waitTillAvailable('bla')
-  //   expect(fetch).to.have.been.callCount(4)
-  //   done()
-  // })
+  context('waitTillAvailablle', () => {
+    let sandbox
 
-  it('should create a valid pull secret and attach it to an SA without pullsecrets', async () => {
-    sandbox.stub(k8s.core(), 'createNamespacedSecret').returns(secretPromise)
-    sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(newServiceAccountPromise)
-    const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
-    await createPullSecret({ namespace, name, server, password: data.password, username: data.username })
-    expect(patchSpy).to.have.been.calledWith('default', namespace, saWithExistingSecret)
-  })
+    const tick = async (x, duration = 1000) => {
+      for (let i = 0; i <= x; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.resolve()
+        sandbox.clock.tick(duration)
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.resolve()
+      }
+    }
 
-  it('should create a valid pull secret and attach it to an SA that has an empty pullsecrets array', async () => {
-    sandbox.stub(k8s.core(), 'createNamespacedSecret').returns(secretPromise)
-    sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(newEmptyServiceAccountPromise)
-    const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
-    await createPullSecret({ namespace, name, server, password: data.password, username: data.username })
-    expect(patchSpy).to.have.been.calledWith('default', namespace, saWithExistingSecret)
-  })
-
-  it('should create a valid pull secret and attach it to an SA that already has a pullsecret', async () => {
-    sandbox.stub(k8s.core(), 'createNamespacedSecret').returns(secretPromise)
-    sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(withOtherSecretServiceAccountPromise)
-    const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
-    await createPullSecret({ namespace, name, server, password: data.password, username: data.username })
-    expect(patchSpy).to.have.been.calledWith('default', namespace, saCombinedWithOtherSecret)
-  })
-
-  it('should throw exception on secret creation for existing name', () => {
-    sandbox.stub(k8s.core(), 'createNamespacedSecret').throws(409)
-    const check = createPullSecret({
-      namespace,
-      name,
-      server,
-      password: data.password,
-      username: data.username,
+    beforeEach(() => {
+      sandbox = sinon.createSandbox()
+      sandbox.useFakeTimers()
     })
-    return expect(check).to.eventually.be.rejectedWith(`Secret '${name}' already exists in namespace '${namespace}'`)
-  })
 
-  it('should delete an existing pull secret successfully', async () => {
-    sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(withExistingSecretServiceAccountPromise)
-    const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
-    const deleteSpy = sandbox.stub(k8s.core(), 'deleteNamespacedSecret').returns(undefined as any)
-    await deletePullSecret(namespace, name)
-    expect(patchSpy).to.have.been.calledWith('default', namespace, saNewEmpty)
-    expect(deleteSpy).to.have.been.calledWith(name, namespace)
+    afterEach(() => {
+      sandbox.restore()
+    })
+
+    const successResp = Promise.resolve({ status: 200 })
+    const failResp = Promise.resolve({ status: 500 })
+    const url = 'https://bla.com'
+
+    it('should pass after x successful requests', async () => {
+      const stub = sandbox.stub(fetch, 'Promise').returns(successResp)
+      const confirmations = 3
+      const res = waitTillAvailable(url, { confirmations })
+      await tick(confirmations + 2) // wait extra rounds
+      expect(stub).to.have.callCount(confirmations)
+      await expect(res).to.eventually.be.fulfilled
+    })
+
+    it('should bail when a request returns an unexpected status code', async () => {
+      const stub = sandbox.stub(fetch, 'Promise').returns(failResp)
+      const retries = 3
+      const res = waitTillAvailable(url, { retries })
+      await tick(retries + 1)
+      expect(stub).to.have.callCount(1)
+      await expect(res).to.eventually.be.rejectedWith(`Wrong status code: 500`)
+    })
+
+    it('should retry x times with backoff strategy after encountering connection issues', async () => {
+      const stub = sandbox.stub(fetch, 'Promise').throws(new Error('ECONNREFUSED'))
+      const retries = 3
+      const maxTimeout = 30000
+      const res = waitTillAvailable(url, { retries, maxTimeout })
+      await tick(retries + 2, maxTimeout) // run a couple extra rounds and set duration to maxTimeout to make sure we have spent enough time
+      expect(stub).to.have.callCount(3)
+      await expect(res).to.eventually.be.rejectedWith(`Max retries (${retries}) has been reached!`)
+    })
+
+    it('should retry x times after encountering connection issues, then get y confirmations', async () => {
+      const stub = sandbox.stub(fetch, 'Promise').throws(new Error('ECONNREFUSED'))
+      const confirmations = 3
+      const retries = 1000 // large enough
+      const maxTimeout = 1000 // same as minTimeout to be able to calculate attempts
+      const res = waitTillAvailable(url, { confirmations, retries, maxTimeout, forever: true })
+      // tick 5 failures
+      await tick(5)
+      // now start returning ok responses
+      stub.restore()
+      sandbox.stub(fetch, 'Promise').returns(successResp)
+      await tick(confirmations + 2) // wair for nr of confirmations
+      await expect(res).to.eventually.be.fulfilled
+    })
   })
 })

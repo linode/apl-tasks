@@ -61,7 +61,7 @@ export const OTOMI_SCHEMA_PATH = str({ desc: 'The path to the values-schema.yaml
 export const OTOMI_ENV_DIR = str({ desc: 'The path to the otomi-values folder' })
 export const OTOMI_FLAGS = json({ default: '{}' })
 export const WAIT_URL = str({ desc: 'The URL to wait for.' })
-export const WAIT_OPTIONS = json({ desc: 'The wait-for optionss', default: '{}' })
+export const WAIT_OPTIONS = json({ desc: 'The waitTillAvailable options', default: '{}' })
 
 // set default to undefined based on feature flags:
 if (!feat.FEAT_EXTERNAL_IDP) {
@@ -86,7 +86,6 @@ export function cleanEnv<T>(
   options: StrictCleanOptions = { strict: true },
 ): any {
   // skip loading local .env in test context, and instead load the sample env
-  console.log('process.env.NODE_ENV: ', process.env.NODE_ENV)
   if (process.env.NODE_ENV === 'test') options.dotEnvPath = '.env.sample'
   return clean(env, validators, options) as any
 }
