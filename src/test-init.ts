@@ -8,6 +8,11 @@ use(chaiAsPromised)
 use(sinonChai)
 
 export const mochaGlobalSetup = (): void => {
+  sinon.stub(console, 'log')
+  sinon.stub(console, 'debug')
+  sinon.stub(console, 'info')
+  sinon.stub(console, 'warn')
+  sinon.stub(console, 'error')
   const kc = k8s.kc()
   // by default makeApiClient will try to connect to a the default k8s context
   // (TODO: check if something is done: https://github.com/kubernetes-client/javascript/issues/744)
