@@ -1,7 +1,7 @@
 /* eslint-disable no-loop-func */
 /* eslint-disable no-await-in-loop */
 import retry, { Options } from 'async-retry'
-import http from 'http'
+import http, { Agent as AgentHttp } from 'http'
 import { Agent } from 'https'
 import fetch, { RequestInit } from 'node-fetch'
 
@@ -76,11 +76,11 @@ const sleep = (ms) => {
 
 export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOptions): Promise<void> => {
   const options: WaitTillAvailableOptions = { ...defaultOptions, ...opts }
-
+  const isHttps = url.startsWith('https://')
   const rejectUnauthorized = !(options.skipSsl || !process.env.NODE_TLS_REJECT_UNAUTHORIZED)
   const fetchOptions: RequestInit = {
     redirect: 'follow',
-    agent: new Agent({ rejectUnauthorized }),
+    agent: isHttps ? new Agent({ rejectUnauthorized }) : new AgentHttp(),
   }
   if (options.username && options.password) {
     fetchOptions.headers = {
