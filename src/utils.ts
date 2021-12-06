@@ -5,6 +5,8 @@ import http, { Agent as AgentHttp } from 'http'
 import { Agent } from 'https'
 import fetch, { RequestInit } from 'node-fetch'
 
+const { env } = process
+
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function objectToArray(obj: any, keyName: string, keyValue: string): any[] {
   const arr = Object.keys(obj).map((key) => {
@@ -76,8 +78,9 @@ const sleep = (ms) => {
 
 export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOptions): Promise<void> => {
   const options: WaitTillAvailableOptions = { ...defaultOptions, ...opts }
+  if (env.isDev) options.confirmations = 1
   const isHttps = url.startsWith('https://')
-  const rejectUnauthorized = !(options.skipSsl || !process.env.NODE_TLS_REJECT_UNAUTHORIZED)
+  const rejectUnauthorized = !(options.skipSsl || !env.NODE_TLS_REJECT_UNAUTHORIZED)
   const fetchOptions: RequestInit = {
     redirect: 'follow',
     agent: isHttps ? new Agent({ rejectUnauthorized }) : new AgentHttp(),
@@ -97,8 +100,12 @@ export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOpt
         const res = await fetch(url, fetchOptions)
         if (res.status !== options.status) {
           console.warn(`GET ${url} ${res.status} !== ${options.status}`)
-          // we quit retrying if we get a response but not with the status code we expect
-          bail(new Error(`Wrong status code: ${res.status}`))
+          const err = new Error(`Wrong status code: ${res.status}`)
+          // if we get a 404 or 503 we know some changes in either nginx or istio might still not be ready
+          if (res.status !== 404 && res.status !== 503) {
+            // but any other status code that is not the desired one tells us to stop retrying
+            bail(err)
+          } else throw err
         } else {
           confirmations += 1
           console.debug(`${confirmations}/${options.confirmations} success`)

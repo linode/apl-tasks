@@ -3,13 +3,6 @@
   "configurations": [
     {
       "type": "node",
-      "request": "launch",
-      "name": "Launch Program",
-      "program": "${workspaceFolder}/${relativeFile}",
-      "skipFiles": ["<node_internals>/**"]
-    },
-    {
-      "type": "node",
       "request": "attach",
       "name": "Attach to dev:debug",
       "protocol": "inspector",
@@ -24,6 +17,7 @@
       "program": "${workspaceFolder}/node_modules/.bin/mocha",
       "args": ["src/**/*.test.ts"],
       "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+      "envFile": "${workspaceFolder}/.env",
       "env": {
         "NODE_ENV": "test"
       },
@@ -35,6 +29,7 @@
       "name": "Mocha Current File",
       "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
       "args": ["${file}"],
+      "envFile": "${workspaceFolder}/.env",
       "env": {
         "NODE_ENV": "test"
       },
@@ -48,10 +43,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:drone-dev"],
       "cwd": "${workspaceRoot}",
-      "env": {
-        "DEBUG": "*",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal"
     },
     {
@@ -60,11 +52,7 @@
       "name": "Debug certs-aws Tasks",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:certs-aws-dev"],
-      "env": {
-        "DEBUG": "*",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
-        "REGION": "eu-central-1"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "cwd": "${workspaceRoot}",
       "console": "integratedTerminal"
     },
@@ -75,10 +63,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:copy-certs-dev"],
       "cwd": "${workspaceRoot}",
-      "env": {
-        "DEBUG": "*",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal"
     },
     {
@@ -88,9 +73,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:gitea-dev"],
       "cwd": "${workspaceRoot}",
-      "env": {
-        "DEBUG": "*",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      "envFile": "${workspaceFolder}/.env",
       },
       "console": "integratedTerminal"
     },
@@ -101,10 +84,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:gitea-drone-auth-dev"],
       "cwd": "${workspaceRoot}",
-      "env": {
-        "DEBUG": "*",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal"
     },
     {
@@ -114,10 +94,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:harbor-dev"],
       "cwd": "${workspaceRoot}",
-      "env": {
-        "DEBUG": "*",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal"
     },
     {
@@ -127,10 +104,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:keycloak-dev"],
       "cwd": "${workspaceRoot}",
-      "env": {
-        "DEBUG": "*",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal"
     },
     {
@@ -140,10 +114,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:wait-for-dev"],
       "cwd": "${workspaceRoot}",
-      "env": {
-        "DEBUG": "*",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal"
     }
   ]

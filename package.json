@@ -26,6 +26,7 @@
     "lowdb": "^1.0.0",
     "morgan": "^1.10.0",
     "node-fetch": "^2.6.6",
+    "openid-client": "^5.1.0",
     "ts-custom-error": "^3.2.0"
   },
   "description": "Tasks needed by the Otomi Container Platform to glue all the pieces together.",
@@ -60,7 +61,6 @@
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-jsx-a11y": "^6.3.1",
     "eslint-plugin-prettier": "^3.4.0",
-    "fetch-mock": "^9.11.0",
     "git-cz": "^4.7.6",
     "github-release-from-changelog": "^2.1.1",
     "husky": "^7.0.0",
