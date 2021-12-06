@@ -80,7 +80,9 @@ export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOpt
   const options: WaitTillAvailableOptions = { ...defaultOptions, ...opts }
   if (env.isDev) options.confirmations = 1
   const isHttps = url.startsWith('https://')
-  const rejectUnauthorized = !(options.skipSsl || !env.NODE_TLS_REJECT_UNAUTHORIZED)
+  const globalSkipSsl = !env.NODE_TLS_REJECT_UNAUTHORIZED
+  let rejectUnauthorized = !globalSkipSsl
+  if (opts!.skipSsl !== undefined) rejectUnauthorized = !options.skipSsl
   const fetchOptions: RequestInit = {
     redirect: 'follow',
     agent: isHttps ? new Agent({ rejectUnauthorized }) : new AgentHttp(),
