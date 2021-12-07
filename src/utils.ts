@@ -4,6 +4,12 @@ import retry, { Options } from 'async-retry'
 import http, { Agent as AgentHttp } from 'http'
 import { Agent } from 'https'
 import fetch, { RequestInit } from 'node-fetch'
+import { cleanEnv, NODE_EXTRA_CA_CERTS, NODE_TLS_REJECT_UNAUTHORIZED } from './validators'
+
+const env = cleanEnv({
+  NODE_TLS_REJECT_UNAUTHORIZED,
+  NODE_EXTRA_CA_CERTS,
+})
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function objectToArray(obj: any, keyName: string, keyValue: string): any[] {
@@ -56,8 +62,6 @@ type WaitTillAvailableOptions =
       confirmations?: number
       status?: number
       skipSsl?: boolean
-      username?: string
-      password?: string
     }
 
 const defaultOptions: WaitTillAvailableOptions = {
@@ -76,16 +80,15 @@ const sleep = (ms) => {
 
 export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOptions): Promise<void> => {
   const options: WaitTillAvailableOptions = { ...defaultOptions, ...opts }
-  const isHttps = url.startsWith('https://')
-  const rejectUnauthorized = !(options.skipSsl || !process.env.NODE_TLS_REJECT_UNAUTHORIZED)
+  if (env.isDev) {
+    options.confirmations = 1
+    options.retries = 1
+  }
   const fetchOptions: RequestInit = {
     redirect: 'follow',
-    agent: isHttps ? new Agent({ rejectUnauthorized }) : new AgentHttp(),
-  }
-  if (options.username && options.password) {
-    fetchOptions.headers = {
-      Authorization: `Basic ${Buffer.from(`${options.username}:${options.password}`).toString('base64')}`,
-    }
+    agent: url.startsWith('https://')
+      ? new Agent({ rejectUnauthorized: env.NODE_TLS_REJECT_UNAUTHORIZED })
+      : new AgentHttp(),
   }
 
   // we don't trust dns in the cluster and want a lot of confirmations
@@ -97,8 +100,12 @@ export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOpt
         const res = await fetch(url, fetchOptions)
         if (res.status !== options.status) {
           console.warn(`GET ${url} ${res.status} !== ${options.status}`)
-          // we quit retrying if we get a response but not with the status code we expect
-          bail(new Error(`Wrong status code: ${res.status}`))
+          const err = new Error(`Wrong status code: ${res.status}`)
+          // if we get a 404 or 503 we know some changes in either nginx or istio might still not be ready
+          if (res.status !== 404 && res.status !== 503) {
+            // but any other status code that is not the desired one tells us to stop retrying
+            bail(err)
+          } else throw err
         } else {
           confirmations += 1
           console.debug(`${confirmations}/${options.confirmations} success`)

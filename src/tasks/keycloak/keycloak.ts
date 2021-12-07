@@ -47,17 +47,17 @@ const errors: string[] = []
 const keyCloakRealm = 'otomi'
 
 async function main(): Promise<void> {
-  if (!env.isDev) await waitTillAvailable(env.KEYCLOAK_ADDRESS)
-
+  await waitTillAvailable(env.KEYCLOAK_ADDRESS)
   const keycloakAddress = env.KEYCLOAK_ADDRESS
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
   try {
     const keycloakIssuer = await Issuer.discover(`${keycloakAddress}/realms/${env.KEYCLOAK_REALM}/`)
-    const openIdConnectClient = new keycloakIssuer.Client({
+    const clientOptions: any = {
       client_id: 'admin-cli',
       client_secret: 'unused',
-    })
+    }
+    const openIdConnectClient = new keycloakIssuer.Client(clientOptions)
     token = await openIdConnectClient.grant({
       grant_type: 'password',
       username: env.KEYCLOAK_ADMIN,

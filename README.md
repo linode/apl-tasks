@@ -10,7 +10,8 @@ This readme is aimed at development. If you wish to contribute please read our D
 
 ## Development
 
-Make sure your expected environment variables exist in a mandatory `.env` file (see `.env.sample`).
+Make sure your expected environment variables exist in a mandatory `.env` file (see `.env.sample`). 
+
 Then start a proxy to the api you wish to target:
 
 - drone: `k -n team-admin port-forward svc/drone 8081:80 &`
@@ -26,11 +27,17 @@ Now you can execute a task locally:
 npm run tasks:(gitea*|harbor|keycloak|certs-aws|...)-dev
 ```
 
-Or you can start them in the vscode debugger.
+Or start them in vscode from the debug menu. (Don't forget to add a profile for any new tasks!)
 
-**Skipping TLS (like for staging certs):**
+**Testing https with self-signed certs**
 
-Run the next line in your shell to skip TLS cert validation, like when using self-signed certs like letsencrypt staging:
+When targeting `https://...` services with self-signed certs, also create a `.env.ca` file (just copy `.env.ca.letsencrypt-staging` to `.env.ca` when using `issuer: letsencrypt-staging`), and export it before running tasks:
+
+```bash
+export NODE_EXTRA_CA_CERTS='./.env.ca'
+```
+
+Or just skip ssl verification altogether with:
 
 ```bash
 export NODE_TLS_REJECT_UNAUTHORIZED='0'
@@ -38,11 +45,7 @@ export NODE_TLS_REJECT_UNAUTHORIZED='0'
 
 **Setting debug level:**
 
-For all packages to turn on debug:
-
-```bash
-export DEBUG='*'
-```
+For all npm packages (that support it) to turn on debug, edit `.env` and uncomment `DEBUG='*'`
 
 To limit scope please read [the debug docs](https://github.com/visionmedia/debug).
 
