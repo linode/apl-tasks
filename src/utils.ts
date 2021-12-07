@@ -62,8 +62,6 @@ type WaitTillAvailableOptions =
       confirmations?: number
       status?: number
       skipSsl?: boolean
-      username?: string
-      password?: string
     }
 
 const defaultOptions: WaitTillAvailableOptions = {
@@ -86,18 +84,11 @@ export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOpt
     options.confirmations = 1
     options.retries = 1
   }
-  const isHttps = url.startsWith('https://')
-  const globalSkipSsl = !env.NODE_TLS_REJECT_UNAUTHORIZED
-  let rejectUnauthorized = !globalSkipSsl
-  if (opts?.skipSsl !== undefined) rejectUnauthorized = !options.skipSsl
   const fetchOptions: RequestInit = {
     redirect: 'follow',
-    agent: isHttps ? new Agent({ rejectUnauthorized }) : new AgentHttp(),
-  }
-  if (options.username && options.password) {
-    fetchOptions.headers = {
-      Authorization: `Basic ${Buffer.from(`${options.username}:${options.password}`).toString('base64')}`,
-    }
+    agent: url.startsWith('https://')
+      ? new Agent({ rejectUnauthorized: env.NODE_TLS_REJECT_UNAUTHORIZED })
+      : new AgentHttp(),
   }
 
   // we don't trust dns in the cluster and want a lot of confirmations
