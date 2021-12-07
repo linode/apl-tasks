@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.20](https://github.com/redkubes/otomi-tasks/compare/v0.2.19...v0.2.20) (2021-12-07)
+
+
+### Bug Fixes
+
+* keycloak wait for ([#53](https://github.com/redkubes/otomi-tasks/issues/53)) ([65d81f1](https://github.com/redkubes/otomi-tasks/commit/65d81f15517b126dbbe99531d3b06500aadeada6))
+* wait options, tests ([#52](https://github.com/redkubes/otomi-tasks/issues/52)) ([670a9ba](https://github.com/redkubes/otomi-tasks/commit/670a9ba885a9fc2539e9de9f9698e8d0b2e2ff52))
+
 ### [0.2.18](https://github.com/redkubes/otomi-tasks/compare/v0.2.17...v0.2.18) (2021-11-22)
 
 
