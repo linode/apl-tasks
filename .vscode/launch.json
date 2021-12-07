@@ -19,7 +19,8 @@
       "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
       "envFile": "${workspaceFolder}/.env",
       "env": {
-        "NODE_ENV": "test"
+        "NODE_ENV": "test",
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
       },
       "internalConsoleOptions": "openOnSessionStart"
     },
@@ -31,7 +32,8 @@
       "args": ["${file}"],
       "envFile": "${workspaceFolder}/.env",
       "env": {
-        "NODE_ENV": "test"
+        "NODE_ENV": "test",
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
       },
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
@@ -43,8 +45,10 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:drone-dev"],
       "cwd": "${workspaceRoot}",
-      "envFile": "${workspaceFolder}/.env",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
+      }
     },
     {
       "type": "node",
@@ -52,9 +56,11 @@
       "name": "Debug certs-aws Tasks",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:certs-aws-dev"],
-      "envFile": "${workspaceFolder}/.env",
       "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
+      }
     },
     {
       "type": "node",
@@ -63,8 +69,10 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:copy-certs-dev"],
       "cwd": "${workspaceRoot}",
-      "envFile": "${workspaceFolder}/.env",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
+      }
     },
     {
       "type": "node",
@@ -73,9 +81,10 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:gitea-dev"],
       "cwd": "${workspaceRoot}",
-      "envFile": "${workspaceFolder}/.env",
-      },
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
+      }
     },
     {
       "type": "node",
@@ -84,8 +93,10 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:gitea-drone-auth-dev"],
       "cwd": "${workspaceRoot}",
-      "envFile": "${workspaceFolder}/.env",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
+      }
     },
     {
       "type": "node",
@@ -94,8 +105,10 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:harbor-dev"],
       "cwd": "${workspaceRoot}",
-      "envFile": "${workspaceFolder}/.env",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
+      }
     },
     {
       "type": "node",
@@ -104,8 +117,10 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:keycloak-dev"],
       "cwd": "${workspaceRoot}",
-      "envFile": "${workspaceFolder}/.env",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
+      }
     },
     {
       "type": "node",
@@ -114,8 +129,10 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:wait-for-dev"],
       "cwd": "${workspaceRoot}",
-      "envFile": "${workspaceFolder}/.env",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
+      }
     }
   ]
 }

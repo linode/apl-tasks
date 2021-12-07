@@ -51,26 +51,6 @@ async function main(): Promise<void> {
   const keycloakAddress = env.KEYCLOAK_ADDRESS
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
-  const isHttps = env.KEYCLOAK_ADDRESS.startsWith('https://')
-  if (isHttps && process.env.NODE_EXTRA_CA_CERTS) {
-    // unfortunately openid client does not seem to honor NODE_EXTRA_CA_CERTS
-    // (TODO: check for fix: https://github.com/panva/node-openid-client/issues/438)
-    // and setting the CA through Agent({ ca: ... }) also does nothing
-    // so we will have to resort to set NODE_TLS_REJECT_UNAUTHORIZED:
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-    // const raw = readFileSync(process.env.NODE_EXTRA_CA_CERTS, 'utf-8')
-    // const len = raw.length
-    // const ca = raw
-    //   .split('-----BEGIN CERTIFICATE-----')
-    //   .slice(1, len)
-    //   .map((str) => `-----BEGIN CERTIFICATE-----${str}`)
-    // custom.setHttpOptionsDefaults({
-    //   agent: new Agent({
-    //     // ca,
-    //     ca: raw,
-    //   }),
-    // })
-  }
   try {
     const keycloakIssuer = await Issuer.discover(`${keycloakAddress}/realms/${env.KEYCLOAK_REALM}/`)
     const clientOptions: any = {

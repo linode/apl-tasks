@@ -4,8 +4,12 @@ import retry, { Options } from 'async-retry'
 import http, { Agent as AgentHttp } from 'http'
 import { Agent } from 'https'
 import fetch, { RequestInit } from 'node-fetch'
+import { cleanEnv, NODE_EXTRA_CA_CERTS, NODE_TLS_REJECT_UNAUTHORIZED } from './validators'
 
-const { env } = process
+const env = cleanEnv({
+  NODE_TLS_REJECT_UNAUTHORIZED,
+  NODE_EXTRA_CA_CERTS,
+})
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function objectToArray(obj: any, keyName: string, keyValue: string): any[] {
@@ -78,11 +82,14 @@ const sleep = (ms) => {
 
 export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOptions): Promise<void> => {
   const options: WaitTillAvailableOptions = { ...defaultOptions, ...opts }
-  if (env.isDev) options.confirmations = 1
+  if (env.isDev) {
+    options.confirmations = 1
+    options.retries = 1
+  }
   const isHttps = url.startsWith('https://')
   const globalSkipSsl = !env.NODE_TLS_REJECT_UNAUTHORIZED
   let rejectUnauthorized = !globalSkipSsl
-  if (opts!.skipSsl !== undefined) rejectUnauthorized = !options.skipSsl
+  if (opts?.skipSsl !== undefined) rejectUnauthorized = !options.skipSsl
   const fetchOptions: RequestInit = {
     redirect: 'follow',
     agent: isHttps ? new Agent({ rejectUnauthorized }) : new AgentHttp(),
