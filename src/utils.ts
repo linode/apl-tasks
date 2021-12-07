@@ -61,7 +61,6 @@ type WaitTillAvailableOptions =
   | Options & {
       confirmations?: number
       status?: number
-      skipSsl?: boolean
     }
 
 const defaultOptions: WaitTillAvailableOptions = {
@@ -69,7 +68,6 @@ const defaultOptions: WaitTillAvailableOptions = {
   confirmations: 10,
   retries: 50,
   status: 200,
-  skipSsl: false,
   minTimeout: 1000,
   maxTimeout: 30000,
 }
@@ -104,6 +102,7 @@ export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOpt
           // if we get a 404 or 503 we know some changes in either nginx or istio might still not be ready
           if (res.status !== 404 && res.status !== 503) {
             // but any other status code that is not the desired one tells us to stop retrying
+            // early bail points to errors, so better to know asap
             bail(err)
           } else throw err
         } else {
