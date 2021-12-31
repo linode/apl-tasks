@@ -52,6 +52,15 @@ describe('utils', () => {
       await expect(res).to.eventually.be.fulfilled
     })
 
+    it('should reset confirmation counter', async () => {
+      const stub = sandbox.stub(fetch, 'Promise').returns(successResp)
+      const confirmations = 3
+      const res = waitTillAvailable(url, { confirmations })
+      await tick(confirmations + 2) // wait extra rounds
+      expect(stub).to.have.callCount(confirmations)
+      await expect(res).to.eventually.be.fulfilled
+    })
+
     it('should bail when a request returns an unexpected status code', async () => {
       const stub = sandbox.stub(fetch, 'Promise').returns(failResp)
       const retries = 3

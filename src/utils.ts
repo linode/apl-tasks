@@ -97,6 +97,7 @@ export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOpt
       try {
         const res = await fetch(url, fetchOptions)
         if (res.status !== options.status) {
+          confirmations = 0
           console.warn(`GET ${url} ${res.status} !== ${options.status}`)
           const err = new Error(`Wrong status code: ${res.status}`)
           // if we get a 404 or 503 we know some changes in either nginx or istio might still not be ready
@@ -112,6 +113,7 @@ export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOpt
         }
       } catch (e) {
         // Print system errors like ECONNREFUSED
+        confirmations = 0
         console.error(`Error in try #${attempt}: `, e.message)
         if (options.retries !== 0 && attempt === options.retries!) {
           bail(new Error(`Max retries (${options.retries}) has been reached!`))
