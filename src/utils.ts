@@ -87,6 +87,7 @@ export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOpt
     agent: url.startsWith('https://')
       ? new Agent({ rejectUnauthorized: env.NODE_TLS_REJECT_UNAUTHORIZED })
       : new AgentHttp(),
+    timeout: 5000,
   }
 
   // we don't trust dns in the cluster and want a lot of confirmations
