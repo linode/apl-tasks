@@ -219,7 +219,11 @@ export const idpProviderCfgTpl = async (
   }
 }
 
-export const otomiClientCfgTpl = (secret: string, redirectUris: string[]): Record<string, unknown> => ({
+export const otomiClientCfgTpl = (
+  secret: string,
+  redirectUris: string[],
+  webOrigins: string[],
+): Record<string, unknown> => ({
   id: 'otomi',
   secret,
   defaultClientScopes: ['openid', 'email', 'profile'],
@@ -229,6 +233,7 @@ export const otomiClientCfgTpl = (secret: string, redirectUris: string[]): Recor
   directAccessGrantsEnabled: true,
   serviceAccountsEnabled: true,
   authorizationServicesEnabled: true,
+  webOrigins,
 })
 
 // type definition for imported ENV variable IDP_GROUP_MAPPINGS_TEAMS
