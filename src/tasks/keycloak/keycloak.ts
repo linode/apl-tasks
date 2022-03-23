@@ -35,9 +35,9 @@ import * as realmConfig from './realm-factory'
 const env = cleanEnv({
   IDP_ALIAS,
   IDP_OIDC_URL,
-  KEYCLOAK_ADDRESS,
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
+  KEYCLOAK_ADDRESS,
   KEYCLOAK_REALM,
   FEAT_EXTERNAL_IDP,
 })
@@ -48,10 +48,11 @@ const keyCloakRealm = 'otomi'
 
 async function main(): Promise<void> {
   await waitTillAvailable(env.KEYCLOAK_ADDRESS)
-  const basePath = `${env.KEYCLOAK_ADDRESS}/admin/realms`
+  const keycloakAddress = env.KEYCLOAK_ADDRESS
+  const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
   try {
-    const keycloakIssuer = await Issuer.discover(`${env.KEYCLOAK_ADDRESS}/realms/${env.KEYCLOAK_REALM}/`)
+    const keycloakIssuer = await Issuer.discover(`${keycloakAddress}/realms/${env.KEYCLOAK_REALM}/`)
     const clientOptions: any = {
       client_id: 'admin-cli',
       client_secret: 'unused',
@@ -324,6 +325,8 @@ async function main(): Promise<void> {
       }),
     )
   }
+
+  realmConfig.createAdminUser('otomi-admin')
   handleErrors(errors)
 }
 
