@@ -53,6 +53,17 @@ export const adminUserCfgTpl = (username: string): Record<string, unknown> => ({
   realmRoles: ['admin'],
 })
 
+export const otomiAdminUserCfgTpl = (username: string, password: string): Record<string, unknown> => ({
+  username,
+  email: 'admin@otomi.com',
+  clientRoles: ['manage-realm'],
+  realmRoles: ['admin'],
+  groups: ['otomi-admin'],
+  credentials: {
+    password,
+  },
+})
+
 export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
   id: realm,
   realm,

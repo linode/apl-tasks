@@ -37,6 +37,7 @@ import {
   defaultsIdpMapperTpl,
   idpMapperTpl,
   idpProviderCfgTpl,
+  otomiAdminUserCfgTpl,
   otomiClientCfgTpl,
   protocolMappersList,
   realmCfgTpl,
@@ -132,6 +133,11 @@ export function createClientEmailClaimMapper(): ProtocolMapperRepresentation {
 
 export function createAdminUser(username: string): UserRepresentation {
   const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(username))
+  return userRepresentation
+}
+
+export function createOtomiAdminUser(username: string, password: string): UserRepresentation {
+  const userRepresentation = defaultsDeep(new UserRepresentation(), otomiAdminUserCfgTpl(username, password))
   return userRepresentation
 }
 

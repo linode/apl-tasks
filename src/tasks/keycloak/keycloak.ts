@@ -16,6 +16,7 @@ import {
   RoleMapperApi,
   RoleRepresentation,
   RolesApi,
+  UsersApi,
 } from '@redkubes/keycloak-client-node'
 import { forEach } from 'lodash'
 import { Issuer, TokenSet } from 'openid-client'
@@ -326,7 +327,11 @@ async function main(): Promise<void> {
     )
   }
 
-  realmConfig.createAdminUser('otomi-admin')
+  // create otomi-admin user
+  const users = new UsersApi(basePath)
+  users.accessToken = String(token.access_token)
+  const otomiUser = realmConfig.createOtomiAdminUser('otomi-admin', env.KEYCLOAK_ADMIN_PASSWORD)
+  users.realmUsersPost(keyCloakRealm, otomiUser)
   handleErrors(errors)
 }
 
