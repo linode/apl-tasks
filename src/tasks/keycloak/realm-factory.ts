@@ -131,13 +131,8 @@ export function createClientEmailClaimMapper(): ProtocolMapperRepresentation {
   return emailClaimMapper
 }
 
-export function createAdminUser(username: string): UserRepresentation {
-  const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(username))
-  return userRepresentation
-}
-
-export function createOtomiAdminUser(username: string, password: string): UserRepresentation {
-  const userRepresentation = defaultsDeep(new UserRepresentation(), otomiAdminUserCfgTpl(username, password))
+export function createAdminUser(password: string): UserRepresentation {
+  const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(password))
   return userRepresentation
 }
 
