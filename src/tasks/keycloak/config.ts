@@ -3,6 +3,9 @@
 import { ProtocolMapperRepresentation } from '@redkubes/keycloak-client-node'
 import axios from 'axios'
 
+export const keycloakRealm = 'otomi'
+export const adminUserName = 'admin'
+
 export const defaultsIdpMapperTpl = (env: Record<string, unknown>): Array<Record<string, unknown>> => [
   {
     name: 'upn to email',
@@ -47,10 +50,21 @@ export const idpMapperTpl = (name: string, alias: string, role: string, claim: s
   },
 })
 
-export const adminUserCfgTpl = (username: string): Record<string, unknown> => ({
-  username,
-  clientRoles: ['manage-realm'],
+export const adminUserCfgTpl = (password: string): Record<string, unknown> => ({
+  username: adminUserName,
+  email: 'admin@oto.mi',
+  emailVerified: true,
+  enabled: true,
   realmRoles: ['admin'],
+  groups: ['otomi-admin'],
+  credentials: [
+    {
+      type: 'password',
+      value: password,
+      temporary: false,
+    },
+  ],
+  requiredActions: [],
 })
 
 export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
