@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.22](https://github.com/redkubes/otomi-tasks/compare/v0.2.21...v0.2.22) (2022-03-24)
+
+
+### Bug Fixes
+
+* adding webOrigins to allow account access ([0931f54](https://github.com/redkubes/otomi-tasks/commit/0931f54dd70ebc0e39768b695d70834ae8e8f06d))
+* connection timeout max 5 secs ([3919e31](https://github.com/redkubes/otomi-tasks/commit/3919e31fb98a42bacc89ef0f90990d3ba55bfd38))
+* otomi logo ([30f55f1](https://github.com/redkubes/otomi-tasks/commit/30f55f19d4ed5d277fbb89f14a915cb6b62bf39b))
+
 ### [0.2.21](https://github.com/redkubes/otomi-tasks/compare/v0.2.20...v0.2.21) (2021-12-31)
 
 
