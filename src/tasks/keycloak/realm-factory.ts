@@ -37,7 +37,6 @@ import {
   defaultsIdpMapperTpl,
   idpMapperTpl,
   idpProviderCfgTpl,
-  otomiAdminUserCfgTpl,
   otomiClientCfgTpl,
   protocolMappersList,
   realmCfgTpl,
