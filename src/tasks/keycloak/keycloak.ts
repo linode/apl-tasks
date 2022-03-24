@@ -16,6 +16,7 @@ import {
   RoleMapperApi,
   RoleRepresentation,
   RolesApi,
+  UserRepresentation,
   UsersApi,
 } from '@redkubes/keycloak-client-node'
 import { forEach } from 'lodash'
@@ -339,14 +340,13 @@ async function main(): Promise<void> {
 
     // Create default user 'admin' in realm 'otomi'
     const userConf = createAdminUser(env.KEYCLOAK_ADMIN_PASSWORD)
-    // the api does not offer a list method, and trying to get by id throws an error
-    // which we wan to discard, so we run the next command with an empty errors array
-    const existingUser = (await doApiCall([], `Getting user ${adminUserName}`, () =>
-      api.realms.realmGet(adminUserName),
-    )) as RealmRepresentation
+    const existingUsersByAdminEmail = (await doApiCall([], `Getting users`, () =>
+      api.users.realmUsersGet(keycloakRealm, false, userConf.email),
+    )) as UserRepresentation[]
+    const existingUser: UserRepresentation = existingUsersByAdminEmail?.[0]
     if (existingUser) {
       await doApiCall(errors, `Updating user ${adminUserName}`, async () =>
-        api.users.realmUsersIdPut(keycloakRealm, adminUserName, userConf),
+        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
       )
     } else {
       await doApiCall(errors, `Creating user ${adminUserName}`, () => api.users.realmUsersPost(keycloakRealm, userConf))

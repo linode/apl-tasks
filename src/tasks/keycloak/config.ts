@@ -53,12 +53,18 @@ export const idpMapperTpl = (name: string, alias: string, role: string, claim: s
 export const adminUserCfgTpl = (password: string): Record<string, unknown> => ({
   username: adminUserName,
   email: 'admin@oto.mi',
-  clientRoles: ['manage-realm'],
+  emailVerified: true,
+  enabled: true,
   realmRoles: ['admin'],
   groups: ['otomi-admin'],
-  credentials: {
-    password,
-  },
+  credentials: [
+    {
+      type: 'password',
+      value: password,
+      temporary: false,
+    },
+  ],
+  requiredActions: [],
 })
 
 export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
