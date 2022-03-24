@@ -57,6 +57,7 @@ export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
   id: realm,
   realm,
   displayName: realm,
+  displayNameHtml: '<div class="kc-logo-text"><span>Otomi</span></div>',
   enabled: true,
   sslRequired: 'external',
   loginTheme: 'otomi',
