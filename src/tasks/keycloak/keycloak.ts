@@ -331,7 +331,7 @@ async function main(): Promise<void> {
   const users = new UsersApi(basePath)
   users.accessToken = String(token.access_token)
   const otomiUser = realmConfig.createOtomiAdminUser('otomi-admin', env.KEYCLOAK_ADMIN_PASSWORD)
-  users.realmUsersPost(keyCloakRealm, otomiUser)
+  await users.realmUsersPost(keyCloakRealm, otomiUser)
   handleErrors(errors)
 }
 
