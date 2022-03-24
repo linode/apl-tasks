@@ -130,8 +130,8 @@ export function createClientEmailClaimMapper(): ProtocolMapperRepresentation {
   return emailClaimMapper
 }
 
-export function createAdminUser(password: string): UserRepresentation {
-  const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(password))
+export function createAdminUser(username: string, password: string): UserRepresentation {
+  const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(username, password))
   return userRepresentation
 }
 

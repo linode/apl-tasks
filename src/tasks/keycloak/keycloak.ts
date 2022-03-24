@@ -338,8 +338,8 @@ async function main(): Promise<void> {
       }),
     )
 
-    // Create default user 'admin' in realm 'otomi'
-    const userConf = createAdminUser(env.KEYCLOAK_ADMIN_PASSWORD)
+    // Create default admin user in realm 'otomi'
+    const userConf = createAdminUser(env.KEYCLOAK_ADMIN, env.KEYCLOAK_ADMIN_PASSWORD)
     const existingUsersByAdminEmail = (await doApiCall([], `Getting users`, () =>
       api.users.realmUsersGet(keycloakRealm, false, userConf.email),
     )) as UserRepresentation[]
