@@ -6,10 +6,6 @@ import axios from 'axios'
 export const keycloakRealm = 'otomi'
 export const adminUserName = 'admin'
 
-export const createAdminUser = (env: Record<string, unknown>): Record<string, unknown> => ({
-  credentials: { username: 'admin', password: env.KEYCLOAK_ADMIN_PASSWORD },
-})
-
 export const defaultsIdpMapperTpl = (env: Record<string, unknown>): Array<Record<string, unknown>> => [
   {
     name: 'upn to email',
