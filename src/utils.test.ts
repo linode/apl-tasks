@@ -46,7 +46,7 @@ describe('utils', () => {
     it('should pass after x successful requests', async () => {
       const stub = sandbox.stub(fetch, 'Promise').returns(successResp)
       const confirmations = 3
-      const res = waitTillAvailable(url, { confirmations })
+      const res = waitTillAvailable(url, undefined, { confirmations })
       await tick(confirmations + 2) // wait extra rounds
       expect(stub).to.have.callCount(confirmations)
       await expect(res).to.eventually.be.fulfilled
@@ -55,7 +55,7 @@ describe('utils', () => {
     it('should reset confirmation counter', async () => {
       const stub = sandbox.stub(fetch, 'Promise').returns(successResp)
       const confirmations = 3
-      const res = waitTillAvailable(url, { confirmations })
+      const res = waitTillAvailable(url, undefined, { confirmations })
       await tick(confirmations + 2) // wait extra rounds
       expect(stub).to.have.callCount(confirmations)
       await expect(res).to.eventually.be.fulfilled
@@ -64,7 +64,7 @@ describe('utils', () => {
     it('should bail when a request returns an unexpected status code', async () => {
       const stub = sandbox.stub(fetch, 'Promise').returns(failResp)
       const retries = 3
-      const res = waitTillAvailable(url, { retries })
+      const res = waitTillAvailable(url, undefined, { retries })
       await tick(retries + 1)
       expect(stub).to.have.callCount(1)
       await expect(res).to.eventually.be.rejectedWith(`Wrong status code: 500`)
@@ -74,7 +74,7 @@ describe('utils', () => {
       const stub = sandbox.stub(fetch, 'Promise').throws(new Error('ECONNREFUSED'))
       const retries = 3
       const maxTimeout = 30000
-      const res = waitTillAvailable(url, { retries, maxTimeout })
+      const res = waitTillAvailable(url, undefined, { retries, maxTimeout })
       await tick(retries + 2, maxTimeout) // run a couple extra rounds and set duration to maxTimeout to make sure we have spent enough time
       expect(stub).to.have.callCount(3)
       await expect(res).to.eventually.be.rejectedWith(`Max retries (${retries}) has been reached!`)
@@ -85,7 +85,7 @@ describe('utils', () => {
       const confirmations = 3
       const retries = 1000 // large enough
       const maxTimeout = 1000 // same as minTimeout to be able to calculate attempts
-      const res = waitTillAvailable(url, { confirmations, retries, maxTimeout, forever: true })
+      const res = waitTillAvailable(url, undefined, { confirmations, retries, maxTimeout, forever: true })
       // tick 5 failures
       await tick(5)
       // now start returning ok responses
