@@ -32,7 +32,7 @@ import {
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_REALM,
 } from '../../validators'
-import { adminUserName, keycloakRealm } from './config'
+import { keycloakRealm } from './config'
 import {
   createAdminUser,
   createClient,
@@ -345,11 +345,13 @@ async function main(): Promise<void> {
     )) as UserRepresentation[]
     const existingUser: UserRepresentation = existingUsersByAdminEmail?.[0]
     if (existingUser) {
-      await doApiCall(errors, `Updating user ${adminUserName}`, async () =>
+      await doApiCall(errors, `Updating user ${env.KEYCLOAK_ADMIN}`, async () =>
         api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
       )
     } else {
-      await doApiCall(errors, `Creating user ${adminUserName}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
+      await doApiCall(errors, `Creating user ${env.KEYCLOAK_ADMIN}`, () =>
+        api.users.realmUsersPost(keycloakRealm, userConf),
+      )
     }
   }
 

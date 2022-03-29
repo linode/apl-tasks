@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.24](https://github.com/redkubes/otomi-tasks/compare/v0.2.22...v0.2.24) (2022-03-24)
+
+
+### Features
+
+* first admin user ([#66](https://github.com/redkubes/otomi-tasks/issues/66)) ([0d26278](https://github.com/redkubes/otomi-tasks/commit/0d26278fecd87eefbfb19d64b9846054a3e3d093))
+
+
+### Bug Fixes
+
+* username ([ec26f40](https://github.com/redkubes/otomi-tasks/commit/ec26f4083117a57a7057698db1a63ef48217df7e))
+
 ### [0.2.23](https://github.com/redkubes/otomi-tasks/compare/v0.2.22...v0.2.23) (2022-03-24)
 
 
