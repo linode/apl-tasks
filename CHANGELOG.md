@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.25](https://github.com/redkubes/otomi-tasks/compare/v0.2.24...v0.2.25) (2022-04-07)
+
+
+### Features
+
+* host headers for internal requests ([#67](https://github.com/redkubes/otomi-tasks/issues/67)) ([7d9c61a](https://github.com/redkubes/otomi-tasks/commit/7d9c61a9928356307b09d7a1c566e4655d85a01c))
+
 ### [0.2.24](https://github.com/redkubes/otomi-tasks/compare/v0.2.22...v0.2.24) (2022-03-24)
 
 
