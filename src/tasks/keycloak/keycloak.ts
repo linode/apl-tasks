@@ -20,7 +20,7 @@ import {
   UsersApi,
 } from '@redkubes/keycloak-client-node'
 import { forEach } from 'lodash'
-import { Issuer, TokenSet } from 'openid-client'
+import { custom, Issuer, TokenSet } from 'openid-client'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
   cleanEnv,
@@ -28,6 +28,7 @@ import {
   IDP_ALIAS,
   IDP_OIDC_URL,
   KEYCLOAK_ADDRESS,
+  KEYCLOAK_ADDRESS_INTERNAL,
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_REALM,
@@ -52,6 +53,7 @@ const env = cleanEnv({
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_ADDRESS,
+  KEYCLOAK_ADDRESS_INTERNAL,
   KEYCLOAK_REALM,
   FEAT_EXTERNAL_IDP,
 })
@@ -59,12 +61,14 @@ const env = cleanEnv({
 const errors: string[] = []
 
 async function main(): Promise<void> {
-  await waitTillAvailable(env.KEYCLOAK_ADDRESS)
-  const keycloakAddress = env.KEYCLOAK_ADDRESS
-  const basePath = `${keycloakAddress}/admin/realms`
+  await waitTillAvailable(env.KEYCLOAK_ADDRESS_INTERNAL)
+  const keycloakSvc = env.KEYCLOAK_ADDRESS_INTERNAL || 'http://keycloak-http.keycloak'
+  const basePath = `${keycloakSvc}/admin/realms`
   let token: TokenSet
   try {
-    const keycloakIssuer = await Issuer.discover(`${keycloakAddress}/realms/${env.KEYCLOAK_REALM}/`)
+    custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_ADDRESS.replace('https://', '') } })
+    const keycloakIssuer = await Issuer.discover(`${keycloakSvc}/realms/${env.KEYCLOAK_REALM}/`)
+    // console.log(keycloakIssuer)
     const clientOptions: any = {
       client_id: 'admin-cli',
       client_secret: 'unused',

@@ -3,6 +3,7 @@
 import retry, { Options } from 'async-retry'
 import http, { Agent as AgentHttp } from 'http'
 import { Agent } from 'https'
+import { set } from 'lodash'
 import fetch, { RequestInit } from 'node-fetch'
 import { cleanEnv, NODE_EXTRA_CA_CERTS, NODE_TLS_REJECT_UNAUTHORIZED } from './validators'
 
@@ -76,7 +77,7 @@ const sleep = (ms) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOptions): Promise<void> => {
+export const waitTillAvailable = async (url: string, host?: string, opts?: WaitTillAvailableOptions): Promise<void> => {
   const options: WaitTillAvailableOptions = { ...defaultOptions, ...opts }
   if (env.isDev) {
     options.confirmations = 1
@@ -89,6 +90,7 @@ export const waitTillAvailable = async (url: string, opts?: WaitTillAvailableOpt
       : new AgentHttp(),
     timeout: 5000,
   }
+  if (host) set(fetchOptions, 'headers.host', host)
 
   // we don't trust dns in the cluster and want a lot of confirmations
   // but we don't care about those when we call the cluster from outside

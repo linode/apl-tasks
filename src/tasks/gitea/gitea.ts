@@ -1,7 +1,7 @@
-import { OrganizationApi, CreateRepoOption, CreateOrgOption, CreateTeamOption } from '@redkubes/gitea-client-node'
+import { CreateOrgOption, CreateRepoOption, CreateTeamOption, OrganizationApi } from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../../utils'
 import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
-import { orgName, repoName, username, teamNameViewer } from '../common'
+import { orgName, repoName, teamNameViewer, username } from '../common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
