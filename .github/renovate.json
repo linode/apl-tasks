@@ -1,7 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "encrypted": {
-    "npmToken": "WfQcMkK8LeT6QDImtbKt2WS+D71F/ZLndYV8EjAmNvaeWpFH2Fw8j8lcOC221ieEgL4ASEX1absC7CwqrFyI1LzhMKLVGaZQttPRy7eu9BEfhb1OAB3Tw/R8paghv92h/qrt5lscBW56i8jhresyODcg6GwQmiRrcblpvnhPsopWjfATCa0bJHfhLCRdTupfbAVSETnkQt7BWMA2Zmig0uj2aZ2IjVaabUTjZMNW9NsW7Gm2mUarKDIoj2RznuGmGn2COEy7WwKiKvKiAdlaICPun8R+qVZkwaFdHO5oFdUENrwcyXX72L8fxEQzEbAvARUSJqwtwB2WdOhdkXgwrw=="
-  },
-  "extends": ["local>redkubes/renovate-config"]
+  "extends": ["local>redkubes/renovate-config"],
+  "hostRules": [
+    {
+      "encrypted": {
+        "token": "WfQcMkK8LeT6QDImtbKt2WS+D71F/ZLndYV8EjAmNvaeWpFH2Fw8j8lcOC221ieEgL4ASEX1absC7CwqrFyI1LzhMKLVGaZQttPRy7eu9BEfhb1OAB3Tw/R8paghv92h/qrt5lscBW56i8jhresyODcg6GwQmiRrcblpvnhPsopWjfATCa0bJHfhLCRdTupfbAVSETnkQt7BWMA2Zmig0uj2aZ2IjVaabUTjZMNW9NsW7Gm2mUarKDIoj2RznuGmGn2COEy7WwKiKvKiAdlaICPun8R+qVZkwaFdHO5oFdUENrwcyXX72L8fxEQzEbAvARUSJqwtwB2WdOhdkXgwrw=="
+      },
+      "hostType": "npm",
+      "matchHost": "https://npm.pkg.github.com/"
+    }
+  ]
 }
