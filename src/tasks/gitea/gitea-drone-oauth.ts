@@ -46,7 +46,7 @@ export async function getGiteaAuthorizationHeaderCookies(oauthData: DroneSecret)
 
   try {
     const authorizeResponse: AxiosResponse<any> = await axios.get(`${giteaUrl}/login/oauth/authorize`, options)
-    return authorizeResponse.headers['set-cookie']
+    return authorizeResponse.headers['set-cookie'] as string[]
   } catch (e) {
     throw new GiteaDroneError('Authorization already granted!')
   }

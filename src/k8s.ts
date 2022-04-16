@@ -3,7 +3,7 @@
 import {
   CoreV1Api,
   KubeConfig,
-  NetworkingV1beta1Api,
+  NetworkingV1Api,
   V1ObjectMeta,
   V1Secret,
   V1ServiceAccount,
@@ -13,7 +13,7 @@ import { findIndex, mapValues } from 'lodash'
 
 let kc: KubeConfig
 let coreClient: CoreV1Api
-let networkingClient: NetworkingV1beta1Api
+let networkingClient: NetworkingV1Api
 
 export const k8s = {
   kc: (): KubeConfig => {
@@ -27,9 +27,9 @@ export const k8s = {
     coreClient = k8s.kc().makeApiClient(CoreV1Api)
     return coreClient
   },
-  networking: (): NetworkingV1beta1Api => {
+  networking: (): NetworkingV1Api => {
     if (networkingClient) return networkingClient
-    networkingClient = k8s.kc().makeApiClient(NetworkingV1beta1Api)
+    networkingClient = k8s.kc().makeApiClient(NetworkingV1Api)
     return networkingClient
   },
 }
