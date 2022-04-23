@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.26](https://github.com/redkubes/otomi-tasks/compare/v0.2.25...v0.2.26) (2022-04-23)
+
+
+### Bug Fixes
+
+* **deps:** pin dependencies ([#71](https://github.com/redkubes/otomi-tasks/issues/71)) ([8c9c9e8](https://github.com/redkubes/otomi-tasks/commit/8c9c9e873c2498651cebf9064dcbe7ba450c2198))
+* wait for url [ci skip] ([589fe98](https://github.com/redkubes/otomi-tasks/commit/589fe98a26d077e0be3a5ccb95a5a5742d955bca))
+
 ### [0.2.25](https://github.com/redkubes/otomi-tasks/compare/v0.2.24...v0.2.25) (2022-04-07)
 
 
