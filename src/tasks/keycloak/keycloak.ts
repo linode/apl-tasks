@@ -61,13 +61,13 @@ const env = cleanEnv({
 const errors: string[] = []
 
 async function main(): Promise<void> {
-  await waitTillAvailable(env.KEYCLOAK_ADDRESS_INTERNAL)
-  const keycloakSvc = env.KEYCLOAK_ADDRESS_INTERNAL || 'http://keycloak-http.keycloak'
-  const basePath = `${keycloakSvc}/admin/realms`
+  await waitTillAvailable(env.KEYCLOAK_ADDRESS)
+  const keycloakAddress = env.KEYCLOAK_ADDRESS
+  const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
   try {
     custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_ADDRESS.replace('https://', '') } })
-    const keycloakIssuer = await Issuer.discover(`${keycloakSvc}/realms/${env.KEYCLOAK_REALM}/`)
+    const keycloakIssuer = await Issuer.discover(`${keycloakAddress}/realms/${env.KEYCLOAK_REALM}/`)
     // console.log(keycloakIssuer)
     const clientOptions: any = {
       client_id: 'admin-cli',
