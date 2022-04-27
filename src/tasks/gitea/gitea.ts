@@ -1,29 +1,104 @@
-import { CreateOrgOption, CreateRepoOption, CreateTeamOption, OrganizationApi } from '@redkubes/gitea-client-node'
+import {
+  CreateOrgOption,
+  CreateRepoOption,
+  CreateTeamOption,
+  EditRepoOption,
+  OrganizationApi,
+  Repository,
+  RepositoryApi,
+  Team,
+} from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../../utils'
-import { cleanEnv, GITEA_PASSWORD, GITEA_URL } from '../../validators'
-import { orgName, repoName, teamNameViewer, username } from '../common'
+import { cleanEnv, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, TEAM_IDS } from '../../validators'
+import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
   GITEA_URL,
+  TEAM_IDS,
+  OTOMI_VALUES,
 })
+
+const teamConfig = env.OTOMI_VALUES.teamConfig ?? {}
+const isMultitenant = env.OTOMI_VALUES.otomi?.isMultitenant ?? false
+
 const errors: string[] = []
 
-export async function createTeam(orgApi: OrganizationApi): Promise<void> {
-  const readOnlyTeam: CreateTeamOption = {
-    ...new CreateTeamOption(),
-    canCreateOrgRepo: false,
-    name: teamNameViewer,
-    includesAllRepositories: true,
-    permission: CreateTeamOption.PermissionEnum.Read,
-    units: ['repo.code'],
-  }
+const readOnlyTeam: CreateTeamOption = {
+  ...new CreateTeamOption(),
+  canCreateOrgRepo: false,
+  name: teamNameViewer,
+  includesAllRepositories: true,
+  permission: CreateTeamOption.PermissionEnum.Read,
+  units: ['repo.code'],
+}
+
+const editorTeam: CreateTeamOption = {
+  ...readOnlyTeam,
+  includesAllRepositories: false,
+  permission: CreateTeamOption.PermissionEnum.Write,
+}
+
+const adminTeam: CreateTeamOption = { ...editorTeam, permission: CreateTeamOption.PermissionEnum.Admin }
+
+export async function upsertTeam(
+  existingTeams: Team[] = [],
+  orgApi: OrganizationApi,
+  teamOption: CreateTeamOption,
+): Promise<void> {
+  const existingTeam = existingTeams.find((el) => el.name === teamOption.name)
+  if (existingTeam)
+    return doApiCall(
+      errors,
+      `Updating team "${teamOption.name}" in org "${orgName}"`,
+      () => orgApi.orgEditTeam(existingTeam.id!, teamOption),
+      422,
+    )
   return doApiCall(
     errors,
-    `Creating team "${teamNameViewer}" in org "${orgName}"`,
-    () => orgApi.orgCreateTeam(orgName, readOnlyTeam),
+    `Updating team "${teamOption.name}" in org "${orgName}"`,
+    () => orgApi.orgCreateTeam(orgName, teamOption),
     422,
   )
+}
+
+export async function upsertRepo(
+  existingTeams: Team[] = [],
+  existingRepos: Repository[] = [],
+  orgApi: OrganizationApi,
+  repoApi: RepositoryApi,
+  repoOption: CreateRepoOption | EditRepoOption,
+  teamName?: string,
+): Promise<void> {
+  const existingRepo = existingRepos.find((el) => el.name === repoOption.name)
+  const existingTeam = existingTeams.find((el) => el.name === teamName) as Team // must exist as just created
+  let newRepo
+  if (!existingRepo) {
+    // org repo create
+    await doApiCall(
+      errors,
+      `Creating repo "${repoOption.name}" in org "${orgName}"`,
+      () => orgApi.createOrgRepo(orgName, repoOption as CreateRepoOption),
+      422,
+    )
+  } else {
+    // repo update
+    await doApiCall(
+      errors,
+      `Updating repo "${repoOption.name}" in org "${orgName}"`,
+      () => repoApi.repoEdit(orgName, repoOption.name!, repoOption as EditRepoOption),
+      422,
+    )
+  }
+  // new team repo, add team
+  if (teamName)
+    await doApiCall(
+      errors,
+      `Adding repo "${repoOption.name}" to team "${teamName}"`,
+      () => repoApi.repoAddTeam(orgName, repoOption.name!, teamName),
+      422,
+    )
+  return undefined
 }
 
 export default async function main(): Promise<void> {
@@ -36,14 +111,53 @@ export default async function main(): Promise<void> {
 
   // create the org
   const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  const repoApi = new RepositoryApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
   await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
 
-  // await createTeam(orgApi)
+  const existingTeams = await doApiCall(errors, `Getting all teams in org "${orgName}"`, () =>
+    orgApi.orgListTeams(orgName),
+  )
+  // create all the teams first
+  await Promise.all(
+    env.TEAM_IDS.map((teamId) => {
+      // determine self service flags
+      const name = `team-${teamId}`
+      if (teamConfig[teamId]?.selfService?.apps.includes('gitea'))
+        return upsertTeam(existingTeams, orgApi, { ...adminTeam, name })
+      return upsertTeam(existingTeams, orgApi, { ...editorTeam, name })
+    }),
+  )
+  // create org wide viewer team for otomi role "team-viewer"
+  await upsertTeam(existingTeams, orgApi, readOnlyTeam)
   // create the org repo
-  const repoOption = { ...new CreateRepoOption(), autoInit: false, name: repoName, _private: true }
-  await doApiCall(errors, `Creating org repo "${repoName}"`, () => orgApi.createOrgRepo(orgName, repoOption))
-  // add the
+  const repoOption: CreateRepoOption = {
+    ...new CreateRepoOption(),
+    autoInit: true,
+    name: otomiValuesRepoName,
+    _private: true,
+  }
+
+  const existingRepos = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
+    orgApi.orgListRepos(orgName),
+  )
+
+  // create main org repo: otomi/values
+  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
+  // then create initial gitops repo for teams
+  await Promise.all(
+    env.TEAM_IDS.map(async (teamId) => {
+      const name = `team-${teamId}-argocd`
+      const option = { ...repoOption, name }
+      // const existingTeamRepos = await doApiCall(
+      //   errors,
+      //   `Getting all repos from team "${teamId}"`,
+      //   () => orgApi.orgListTeamRepos(teamId),
+      //   404,
+      // )
+      return upsertRepo(existingTeams, existingRepos, orgApi, repoApi, option, `team-${teamId}`)
+    }),
+  )
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
     process.exit(1)
