@@ -9,17 +9,17 @@ import {
   Team,
 } from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../../utils'
-import { cleanEnv, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, TEAM_IDS } from '../../validators'
+import { cleanEnv, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES } from '../../validators'
 import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
   GITEA_URL,
-  TEAM_IDS,
   OTOMI_VALUES,
 })
 
 const teamConfig = env.OTOMI_VALUES.teamConfig ?? {}
+const teamIds = Object.keys(teamConfig)
 const isMultitenant = env.OTOMI_VALUES.otomi?.isMultitenant ?? false
 
 const errors: string[] = []
@@ -120,7 +120,7 @@ export default async function main(): Promise<void> {
   )
   // create all the teams first
   await Promise.all(
-    env.TEAM_IDS.map((teamId) => {
+    teamIds.map((teamId) => {
       // determine self service flags
       const name = `team-${teamId}`
       if (teamConfig[teamId]?.selfService?.apps.includes('gitea'))
@@ -146,7 +146,7 @@ export default async function main(): Promise<void> {
   await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
   // then create initial gitops repo for teams
   await Promise.all(
-    env.TEAM_IDS.map(async (teamId) => {
+    teamIds.map(async (teamId) => {
       const name = `team-${teamId}-argocd`
       const option = { ...repoOption, name }
       // const existingTeamRepos = await doApiCall(

@@ -3,7 +3,7 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import cookie from 'cookie'
 import querystring from 'querystring'
 import { createSecret, getSecret, k8s } from '../../k8s'
-import { doApiCall, waitTillAvailable } from '../../utils'
+import { doApiCall } from '../../utils'
 import { cleanEnv, DRONE_URL, GITEA_PASSWORD, GITEA_URL } from '../../validators'
 import { username } from '../common'
 import { GiteaDroneError } from './common'
@@ -87,7 +87,7 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  await waitTillAvailable(env.GITEA_URL)
+  // await waitTillAvailable(env.GITEA_URL) // previous task waited already, and this is second
 
   // fresh cluster: no secret no oauth app
   // already exists: cluster with predeployed secret and oauth app
