@@ -123,7 +123,7 @@ export default async function main(): Promise<void> {
     teamIds.map((teamId) => {
       // determine self service flags
       const name = `team-${teamId}`
-      if (teamConfig[teamId]?.selfService?.apps.includes('gitea'))
+      if ((teamConfig[teamId]?.selfService?.apps || []).includes('gitea'))
         return upsertTeam(existingTeams, orgApi, { ...adminTeam, name })
       return upsertTeam(existingTeams, orgApi, { ...editorTeam, name })
     }),
