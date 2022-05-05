@@ -1,7 +1,7 @@
 import * as drone from 'drone-node'
-import { doApiCall, waitTillAvailable, handleErrors } from '../../utils'
-import { cleanEnv, DRONE_URL, DRONE_TOKEN } from '../../validators'
-import { orgName, repoName } from '../common'
+import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
+import { cleanEnv, DRONE_TOKEN, DRONE_URL } from '../../validators'
+import { orgName, otomiValuesRepoName } from '../common'
 
 const env = cleanEnv({
   DRONE_URL,
@@ -29,10 +29,10 @@ async function main(): Promise<void> {
   // await doApiCall(errors, 'Syncing repos', () => client.syncRepos())
 
   // Connect repo
-  await doApiCall(errors, 'Connecting repo', () => client.enableRepo(orgName, repoName))
+  await doApiCall(errors, 'Connecting repo', () => client.enableRepo(orgName, otomiValuesRepoName))
 
   // Update repo: this preconfigures the repo so that it only needs activating
-  await doApiCall(errors, 'Updating repo', () => client.updateRepo(orgName, repoName, {}))
+  await doApiCall(errors, 'Updating repo', () => client.updateRepo(orgName, otomiValuesRepoName, {}))
 
   handleErrors(errors)
 }

@@ -4,6 +4,10 @@ import { bool, cleanEnv as clean, json, num, str, StrictCleanOptions, url, Valid
 
 const { env } = process
 
+// const arrString: ValidatorSpec<string[]> = makeValidator((x) => {
+//   return JSON.parse(x) as string[]
+// })
+
 // START feature toggles determine default value requirements of env vars below
 export const FEAT_EXTERNAL_IDP = bool({
   desc: 'Determines wether configuration for an external IDP was provided',
@@ -55,14 +59,14 @@ export const NODE_TLS_REJECT_UNAUTHORIZED = bool({ default: true })
 export const OIDC_CLIENT_SECRET = str({ desc: 'The OIDC client secret used by keycloak to access the IDP' })
 export const OIDC_ENDPOINT = str({ desc: 'The OIDC endpoint used by keycloak to access the IDP' })
 export const OIDC_VERIFY_CERT = bool({ desc: 'Wether to validate the OIDC endpoint cert', default: true })
-export const OTOMI_VALUES_INPUT = str({ desc: 'The chart values.yaml file' })
+export const OTOMI_VALUES = json({ desc: 'The main values such as cluster.* otomi.* teamConfig.*', default: {} })
 export const OTOMI_SCHEMA_PATH = str({ desc: 'The path to the values-schema.yaml schema file' })
 export const OTOMI_ENV_DIR = str({ desc: 'The path to the otomi-values folder' })
 export const OTOMI_FLAGS = json({ default: '{}' })
 export const REDIRECT_URIS = json({ desc: "A list of redirect URI's in JSON format" })
 export const REGION = str({ desc: 'The cloud region' })
 export const SECRETS_NAMESPACE = str({ desc: 'The namespace of the TLS secrets', default: 'istio-system' })
-export const TEAM_IDS = json({ desc: 'A list of team ids in JSON format' })
+export const TEAM_IDS = json({ desc: 'A list of team ids in JSON format', default: [] })
 export const WAIT_URL = str({ desc: 'The URL to wait for.' })
 export const WAIT_HOST = str({ desc: 'The HOST header that goes with the url to wait for.', default: undefined })
 export const WAIT_OPTIONS = json({ desc: 'The waitTillAvailable options', default: '{}' })

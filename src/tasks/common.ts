@@ -1,5 +1,5 @@
 export const orgName = 'otomi'
 export const teamNameOwners = 'Owners'
 export const teamNameViewer = 'otomi-viewer'
-export const repoName = 'values'
+export const otomiValuesRepoName = 'values'
 export const username = 'otomi-admin'
