@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.27](https://github.com/redkubes/otomi-tasks/compare/v0.2.26...v0.2.27) (2022-05-05)
+
+
+### Features
+
+* argocd app ([#75](https://github.com/redkubes/otomi-tasks/issues/75)) ([6663d4b](https://github.com/redkubes/otomi-tasks/commit/6663d4b9680e1ccf416b8bf11fe16fb605bb3d8c))
+* pr lint action [ci skip] ([0445bd6](https://github.com/redkubes/otomi-tasks/commit/0445bd670595227b49e58619d0cdf9123da9422f))
+
 ### [0.2.26](https://github.com/redkubes/otomi-tasks/compare/v0.2.25...v0.2.26) (2022-04-23)
 
 
