@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.28](https://github.com/redkubes/otomi-tasks/compare/v0.2.27...v0.2.28) (2022-06-10)
+
+
+### Bug Fixes
+
+* values repo should not be init-ed ([#76](https://github.com/redkubes/otomi-tasks/issues/76)) ([c4e1ae0](https://github.com/redkubes/otomi-tasks/commit/c4e1ae0ca0c0d88d84384d64ff08fc48f4c3084a)), closes [redkubes/unassigned-issues#416](https://github.com/redkubes/unassigned-issues/issues/416)
+
 ### [0.2.27](https://github.com/redkubes/otomi-tasks/compare/v0.2.26...v0.2.27) (2022-05-05)
 
 
