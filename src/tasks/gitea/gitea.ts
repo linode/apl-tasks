@@ -20,7 +20,8 @@ const env = cleanEnv({
 
 const teamConfig = env.OTOMI_VALUES.teamConfig ?? {}
 const teamIds = Object.keys(teamConfig)
-const isMultitenant = env.OTOMI_VALUES.otomi?.isMultitenant ?? false
+const isMultitenant = !!env.OTOMI_VALUES.otomi?.isMultitenant
+const hasArgo = !!env.OTOMI_VALUES.apps?.argocd?.enabled
 
 const errors: string[] = []
 
@@ -71,8 +72,6 @@ export async function upsertRepo(
   teamName?: string,
 ): Promise<void> {
   const existingRepo = existingRepos.find((el) => el.name === repoOption.name)
-  const existingTeam = existingTeams.find((el) => el.name === teamName) as Team // must exist as just created
-  let newRepo
   if (!existingRepo) {
     // org repo create
     await doApiCall(
@@ -133,7 +132,7 @@ export default async function main(): Promise<void> {
   // create the org repo
   const repoOption: CreateRepoOption = {
     ...new CreateRepoOption(),
-    autoInit: true,
+    autoInit: false,
     name: otomiValuesRepoName,
     _private: true,
   }
@@ -144,11 +143,14 @@ export default async function main(): Promise<void> {
 
   // create main org repo: otomi/values
   await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
+
+  if (!hasArgo) return
+
   // then create initial gitops repo for teams
   await Promise.all(
     teamIds.map(async (teamId) => {
       const name = `team-${teamId}-argocd`
-      const option = { ...repoOption, name }
+      const option = { ...repoOption, autoInit: true, name }
       // const existingTeamRepos = await doApiCall(
       //   errors,
       //   `Getting all repos from team "${teamId}"`,
