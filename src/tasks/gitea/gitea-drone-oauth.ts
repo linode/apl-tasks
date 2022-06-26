@@ -1,7 +1,7 @@
 import { CreateOAuth2ApplicationOptions, UserApi } from '@redkubes/gitea-client-node'
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import cookie from 'cookie'
-import querystring from 'querystring'
+import { URLSearchParams } from 'url'
 import { createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall } from '../../utils'
 import { cleanEnv, DRONE_URL, GITEA_PASSWORD, GITEA_URL } from '../../validators'
@@ -76,7 +76,7 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
     maxRedirects: 1,
     auth,
     // Data for this post query must be stringified https://github.com/axios/axios#using-applicationx-www-form-urlencoded-format
-    data: querystring.stringify({
+    data: new URLSearchParams({
       [csrfCookieName]: csrfToken,
       client_id: `${oauthData.clientId}`,
       redirect_uri: droneLoginUrl,
@@ -95,21 +95,13 @@ async function main(): Promise<void> {
   const oauth2Apps = await doApiCall(errors, 'Getting oauth2 app', () => userApi.userGetOauth2Application())
   const previousOauth2App = (oauth2Apps || []).find(({ name }) => name === oauthOpts.name)
 
-  // when we encounter both secret and oauth app we can conclude that the previous run
-  // which created the oauth app ended successfully
-  if (remoteSecret && previousOauth2App) {
-    console.info('Gitea Drone OAuth2 app and secret exist')
-    await authorizeOAuthApp(remoteSecret)
-    return
-  }
-
-  // Otherwise, clear old stuff (if necessary)
+  // clear old stuff (if necessary)
   if (remoteSecret)
     await doApiCall(errors, 'Deleting old secret', () => k8s.core().deleteNamespacedSecret(secretName, namespace))
   if (previousOauth2App?.id)
     await doApiCall(errors, 'Deleting old oauth2 app', () => userApi.userDeleteOAuth2Application(previousOauth2App.id))
 
-  // and create again
+  // and (re-)create
   const oauth2App = await doApiCall(errors, 'Creating oauth2 app', () => userApi.userCreateOAuth2Application(oauthOpts))
   const secret = oauth2App as DroneSecret
   await authorizeOAuthApp(oauth2App)
