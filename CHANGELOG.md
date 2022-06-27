@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.29](https://github.com/redkubes/otomi-tasks/compare/v0.2.28...v0.2.29) (2022-06-27)
+
+
+### Bug Fixes
+
+* gitea drone task idempotency ([4946013](https://github.com/redkubes/otomi-tasks/commit/4946013eaa08b67440978c361ab3f3459da63fc0))
+* new oauth2 app for gitea when domain changes ([38421f1](https://github.com/redkubes/otomi-tasks/commit/38421f13edafda834d9c609deec6ff32c6170f02))
+
 ### [0.2.28](https://github.com/redkubes/otomi-tasks/compare/v0.2.27...v0.2.28) (2022-06-10)
 
 
