@@ -1,10 +1,10 @@
-import { CreateOAuth2ApplicationOptions, UserApi } from '@redkubes/gitea-client-node'
+import { CreateOAuth2ApplicationOptions, OAuth2Application, UserApi } from '@redkubes/gitea-client-node'
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import cookie from 'cookie'
 import { URLSearchParams } from 'url'
 import { createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall } from '../../utils'
-import { cleanEnv, DRONE_URL, GITEA_PASSWORD, GITEA_URL } from '../../validators'
+import { cleanEnv, DRONE_URL, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES } from '../../validators'
 import { username } from '../common'
 import { GiteaDroneError } from './common'
 
@@ -12,6 +12,7 @@ const env = cleanEnv({
   GITEA_PASSWORD,
   GITEA_URL,
   DRONE_URL,
+  OTOMI_VALUES,
 })
 export interface DroneSecret {
   clientId: string
@@ -93,13 +94,25 @@ async function main(): Promise<void> {
   // already exists: cluster with predeployed secret and oauth app
   const remoteSecret = (await getSecret(secretName, namespace)) as DroneSecret
   const oauth2Apps = await doApiCall(errors, 'Getting oauth2 app', () => userApi.userGetOauth2Application())
-  const previousOauth2App = (oauth2Apps || []).find(({ name }) => name === oauthOpts.name)
+  const previousOauth2App = (oauth2Apps || []).find(({ name }) => name === oauthOpts.name) as OAuth2Application
 
-  // clear old stuff (if necessary)
+  // when we encounter both secret and oauth app we can conclude that the previous run
+  // which created the oauth app ended successfully, so we keep them unless domain changed
+  if (
+    remoteSecret &&
+    previousOauth2App &&
+    previousOauth2App.redirectUris?.find((r) => r.includes(env.OTOMI_VALUES.cluster.domainSuffix))
+  ) {
+    console.info('Gitea Drone OAuth2 app and secret exist')
+    await authorizeOAuthApp(remoteSecret)
+    return
+  }
+
+  // Otherwise, clear old stuff (if necessary)
   if (remoteSecret)
     await doApiCall(errors, 'Deleting old secret', () => k8s.core().deleteNamespacedSecret(secretName, namespace))
   if (previousOauth2App?.id)
-    await doApiCall(errors, 'Deleting old oauth2 app', () => userApi.userDeleteOAuth2Application(previousOauth2App.id))
+    await doApiCall(errors, 'Deleting old oauth2 app', () => userApi.userDeleteOAuth2Application(previousOauth2App.id!))
 
   // and (re-)create
   const oauth2App = await doApiCall(errors, 'Creating oauth2 app', () => userApi.userCreateOAuth2Application(oauthOpts))
