@@ -127,11 +127,7 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
     () => robotApi.createRobot(systemRobot),
   )) as RobotCreated
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
-  await createSecret(systemSecretName, systemNamespace, {
-    id: robotAccount.id!,
-    name: robotAccount.name!,
-    secret: robotAccount.secret!,
-  })
+  await createSecret(systemSecretName, systemNamespace, robotSecret)
   return robotSecret
 }
 
@@ -161,7 +157,7 @@ async function createTeamRobotAccount(projectName: string): Promise<RobotCreated
   }
   const fullName = `${robotPrefix}${projectRobot.name}`
 
-  const { body: robotList } = await robotApi.listRobot()
+  const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
 
   if (existing?.id) {
@@ -172,6 +168,11 @@ async function createTeamRobotAccount(projectName: string): Promise<RobotCreated
   const robotAccount = (await doApiCall(errors, `Creating robot account ${fullName} with project level perms`, () =>
     robotApi.createRobot(projectRobot),
   )) as RobotCreated
+  if (!robotAccount?.id) {
+    throw new Error(
+      `RobotAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.`,
+    )
+  }
   return robotAccount
 }
 
@@ -191,7 +192,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
     try {
       bearerAuth.accessToken = robotSecret.secret
       robotApi.setDefaultAuthentication(bearerAuth)
-      robotApi.listRobot()
+      await robotApi.listRobot()
     } catch (e) {
       // throw everything except 401, which is what we test for
       if (e.status !== 401) throw e
