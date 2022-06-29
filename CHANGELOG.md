@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.30](https://github.com/redkubes/otomi-tasks/compare/v0.2.29...v0.2.30) (2022-06-29)
+
+
+### Bug Fixes
+
+* upped page size to 100 for listRobots ([2cce428](https://github.com/redkubes/otomi-tasks/commit/2cce4287c8e6d611ce10a2fb0d4554e61fd32c50))
+
 ### [0.2.29](https://github.com/redkubes/otomi-tasks/compare/v0.2.28...v0.2.29) (2022-06-27)
 
 
