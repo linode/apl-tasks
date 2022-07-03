@@ -20,7 +20,7 @@ export interface DroneSecret {
 }
 
 const errors: string[] = []
-const namespace = 'team-admin'
+const namespace = env.DRONE_NAMESPACE
 const secretName = 'drone-source-control'
 const csrfCookieName = '_csrf' // _csrf cookie is the MVC (Minimal Viable Cookie) for authorization & grant to work.
 const giteaUrl: string = env.GITEA_URL.endsWith('/') ? env.GITEA_URL.slice(0, -1) : env.GITEA_URL
