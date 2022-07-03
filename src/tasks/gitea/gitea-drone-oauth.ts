@@ -4,13 +4,14 @@ import cookie from 'cookie'
 import { URLSearchParams } from 'url'
 import { createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall } from '../../utils'
-import { cleanEnv, DRONE_URL, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES } from '../../validators'
+import { cleanEnv, DRONE_NAMESPACE, DRONE_URL, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES } from '../../validators'
 import { username } from '../common'
 import { GiteaDroneError } from './common'
 
 const env = cleanEnv({
   GITEA_PASSWORD,
   GITEA_URL,
+  DRONE_NAMESPACE,
   DRONE_URL,
   OTOMI_VALUES,
 })
