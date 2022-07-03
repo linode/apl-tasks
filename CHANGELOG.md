@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.31](https://github.com/redkubes/otomi-tasks/compare/v0.2.30...v0.2.31) (2022-07-03)
+
+
+### Bug Fixes
+
+* drone namespace ([8f81090](https://github.com/redkubes/otomi-tasks/commit/8f810907cd27471aaaea4f53bb233db82c06861f))
+* drone namespace validator ([89d16c2](https://github.com/redkubes/otomi-tasks/commit/89d16c23976e5c4db56339b1b66051f1e279158f))
+
 ### [0.2.30](https://github.com/redkubes/otomi-tasks/compare/v0.2.29...v0.2.30) (2022-06-29)
 
 
