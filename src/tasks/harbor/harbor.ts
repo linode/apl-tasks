@@ -208,9 +208,9 @@ async function createTeamRobotPushAccount(projectName: string): Promise<RobotCre
 
   if (!existing?.id) {
     const robotPushAccount = (await doApiCall(errors, `Creating robot account ${fullName} with project level perms`, () =>
-    robotApi.createRobot(projectPushRobot),
-  )) as RobotCreated
-  return robotPushAccount
+      robotApi.createRobot(projectPushRobot),
+    )) as RobotCreated
+    return robotPushAccount
   }
 }
 
