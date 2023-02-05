@@ -100,7 +100,8 @@ const config: any = {
 
 const systemNamespace = 'harbor'
 const systemSecretName = 'harbor-robot-admin'
-const projectSecretName = 'harbor-pullsecret'
+const projectPullSecretName = 'harbor-pullsecret'
+const projectPushSecretName = 'harbor-pushsecret'
 const harborBaseUrl = `${env.HARBOR_BASE_URL}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
@@ -132,10 +133,10 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
 }
 
 /**
- * Create Harbor system robot account that is scoped to a given Harbor project
+ * Create Harbor pull system robot account that is scoped to a given Harbor project
  * @param projectName Harbor project name
  */
-async function createTeamRobotAccount(projectName: string): Promise<RobotCreated> {
+async function createTeamRobotPullAccount(projectName: string): Promise<RobotCreated> {
   const projectRobot: RobotCreate = {
     name: `${projectName}-pull`,
     duration: -1,
@@ -150,6 +151,51 @@ async function createTeamRobotAccount(projectName: string): Promise<RobotCreated
           {
             resource: 'repository',
             action: 'pull',
+          },
+        ],
+      },
+    ],
+  }
+  const fullName = `${robotPrefix}${projectRobot.name}`
+
+  const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
+  const existing = robotList.find((i) => i.name === fullName)
+
+  if (existing?.id) {
+    const existingId = existing.id
+    await doApiCall(errors, `Deleting previous robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
+  }
+
+  const robotAccount = (await doApiCall(errors, `Creating robot account ${fullName} with project level perms`, () =>
+    robotApi.createRobot(projectRobot),
+  )) as RobotCreated
+  if (!robotAccount?.id) {
+    throw new Error(
+      `RobotAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.`,
+    )
+  }
+  return robotAccount
+}
+
+/**
+ * Create Harbor push system robot account that is scoped to a given Harbor project
+ * @param projectName Harbor project name
+ */
+async function createTeamRobotPushAccount(projectName: string): Promise<RobotCreated> {
+  const projectRobot: RobotCreate = {
+    name: `${projectName}-push`,
+    duration: -1,
+    description: 'Allow team to push to its own registry',
+    disable: false,
+    level: 'system',
+    permissions: [
+      {
+        kind: 'project',
+        namespace: projectName,
+        access: [
+          {
+            resource: 'repository',
+            action: 'push',
           },
         ],
       },
@@ -213,18 +259,41 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
  * @param namespace Kubernetes namespace where pull secret is created
  * @param projectName Harbor project name
  */
-async function ensureTeamRobotAccountSecret(namespace: string, projectName): Promise<void> {
-  const k8sSecret = await getSecret(projectSecretName, namespace)
+async function ensureTeamPullRobotAccountSecret(namespace: string, projectName): Promise<void> {
+  const k8sSecret = await getSecret(projectPullSecretName, namespace)
   if (k8sSecret) {
-    console.debug(`Deleting secret/${projectSecretName} from ${namespace} namespace`)
-    await k8s.core().deleteNamespacedSecret(projectSecretName, namespace)
+    console.debug(`Deleting secret/${projectPullSecretName} from ${namespace} namespace`)
+    await k8s.core().deleteNamespacedSecret(projectPullSecretName, namespace)
   }
 
-  const robotAccount = await createTeamRobotAccount(projectName)
-  console.debug(`Creating secret/${projectSecretName} at ${namespace} namespace`)
+  const robotAccount = await createTeamRobotPullAccount(projectName)
+  console.debug(`Creating secret/${projectPullSecretName} at ${namespace} namespace`)
   await createPullSecret({
     namespace,
-    name: projectSecretName,
+    name: projectPullSecretName,
+    server: `${env.HARBOR_BASE_REPO_URL}`,
+    username: robotAccount.name!,
+    password: robotAccount.secret!,
+  })
+}
+
+/**
+ * Ensure that Harbor robot account and corresponding Kubernetes push secret exist
+ * @param namespace Kubernetes namespace where pull secret is created
+ * @param projectName Harbor project name
+ */
+async function ensureTeamPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
+  const k8sSecret = await getSecret(projectPushSecretName, namespace)
+  if (k8sSecret) {
+    console.debug(`Deleting secret/${projectPushSecretName} from ${namespace} namespace`)
+    await k8s.core().deleteNamespacedSecret(projectPushSecretName, namespace)
+  }
+
+  const robotAccount = await createTeamRobotPullAccount(projectName)
+  console.debug(`Creating secret/${projectPushSecretName} at ${namespace} namespace`)
+  await createPullSecret({
+    namespace,
+    name: projectPushSecretName,
     server: `${env.HARBOR_BASE_REPO_URL}`,
     username: robotAccount.name!,
     password: robotAccount.secret!,
@@ -244,7 +313,7 @@ async function main(): Promise<void> {
   await Promise.all(
     env.TEAM_IDS.map(async (teamId: string) => {
       const projectName = `team-${teamId}`
-      const teamNamespce = projectName
+      const teamNamespace = projectName
       const projectReq: ProjectReq = {
         projectName,
       }
@@ -281,7 +350,9 @@ async function main(): Promise<void> {
         () => memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
       )
 
-      await ensureTeamRobotAccountSecret(teamNamespce, projectName)
+      await ensureTeamPullRobotAccountSecret(teamNamespace, projectName)
+
+      await ensureTeamPushRobotAccountSecret(teamNamespace, projectName)
 
       return null
     }),
