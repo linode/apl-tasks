@@ -206,20 +206,12 @@ async function createTeamRobotPushAccount(projectName: string): Promise<RobotCre
   const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
 
-  if (existing?.id) {
-    const existingId = existing.id
-    await doApiCall(errors, `Deleting previous robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
-  }
-
-  const robotPushAccount = (await doApiCall(errors, `Creating robot account ${fullName} with project level perms`, () =>
+  if (!existing?.id) {
+    const robotPushAccount = (await doApiCall(errors, `Creating robot account ${fullName} with project level perms`, () =>
     robotApi.createRobot(projectPushRobot),
   )) as RobotCreated
-  if (!robotPushAccount?.id) {
-    throw new Error(
-      `RobotAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.`,
-    )
-  }
   return robotPushAccount
+  }
 }
 
 /**
