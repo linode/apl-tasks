@@ -255,8 +255,8 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
 }
 
 /**
- * Ensure that Harbor robot account and corresponding Kubernetes pull secret exist
- * @param namespace Kubernetes namespace where pull secret is created
+ * Ensure that Harbor pull robot account and corresponding Kubernetes secret exist
+ * @param namespace Kubernetes namespace where secret is created
  * @param projectName Harbor project name
  */
 async function ensureTeamPullRobotAccountSecret(namespace: string, projectName): Promise<void> {
@@ -278,8 +278,8 @@ async function ensureTeamPullRobotAccountSecret(namespace: string, projectName):
 }
 
 /**
- * Ensure that Harbor robot account and corresponding Kubernetes push secret exist
- * @param namespace Kubernetes namespace where pull secret is created
+ * Ensure that Harbor push robot account and corresponding Kubernetes secret exist
+ * @param namespace Kubernetes namespace where secret is created
  * @param projectName Harbor project name
  */
 async function ensureTeamPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
@@ -289,7 +289,7 @@ async function ensureTeamPushRobotAccountSecret(namespace: string, projectName):
     await k8s.core().deleteNamespacedSecret(projectPushSecretName, namespace)
   }
 
-  const robotPushAccount = await createTeamRobotPullAccount(projectName)
+  const robotPushAccount = await createTeamRobotPushAccount(projectName)
   console.debug(`Creating secret/${projectPushSecretName} at ${namespace} namespace`)
   await createPullSecret({
     namespace,
