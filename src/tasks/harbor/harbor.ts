@@ -17,7 +17,7 @@ import {
   // eslint-disable-next-line no-unused-vars
   RobotCreated,
 } from '@redkubes/harbor-client-node'
-import { createHarborSecret, createSecret, getSecret, k8s } from '../../k8s'
+import { createPullSecret, createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
   cleanEnv,
@@ -217,7 +217,7 @@ async function ensureTeamRobotAccountSecret(namespace: string, projectName): Pro
 
   const robotAccount = await createTeamRobotAccount(projectName)
   console.debug(`Creating secret/${projectSecretName} at ${namespace} namespace`)
-  await createHarborSecret({
+  await createPullSecret({
     namespace,
     name: projectSecretName,
     server: `${env.HARBOR_BASE_REPO_URL}`,
