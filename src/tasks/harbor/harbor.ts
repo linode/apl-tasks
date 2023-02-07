@@ -15,7 +15,7 @@ import {
   // eslint-disable-next-line no-unused-vars
   RobotCreate,
   // eslint-disable-next-line no-unused-vars
-  RobotCreated
+  RobotCreated,
 } from '@redkubes/harbor-client-node'
 import { createPullSecret, createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
@@ -28,7 +28,7 @@ import {
   OIDC_CLIENT_SECRET,
   OIDC_ENDPOINT,
   OIDC_VERIFY_CERT,
-  TEAM_IDS
+  TEAM_IDS,
 } from '../../validators'
 
 const env = cleanEnv({
@@ -221,6 +221,7 @@ async function createTeamPushRobotAccount(projectName: string): Promise<RobotCre
   }
   return robotPushAccount
 }
+
 /**
  * Get token by reading access token from kubernetes secret.
  * If the secret does not exists then create Harbor robot account and populate credentials to kubernetes secret.
@@ -252,8 +253,6 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
   bearerAuth.accessToken = robotSecret.secret
   return bearerAuth
 }
-
-
 
 /**
  * Ensure that Harbor robot account and corresponding Kubernetes pull secret exist
