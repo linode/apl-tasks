@@ -197,6 +197,10 @@ async function createTeamPushRobotAccount(projectName: string): Promise<RobotCre
             resource: 'repository',
             action: 'push',
           },
+          {
+            resource: 'repository',
+            action: 'pull',
+          },
         ],
       },
     ],
