@@ -211,7 +211,7 @@ async function createTeamPushRobotAccount(projectName: string): Promise<any> {
   const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
 
-  if (existing?.id) {
+  if (existing?.name) {
     return existing
   }
 
