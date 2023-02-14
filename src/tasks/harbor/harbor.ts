@@ -16,7 +16,7 @@ import {
   // eslint-disable-next-line no-unused-vars
   RobotCreate,
   // eslint-disable-next-line no-unused-vars
-  RobotCreated
+  RobotCreated,
 } from '@redkubes/harbor-client-node'
 import { createPullSecret, createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
@@ -29,7 +29,7 @@ import {
   OIDC_CLIENT_SECRET,
   OIDC_ENDPOINT,
   OIDC_VERIFY_CERT,
-  TEAM_IDS
+  TEAM_IDS,
 } from '../../validators'
 
 const env = cleanEnv({
@@ -40,7 +40,7 @@ const env = cleanEnv({
   OIDC_CLIENT_SECRET,
   OIDC_ENDPOINT,
   OIDC_VERIFY_CERT,
-  TEAM_IDS
+  TEAM_IDS,
 })
 
 const HarborRole = {
