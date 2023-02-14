@@ -15,7 +15,7 @@ import {
   // eslint-disable-next-line no-unused-vars
   RobotCreate,
   // eslint-disable-next-line no-unused-vars
-  RobotCreated,
+  RobotCreated
 } from '@redkubes/harbor-client-node'
 import { createPullSecret, createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
@@ -28,7 +28,7 @@ import {
   OIDC_CLIENT_SECRET,
   OIDC_ENDPOINT,
   OIDC_VERIFY_CERT,
-  TEAM_IDS,
+  TEAM_IDS
 } from '../../validators'
 
 const env = cleanEnv({
@@ -181,7 +181,7 @@ async function createTeamPullRobotAccount(projectName: string): Promise<RobotCre
  * Create Harbor system robot account that is scoped to a given Harbor project
  * @param projectName Harbor project name
  */
-async function createTeamPushRobotAccount(projectName: string): Promise<RobotCreated> {
+async function createTeamPushRobotAccount(projectName: string): RobotCreated {
   const projectRobot: RobotCreate = {
     name: `${projectName}-push`,
     duration: -1,
@@ -211,8 +211,7 @@ async function createTeamPushRobotAccount(projectName: string): Promise<RobotCre
   const existing = robotList.find((i) => i.name === fullName)
 
   if (existing?.id) {
-    const existingId = existing.id
-    await doApiCall(errors, `Deleting previous robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
+    return existing
   }
 
   const robotPushAccount = (await doApiCall(errors, `Creating robot account ${fullName} with project level perms`, () =>
@@ -293,14 +292,14 @@ async function ensureTeamPushRobotAccountSecret(namespace: string, projectName):
     await k8s.core().deleteNamespacedSecret(projectPushSecretName, namespace)
   }
 
-  const robotPullAccount = await createTeamPushRobotAccount(projectName)
+  const robotPushAccount = await createTeamPushRobotAccount(projectName)
   console.debug(`Creating secret/${projectPushSecretName} at ${namespace} namespace`)
   await createPullSecret({
     namespace,
     name: projectPushSecretName,
     server: `${env.HARBOR_BASE_REPO_URL}`,
-    username: robotPullAccount.name!,
-    password: robotPullAccount.secret!,
+    username: robotPushAccount.name!,
+    password: robotPushAccount.secret!,
   })
 }
 
