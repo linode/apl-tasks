@@ -181,7 +181,7 @@ async function createTeamPullRobotAccount(projectName: string): Promise<RobotCre
  * Create Harbor system robot account that is scoped to a given Harbor project
  * @param projectName Harbor project name
  */
-async function createTeamPushRobotAccount(projectName: string): RobotCreated {
+async function createTeamPushRobotAccount(projectName: string): Promise<any> {
   const projectRobot: RobotCreate = {
     name: `${projectName}-push`,
     duration: -1,
