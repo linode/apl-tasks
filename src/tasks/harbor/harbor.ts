@@ -1,4 +1,5 @@
 // eslint-disable @typescript-eslint/camelcase
+// es
 
 import {
   ConfigureApi,
@@ -39,7 +40,7 @@ const env = cleanEnv({
   OIDC_CLIENT_SECRET,
   OIDC_ENDPOINT,
   OIDC_VERIFY_CERT,
-  TEAM_IDS,
+  TEAM_IDS
 })
 
 const HarborRole = {
