@@ -4,7 +4,7 @@ import http from 'http'
 import { cloneDeep } from 'lodash'
 import fetch from 'node-fetch'
 import sinon from 'sinon'
-import { createPullSecret, deletePullSecret, k8s } from './k8s'
+import { createK8sSecret, deleteSecret, k8s } from './k8s'
 import './test-init'
 
 describe('k8s', () => {
@@ -64,7 +64,7 @@ describe('k8s', () => {
     sandbox.stub(k8s.core(), 'createNamespacedSecret').returns(secretPromise)
     sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(newServiceAccountPromise)
     const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
-    await createPullSecret({ namespace, name, server, password: data.password, username: data.username })
+    await createK8sSecret({ namespace, name, server, password: data.password, username: data.username })
     expect(patchSpy).to.have.been.calledWith('default', namespace, saWithExistingSecret)
   })
 
@@ -72,7 +72,7 @@ describe('k8s', () => {
     sandbox.stub(k8s.core(), 'createNamespacedSecret').returns(secretPromise)
     sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(newEmptyServiceAccountPromise)
     const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
-    await createPullSecret({ namespace, name, server, password: data.password, username: data.username })
+    await createK8sSecret({ namespace, name, server, password: data.password, username: data.username })
     expect(patchSpy).to.have.been.calledWith('default', namespace, saWithExistingSecret)
   })
 
@@ -80,13 +80,13 @@ describe('k8s', () => {
     sandbox.stub(k8s.core(), 'createNamespacedSecret').returns(secretPromise)
     sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(withOtherSecretServiceAccountPromise)
     const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
-    await createPullSecret({ namespace, name, server, password: data.password, username: data.username })
+    await createK8sSecret({ namespace, name, server, password: data.password, username: data.username })
     expect(patchSpy).to.have.been.calledWith('default', namespace, saCombinedWithOtherSecret)
   })
 
   it('should throw exception on secret creation for existing name', () => {
     sandbox.stub(k8s.core(), 'createNamespacedSecret').throws(409)
-    const check = createPullSecret({
+    const check = createK8sSecret({
       namespace,
       name,
       server,
@@ -100,7 +100,7 @@ describe('k8s', () => {
     sandbox.stub(k8s.core(), 'readNamespacedServiceAccount').returns(withExistingSecretServiceAccountPromise)
     const patchSpy = sandbox.stub(k8s.core(), 'patchNamespacedServiceAccount').returns(undefined as any)
     const deleteSpy = sandbox.stub(k8s.core(), 'deleteNamespacedSecret').returns(undefined as any)
-    await deletePullSecret(namespace, name)
+    await deleteSecret(namespace, name)
     expect(patchSpy).to.have.been.calledWith('default', namespace, saNewEmpty)
     expect(deleteSpy).to.have.been.calledWith(name, namespace)
   })
