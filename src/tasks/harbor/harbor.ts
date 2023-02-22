@@ -1,5 +1,4 @@
 // eslint-disable @typescript-eslint/camelcase
-// es
 
 import {
   ConfigureApi,
