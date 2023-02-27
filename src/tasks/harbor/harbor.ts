@@ -183,11 +183,11 @@ async function createTeamPullRobotAccount(projectName: string): Promise<RobotCre
  * Create Harbor system robot account that is scoped to a given Harbor project
  * @param projectName Harbor project name
  */
-async function createTeamPushRobotAccount(projectName: string): Promise<any> {
+async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
   const projectRobot: RobotCreate = {
     name: `${projectName}-push`,
     duration: -1,
-    description: 'Allow team to push from its own registry',
+    description: 'Allow team to push to its own registry',
     disable: false,
     level: 'system',
     permissions: [
@@ -292,7 +292,7 @@ async function ensureTeamPullRobotAccountSecret(namespace: string, projectName):
 async function ensureTeamPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
   const k8sSecret = await getSecret(projectPushSecretName, namespace)
   if (!k8sSecret) {
-    const robotPushAccount = await createTeamPushRobotAccount(projectName)
+    const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
     console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
     await createK8sSecret({
       namespace,
