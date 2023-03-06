@@ -80,7 +80,7 @@ export async function getSecret(name: string, namespace: string): Promise<unknow
  * @param namespace Kubernetes namespace
  * @param data Secret data (non encoded with base64)
  */
-export async function createPullSecret({
+export async function createK8sSecret({
   namespace,
   name,
   server,
@@ -134,14 +134,14 @@ export async function createPullSecret({
   }
 }
 
-export async function getPullSecrets(namespace: string): Promise<Array<any>> {
+export async function getSecrets(namespace: string): Promise<Array<any>> {
   const client = k8s.core()
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
   return (sa.imagePullSecrets || []) as Array<any>
 }
 
-export async function deletePullSecret(namespace: string, name: string): Promise<void> {
+export async function deleteSecret(namespace: string, name: string): Promise<void> {
   const client = k8s.core()
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
   const { body: sa }: { body: V1ServiceAccount } = saRes
