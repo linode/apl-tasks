@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.3.0](https://github.com/redkubes/otomi-tasks/compare/v0.2.31...v0.3.0) (2023-03-14)
+
+
+### Features
+
+* create robot accounts with push creds for teams ([#77](https://github.com/redkubes/otomi-tasks/issues/77)) ([acb2763](https://github.com/redkubes/otomi-tasks/commit/acb2763db30cc898655aed72961932757722e458))
+
 ### [0.2.31](https://github.com/redkubes/otomi-tasks/compare/v0.2.30...v0.2.31) (2022-07-03)
 
 
