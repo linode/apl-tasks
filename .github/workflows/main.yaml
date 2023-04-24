@@ -54,7 +54,7 @@ jobs:
           docker tag $REPO:$TAG $REPO:latest
           docker push $REPO:latest
           release_tag=v${COMMIT_MSG#* }
-          echo ::set-output name=tag::$release_tag
+          echo name=tag::$release_tag >> $GITHUB_OUTPUT
           echo "Releasing $REPO:$release_tag"
           docker tag $REPO:$TAG $REPO:$release_tag
           docker push $REPO:$release_tag
@@ -67,7 +67,7 @@ jobs:
           changelog="${changelog//'%'/'%25'}"
           changelog="${changelog//$'\n'/'%0A'}"
           changelog="${changelog//$'\r'/'%0D'}"
-          echo ::set-output name=changes::$changelog
+          echo name=changes::$changelog >> $GITHUB_OUTPUT
       - if: "contains(github.event.head_commit.message, 'chore(release)')"
         name: Create GitHub release
         uses: actions/create-release@v1
