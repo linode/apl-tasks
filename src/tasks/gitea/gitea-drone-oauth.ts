@@ -82,6 +82,7 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
       [csrfCookieName]: csrfToken,
       client_id: `${oauthData.clientId}`,
       redirect_uri: droneLoginUrl,
+      confidential_client: 'on',
     }),
   }
 
