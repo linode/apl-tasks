@@ -31,7 +31,7 @@ const auth = {
   username,
   password: env.GITEA_PASSWORD,
 }
-const oauthOpts = { ...new CreateOAuth2ApplicationOptions(), name: 'otomi-drone', redirectUris: [droneLoginUrl] }
+const oauthOpts = { ...new CreateOAuth2ApplicationOptions(), confidentialClient: true, name: 'otomi-drone', redirectUris: [droneLoginUrl] }
 
 export async function getGiteaAuthorizationHeaderCookies(oauthData: DroneSecret): Promise<string[]> {
   const options: AxiosRequestConfig = {
@@ -82,7 +82,6 @@ async function authorizeOAuthApp(oauthData: DroneSecret): Promise<void> {
       [csrfCookieName]: csrfToken,
       client_id: `${oauthData.clientId}`,
       redirect_uri: droneLoginUrl,
-      confidential_client: 'true',
     }),
   }
 
