@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/redkubes/otomi-tasks/compare/v0.3.0...v0.4.0) (2023-05-04)
+
+
+### Bug Fixes
+
+* updated gitea client and updated ouath2 creation function ([#79](https://github.com/redkubes/otomi-tasks/issues/79)) ([c592a95](https://github.com/redkubes/otomi-tasks/commit/c592a95f4524419695b351d43f4539940a337ebe))
+
 ## [0.3.0](https://github.com/redkubes/otomi-tasks/compare/v0.2.31...v0.3.0) (2023-03-14)
 
 
