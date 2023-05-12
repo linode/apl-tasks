@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.5.0](https://github.com/redkubes/otomi-tasks/compare/v0.4.0...v0.5.0) (2023-05-12)
+
+
+### Bug Fixes
+
+* actions update ([#78](https://github.com/redkubes/otomi-tasks/issues/78)) ([bd25ff3](https://github.com/redkubes/otomi-tasks/commit/bd25ff3590a2c88afc9c6c0d29284d7f162b5614))
+
 ## [0.4.0](https://github.com/redkubes/otomi-tasks/compare/v0.3.0...v0.4.0) (2023-05-04)
 
 
