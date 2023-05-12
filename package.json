@@ -115,6 +115,7 @@
     "lint": "run-p lint:types lint:es",
     "prepare": "husky install",
     "release": "standard-version",
+    "release:bump:minor": "standard-version --skip.changelog true --release-as minor",
     "run-if-changed": "run-if-changed",
     "tasks:certs-aws-dev": "ts-node-dev ./src/tasks/otomi/certs-aws.ts",
     "tasks:certs-aws": "node dist/tasks/otomi/certs-aws.js",
