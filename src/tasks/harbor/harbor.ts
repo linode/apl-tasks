@@ -102,6 +102,7 @@ const systemNamespace = 'harbor'
 const systemSecretName = 'harbor-robot-admin'
 const projectPullSecretName = 'harbor-pullsecret'
 const projectPushSecretName = 'harbor-pushsecret'
+const projectBuildPushSecretName = 'harbor-pushsecret-build'
 const harborBaseUrl = `${env.HARBOR_BASE_URL}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
@@ -310,13 +311,13 @@ async function ensureTeamPushRobotAccountSecret(namespace: string, projectName):
  * @param projectName Harbor project name
  */
 async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
-  const k8sSecret = await getSecret(projectPushSecretName, namespace)
+  const k8sSecret = await getSecret(projectBuildPushSecretName, namespace)
   if (!k8sSecret) {
     const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
-    console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
+    console.debug(`Creating push secret/${projectBuildPushSecretName} at ${namespace} namespace`)
     await createBuildsK8sSecret({
       namespace,
-      name: projectPushSecretName,
+      name: projectBuildPushSecretName,
       server: `${env.HARBOR_BASE_REPO_URL}`,
       username: robotPushAccount.name!,
       password: robotPushAccount.secret!,
