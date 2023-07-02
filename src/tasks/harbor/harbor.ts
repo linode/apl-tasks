@@ -17,7 +17,7 @@ import {
   // eslint-disable-next-line no-unused-vars
   RobotCreated,
 } from '@redkubes/harbor-client-node'
-import { createK8sSecret, createSecret, getSecret, k8s } from '../../k8s'
+import { createK8sSecret, createBuildsK8sSecret, createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
   cleanEnv,
@@ -285,7 +285,7 @@ async function ensureTeamPullRobotAccountSecret(namespace: string, projectName):
 }
 
 /**
- * Ensure that Harbor robot account and corresponding Kubernetes pull secret exist
+ * Ensure that Harbor robot account and corresponding Kubernetes push secret exist
  * @param namespace Kubernetes namespace where push secret is created
  * @param projectName Harbor project name
  */
@@ -295,6 +295,26 @@ async function ensureTeamPushRobotAccountSecret(namespace: string, projectName):
     const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
     console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
     await createK8sSecret({
+      namespace,
+      name: projectPushSecretName,
+      server: `${env.HARBOR_BASE_REPO_URL}`,
+      username: robotPushAccount.name!,
+      password: robotPushAccount.secret!,
+    })
+  }
+}
+
+/**
+ * Ensure that Harbor robot account and corresponding Kubernetes push secret for builds exist
+ * @param namespace Kubernetes namespace where push secret is created
+ * @param projectName Harbor project name
+ */
+async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
+  const k8sSecret = await getSecret(projectPushSecretName, namespace)
+  if (!k8sSecret) {
+    const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
+    console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
+    await createBuildsK8sSecret({
       namespace,
       name: projectPushSecretName,
       server: `${env.HARBOR_BASE_REPO_URL}`,
@@ -356,6 +376,7 @@ async function main(): Promise<void> {
 
       await ensureTeamPullRobotAccountSecret(teamNamespce, projectName)
       await ensureTeamPushRobotAccountSecret(teamNamespce, projectName)
+      await ensureTeamBuildPushRobotAccountSecret(teamNamespce, projectName)
 
       return null
     }),
