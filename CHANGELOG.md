@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.6.0](https://github.com/redkubes/otomi-tasks/compare/v0.5.0...v0.6.0) (2023-07-04)
+
+
+### Bug Fixes
+
+* create separate secret for docker builds ([#80](https://github.com/redkubes/otomi-tasks/issues/80)) ([e0c51d8](https://github.com/redkubes/otomi-tasks/commit/e0c51d805a56d7793788426ebfed42ee0ada6205))
+
 ## [0.4.0](https://github.com/redkubes/otomi-tasks/compare/v0.3.0...v0.4.0) (2023-05-04)
 
 
