@@ -134,6 +134,54 @@ export async function createK8sSecret({
   }
 }
 
+/**
+ * Create generic Kubernetes secret for Builds
+ * @param name Secret name
+ * @param namespace Kubernetes namespace
+ * @param data Secret data (non encoded with base64)
+ */
+export async function createBuildsK8sSecret({
+  namespace,
+  name,
+  server,
+  password,
+  username = '_json_key',
+}: {
+  namespace: string
+  name: string
+  server: string
+  password: string
+  username?: string
+}): Promise<void> {
+  const client = k8s.core()
+  // create data structure for secret
+  const data = {
+    auths: {
+      [server]: {
+        username,
+        password,
+        email: 'not@val.id',
+        auth: Buffer.from(`${username}:${password}`).toString('base64'),
+      },
+    },
+  }
+  // create the secret
+  const secret = {
+    ...new V1Secret(),
+    metadata: { ...new V1ObjectMeta(), name },
+    type: 'Opaque',
+    data: {
+      'config.json': Buffer.from(JSON.stringify(data)).toString('base64'),
+    },
+  }
+  // eslint-disable-next-line no-useless-catch
+  try {
+    await client.createNamespacedSecret(namespace, secret)
+  } catch (e) {
+    throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
+  }
+}
+
 export async function getSecrets(namespace: string): Promise<Array<any>> {
   const client = k8s.core()
   const saRes = await client.readNamespacedServiceAccount('default', namespace)
