@@ -102,6 +102,13 @@ async function main(): Promise<void> {
 
   // Create realm 'otomi'
   const realmConf = createRealm(keycloakRealm)
+  // token timeout in seconds
+  // 28800 = 8 hours
+  const tokenTimeout = 28800
+  realmConf.ssoSessionIdleTimeout = tokenTimeout
+  realmConf.ssoSessionMaxLifespan = tokenTimeout
+  realmConf.accessTokenLifespan = tokenTimeout
+  realmConf.accessTokenLifespanForImplicitFlow = tokenTimeout
   // the api does not offer a list method, and trying to get by id throws an error
   // which we wan to discard, so we run the next command with an empty errors array
   const existingRealm = (await doApiCall([], `Getting realm ${keycloakRealm}`, () =>
