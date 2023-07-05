@@ -55,6 +55,10 @@ export const KEYCLOAK_CLIENT_ID = str({ desc: 'Default Keycloak Client', default
 export const KEYCLOAK_CLIENT_SECRET = str({ desc: 'The keycloak client secret' })
 export const KEYCLOAK_REALM = str({ desc: 'The Keycloak Realm', default: 'master' })
 export const KEYCLOAK_THEME_LOGIN = str({ desc: 'The Keycloak login theme', default: 'default' })
+export const KEYCLOAK_TOKEN_TTL = num({
+  desc: 'The Keycloak access token TTL in seconds, 28800 seconds = 8 hours',
+  default: 28800,
+})
 export const NODE_EXTRA_CA_CERTS = str({ default: undefined })
 export const NODE_TLS_REJECT_UNAUTHORIZED = bool({ default: true })
 export const OIDC_CLIENT_SECRET = str({ desc: 'The OIDC client secret used by keycloak to access the IDP' })

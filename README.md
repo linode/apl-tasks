@@ -11,7 +11,18 @@ This readme is aimed at development. If you wish to contribute please read our D
 ## Development
 
 Make sure your expected environment variables exist in a mandatory `.env` file (see `.env.sample`). 
+#
+**Important**
+When using `npm i` and you get the errors `Unauthorized` and `Permission denied` on the installation regarding getting packages from redkubes
+> Example: `npm ERR! 403 403 Forbidden - GET https://npm.pkg.github.com/redkubes/@redkubes%2fgitea-client-node - Permission denied`
 
+This can be fixed by adding the following line to the `.npmrc` file. 
+`//npm.pkg.github.com/:_authToken=PERSONAL_ACCESS_TOKEN_HERE`
+
+To create a personal access token, go to GitHub -> settings -> developer settings -> personal access token -> give read permission on packages and create the token
+
+**Remember not to push this token**
+#
 Then start a proxy to the api you wish to target:
 
 - drone: `k -n team-admin port-forward svc/drone 8081:80 &`
