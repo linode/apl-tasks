@@ -32,6 +32,7 @@ import {
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_REALM,
+  KEYCLOAK_TOKEN_TTL,
 } from '../../validators'
 import { keycloakRealm } from './config'
 import {
@@ -55,6 +56,7 @@ const env = cleanEnv({
   KEYCLOAK_ADDRESS,
   KEYCLOAK_ADDRESS_INTERNAL,
   KEYCLOAK_REALM,
+  KEYCLOAK_TOKEN_TTL,
   FEAT_EXTERNAL_IDP,
 })
 
@@ -102,6 +104,10 @@ async function main(): Promise<void> {
 
   // Create realm 'otomi'
   const realmConf = createRealm(keycloakRealm)
+  realmConf.ssoSessionIdleTimeout = env.KEYCLOAK_TOKEN_TTL
+  realmConf.ssoSessionMaxLifespan = env.KEYCLOAK_TOKEN_TTL
+  realmConf.accessTokenLifespan = env.KEYCLOAK_TOKEN_TTL
+  realmConf.accessTokenLifespanForImplicitFlow = env.KEYCLOAK_TOKEN_TTL
   // the api does not offer a list method, and trying to get by id throws an error
   // which we wan to discard, so we run the next command with an empty errors array
   const existingRealm = (await doApiCall([], `Getting realm ${keycloakRealm}`, () =>
