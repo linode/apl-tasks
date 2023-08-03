@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0](https://github.com/redkubes/otomi-tasks/compare/v0.6.0...v1.0.0) (2023-08-03)
+
+
+### Features
+
+* changed ttl for keycloak access token ([#81](https://github.com/redkubes/otomi-tasks/issues/81)) ([8262084](https://github.com/redkubes/otomi-tasks/commit/8262084cbf4cb53adeb8e90186568015687b44df))
+
 ## [0.7.0](https://github.com/redkubes/otomi-tasks/compare/v0.6.0...v0.7.0) (2023-08-03)
 
 
