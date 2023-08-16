@@ -11,7 +11,8 @@ const targetNamespace = 'argocd'
 
 const processed: string[] = []
 
-export const targetPullSecretsFilter = ({ metadata }: V1Secret): boolean => metadata!.name!.indexOf(`copy-`) === 0
+export const targetPullSecretsFilter = ({ metadata }: V1Secret): boolean =>
+  metadata!.name!.indexOf(`copy-`) === 0 && metadata!.name === 'harbor-pullsecret'
 
 // Returns list of names of all pull secrets in the target namespace that were created before.
 export const getTargetPullSecretNames = async (): Promise<string[]> => {
@@ -51,7 +52,7 @@ export const createTargetPullSecret = (
 export const copyTeamPullSecrets = async (teamId: string, targetPullSecretNames: string[]): Promise<void> => {
   console.info(`Copying Pull secrets from team-${teamId} to ${targetNamespace} namespace`)
   const namespace = `team-${teamId}`
-  const getTargetSecretName = (name) => `copy-${teamId}-${name}`
+  const getTargetSecretName = (name) => `copy-team-${teamId}-${name}`
   // get all target namespace Pull secrets
   const {
     body: { items: teamPullSecrets },
