@@ -51,14 +51,13 @@ export const createTargetPullSecret = (
 export const copyTeamPullSecrets = async (teamId: string, targetPullSecretNames: string[]): Promise<void> => {
   console.info(`Copying Pull secrets from team-${teamId} to ${targetNamespace} namespace`)
   const namespace = `team-${teamId}`
-  const secretName = `harbor-pullsecret`
   const getTargetSecretName = (name) => `copy-team-${teamId}-${name}`
   // get all team namespace Pull secrets
   const {
     body: { items: teamPullSecrets },
   } = await k8s
     .core()
-    .listNamespacedSecret(namespace, secretName, undefined, undefined, 'type=kubernetes.io/dockerconfigjson')
+    .listNamespacedSecret(namespace, undefined, undefined, undefined, 'type=kubernetes.io/dockerconfigjson')
   // create new ones if not existing
   await Promise.all(
     teamPullSecrets
