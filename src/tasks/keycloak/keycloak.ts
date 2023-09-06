@@ -191,7 +191,7 @@ async function main(): Promise<void> {
     // Create Identity Provider
     const idp = await createIdProvider()
 
-    const existingProviders = ((await doApiCall(errors, 'Geting identity provider', async () =>
+    const existingProviders = ((await doApiCall(errors, 'Getting identity provider', async () =>
       api.providers.realmIdentityProviderInstancesGet(keycloakRealm),
     )) || []) as Array<IdentityProviderRepresentation>
 

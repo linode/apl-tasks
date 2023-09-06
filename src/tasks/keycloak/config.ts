@@ -109,9 +109,23 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
     },
   },
   {
+    name: 'groups-mapper',
+    protocol: 'openid-connect',
+    protocolMapper: 'oidc-group-membership-mapper',
+    consentRequired: false,
+    config: {
+      multivalued: 'true',
+      'userinfo.token.claim': 'true',
+      'id.token.claim': 'true',
+      'access.token.claim': 'true',
+      'claim.name': 'groups',
+      'jsonType.label': 'String',
+    },
+  },
+  {
     name: 'email',
     protocol: 'openid-connect',
-    protocolMapper: 'oidc-usermodel-property-mapper',
+    protocolMapper: 'oidc-usermodel-g-mapper',
     consentRequired: false,
     config: {
       'userinfo.token.claim': 'true',
