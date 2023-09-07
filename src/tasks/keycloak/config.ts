@@ -241,7 +241,7 @@ export const otomiClientCfgTpl = (
   id: 'otomi',
   secret,
   defaultClientScopes: ['openid', 'email', 'profile'],
-  idpMapperTpl: [
+  protocolMappers: [
     {
       name: 'groups-mapper',
       protocol: 'openid-connect',
