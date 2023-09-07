@@ -124,7 +124,7 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
   {
     name: 'email',
     protocol: 'openid-connect',
-    protocolMapper: 'oidc-usermodel-g-mapper',
+    protocolMapper: 'oidc-usermodel-property-mapper',
     consentRequired: false,
     config: {
       'userinfo.token.claim': 'true',
