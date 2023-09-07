@@ -109,19 +109,6 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
     },
   },
   {
-    name: 'groups-mapper',
-    protocol: 'openid-connect',
-    protocolMapper: 'oidc-group-membership-mapper',
-    consentRequired: false,
-    config: {
-      'full.path': true,
-      'id.token.claim': 'true',
-      'access.token.claim': 'true',
-      'claim.name': 'groups',
-      'userinfo.token.claim': 'true',
-    },
-  },
-  {
     name: 'email',
     protocol: 'openid-connect',
     protocolMapper: 'oidc-usermodel-property-mapper',
@@ -254,6 +241,21 @@ export const otomiClientCfgTpl = (
   id: 'otomi',
   secret,
   defaultClientScopes: ['openid', 'email', 'profile'],
+  idpMapperTpl: [
+    {
+      name: 'groups-mapper',
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-group-membership-mapper',
+      consentRequired: false,
+      config: {
+        'full.path': true,
+        'id.token.claim': 'true',
+        'access.token.claim': 'true',
+        'claim.name': 'groups',
+        'userinfo.token.claim': 'true',
+      },
+    },
+  ],
   redirectUris,
   standardFlowEnabled: true,
   implicitFlowEnabled: true,
