@@ -114,12 +114,11 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
     protocolMapper: 'oidc-group-membership-mapper',
     consentRequired: false,
     config: {
-      multivalued: 'true',
-      'userinfo.token.claim': 'true',
+      'full.path': true,
       'id.token.claim': 'true',
       'access.token.claim': 'true',
       'claim.name': 'groups',
-      'jsonType.label': 'String',
+      'userinfo.token.claim': 'true',
     },
   },
   {
