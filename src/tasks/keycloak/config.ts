@@ -242,6 +242,8 @@ export const otomiClientCfgTpl = (
   secret,
   defaultClientScopes: ['openid', 'email', 'profile'],
   protocolMappers: [
+    // group mapper that is needed to automatically add users to the correct organization teams in gitea
+    // claim.name is the same that will be used to provide group names in gitea
     {
       name: 'groups-mapper',
       protocol: 'openid-connect',
