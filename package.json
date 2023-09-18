@@ -121,6 +121,7 @@
     "tasks:certs-aws": "node dist/tasks/otomi/certs-aws.js",
     "tasks:copy-certs-dev": "ts-node-dev ./src/tasks/otomi/copy-certs.ts",
     "tasks:copy-certs": "node dist/tasks/otomi/copy-certs.js",
+    "tasks:copy-certs-argo": "node dist/tasks/otomi/copy-certs-argo.js",
     "tasks:drone-dev": "ts-node-dev ./src/tasks/drone/drone.ts",
     "tasks:drone": "node dist/tasks/drone/drone.js",
     "tasks:gitea-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/gitea/gitea.ts && ts-node-dev ./src/tasks/gitea/gitea-drone-oauth.ts",
