@@ -27,7 +27,7 @@ import {
   FEAT_EXTERNAL_IDP,
   IDP_ALIAS,
   IDP_OIDC_URL,
-  KC_HOSTNAME,
+  KC_HOSTNAME_URL,
   KEYCLOAK_ADDRESS_INTERNAL,
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
@@ -53,7 +53,7 @@ const env = cleanEnv({
   IDP_OIDC_URL,
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
-  KC_HOSTNAME,
+  KC_HOSTNAME_URL,
   KEYCLOAK_ADDRESS_INTERNAL,
   KEYCLOAK_REALM,
   KEYCLOAK_TOKEN_TTL,
@@ -63,12 +63,12 @@ const env = cleanEnv({
 const errors: string[] = []
 
 async function main(): Promise<void> {
-  await waitTillAvailable(env.KC_HOSTNAME)
-  const keycloakAddress = env.KC_HOSTNAME
+  await waitTillAvailable(env.KC_HOSTNAME_URL)
+  const keycloakAddress = env.KC_HOSTNAME_URL
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
   try {
-    custom.setHttpOptionsDefaults({ headers: { host: env.KC_HOSTNAME.replace('https://', '') } })
+    custom.setHttpOptionsDefaults({ headers: { host: env.KC_HOSTNAME_URL.replace('https://', '') } })
     const keycloakIssuer = await Issuer.discover(`${keycloakAddress}/realms/${env.KEYCLOAK_REALM}/`)
     // console.log(keycloakIssuer)
     const clientOptions: any = {

@@ -24,7 +24,7 @@ import {
   IDP_OIDC_URL,
   IDP_SUB_CLAIM_MAPPER,
   IDP_USERNAME_CLAIM_MAPPER,
-  KC_HOSTNAME,
+  KC_HOSTNAME_URL,
   KEYCLOAK_CLIENT_SECRET,
   KEYCLOAK_REALM,
   REDIRECT_URIS,
@@ -49,7 +49,7 @@ const env = cleanEnv({
   IDP_CLIENT_ID,
   IDP_CLIENT_SECRET,
   IDP_ALIAS,
-  KC_HOSTNAME,
+  KC_HOSTNAME_URL,
   KEYCLOAK_CLIENT_SECRET,
   KEYCLOAK_REALM,
   REDIRECT_URIS,
@@ -64,7 +64,7 @@ const env = cleanEnv({
 
 export function createClient(): ClientRepresentation {
   const redirectUris: Array<string> = env.REDIRECT_URIS
-  const webOrigins = [env.KC_HOSTNAME]
+  const webOrigins = [env.KC_HOSTNAME_URL]
   const secret = env.KEYCLOAK_CLIENT_SECRET
   const otomiClientRepresentation = defaultsDeep(
     new ClientRepresentation(),
