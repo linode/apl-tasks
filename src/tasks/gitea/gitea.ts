@@ -144,6 +144,14 @@ export default async function main(): Promise<void> {
   // create main org repo: otomi/values
   await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
 
+  // add repo: otomi/values to the team: otomi-viewer
+  await doApiCall(
+    errors,
+    `Adding repo values to team otomi-viewer`,
+    () => repoApi.repoAddTeam(orgName, 'values', 'otomi-viewer'),
+    422,
+  )
+
   if (!hasArgo) return
 
   // then create initial gitops repo for teams
