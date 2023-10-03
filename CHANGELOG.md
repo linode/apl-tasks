@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.1.0](https://github.com/redkubes/otomi-tasks/compare/v1.0.0...v1.1.0) (2023-10-03)
+
+
+### Features
+
+* copy certs for argo ([250ae4e](https://github.com/redkubes/otomi-tasks/commit/250ae4edd47385b7c76a428e2f6d7e2b5de6caed))
+* updates related to new keycloak version ([#86](https://github.com/redkubes/otomi-tasks/issues/86)) ([ef7aff7](https://github.com/redkubes/otomi-tasks/commit/ef7aff71245a6527e901f643bc73c6ffa364a22d))
+
+
+### Bug Fixes
+
+* add task argo ([dc95c25](https://github.com/redkubes/otomi-tasks/commit/dc95c25a76dc91a3571b2ba1d2a5c488a182b2fc))
+* filter ([a7e918e](https://github.com/redkubes/otomi-tasks/commit/a7e918edecdf8ae679f5cf43ce832416f4a59fe6))
+* filter source name ([5562bd6](https://github.com/redkubes/otomi-tasks/commit/5562bd60982a1dbfe5cb11e797518a1f3c9ed6b8))
+* filter source ns ([3ba0fa7](https://github.com/redkubes/otomi-tasks/commit/3ba0fa70b23f778056069e73082c079643234c8d))
+* rm att ([2eed422](https://github.com/redkubes/otomi-tasks/commit/2eed422738a61d322752686b0060c914ea974667))
+* update deprecated actions ([#84](https://github.com/redkubes/otomi-tasks/issues/84)) ([515768f](https://github.com/redkubes/otomi-tasks/commit/515768fa88f9d55c9755133e2ca23f18aa038b22))
+
 ## [1.0.0](https://github.com/redkubes/otomi-tasks/compare/v0.6.0...v1.0.0) (2023-08-03)
 
 
