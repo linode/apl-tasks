@@ -1,4 +1,5 @@
 import {
+  CreateHookOption,
   CreateOrgOption,
   CreateRepoOption,
   CreateTeamOption,
@@ -9,7 +10,7 @@ import {
   Team,
 } from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../../utils'
-import { cleanEnv, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES } from '../../validators'
+import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../../validators'
 import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../common'
 
 const env = cleanEnv({
@@ -99,6 +100,24 @@ export async function upsertRepo(
     )
   return undefined
 }
+export async function addHook(repoApi: RepositoryApi, hasTektonHook: boolean): Promise<void> {
+  if (hasTektonHook)
+    await doApiCall(
+      errors,
+      `Adding hook "tekton" to repo otomi/values`,
+      () =>
+        repoApi.repoCreateHook(orgName, 'values', {
+          type: CreateHookOption.TypeEnum.Gitea,
+          config: {
+            url: 'http://el-github-listener.team-admin.svc.cluster.local:8080',
+            http_method: 'post',
+            content_type: 'json',
+          },
+          events: ['push_only'],
+        } as CreateHookOption),
+      304,
+    )
+}
 
 export default async function main(): Promise<void> {
   await waitTillAvailable(env.GITEA_URL)
@@ -143,6 +162,16 @@ export default async function main(): Promise<void> {
 
   // create main org repo: otomi/values
   await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
+
+  // add repo: otomi/values to the team: otomi-viewer
+  await doApiCall(
+    errors,
+    `Adding repo values to team otomi-viewer`,
+    () => repoApi.repoAddTeam(orgName, 'values', 'otomi-viewer'),
+    422,
+  )
+
+  await addHook(repoApi, false)
 
   if (!hasArgo) return
 
