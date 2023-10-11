@@ -101,7 +101,10 @@ export async function upsertRepo(
   return undefined
 }
 export async function addHook(repoApi: RepositoryApi, hasTektonHook: boolean): Promise<void> {
-  if (!hasTektonHook)
+  console.log('Check for Tekton hook')
+  if (!hasTektonHook) {
+    console.log('No Tekton hook')
+    console.log('Trying to add Tekton hook')
     await doApiCall(
       errors,
       `Adding hook "tekton" to repo otomi/values`,
@@ -117,6 +120,7 @@ export async function addHook(repoApi: RepositoryApi, hasTektonHook: boolean): P
         } as CreateHookOption),
       304,
     )
+  }
 }
 
 export default async function main(): Promise<void> {
