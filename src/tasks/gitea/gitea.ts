@@ -9,7 +9,7 @@ import {
   Team,
 } from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../../utils'
-import { cleanEnv, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES } from '../../validators'
+import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../../validators'
 import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../common'
 
 const env = cleanEnv({
@@ -29,7 +29,7 @@ const readOnlyTeam: CreateTeamOption = {
   ...new CreateTeamOption(),
   canCreateOrgRepo: false,
   name: teamNameViewer,
-  includesAllRepositories: true,
+  includesAllRepositories: false,
   permission: CreateTeamOption.PermissionEnum.Read,
   units: ['repo.code'],
 }
@@ -143,6 +143,14 @@ export default async function main(): Promise<void> {
 
   // create main org repo: otomi/values
   await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
+
+  // add repo: otomi/values to the team: otomi-viewer
+  await doApiCall(
+    errors,
+    `Adding repo values to team otomi-viewer`,
+    () => repoApi.repoAddTeam(orgName, 'values', 'otomi-viewer'),
+    422,
+  )
 
   if (!hasArgo) return
 
