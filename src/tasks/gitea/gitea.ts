@@ -71,18 +71,15 @@ async function hasTektonHook(repoApi: RepositoryApi): Promise<boolean> {
     () => repoApi.repoListHooks(orgName, 'values'),
     400,
   )
-
-  console.debug(`HOOKS: `, hooks)
   let tektonHook = false
   if (hooks) {
     hooks.forEach((hook) => {
-      console.debug('Hook: ', hook)
       if (hook.config && hook.config.url.includes('el-github-listener')) {
-        console.debug('Tekton Hook already exists!')
+        console.debug('Tekton Hook already exists')
         tektonHook = true
       }
     })
-  } else console.debug('No hooks')
+  }
   if (!tektonHook) console.debug('Tekton Hook needs to be created')
   return tektonHook
 }
@@ -125,10 +122,9 @@ export async function upsertRepo(
 }
 export async function addHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
+  const tektonUrl = 'http://el-github-listener.team-admin.svc.cluster.local:8080'
   const hasHooks = await hasTektonHook(repoApi)
   if (!hasHooks) {
-    console.debug('No Tekton hook')
-    console.debug('Trying to add Tekton hook')
     await doApiCall(
       errors,
       `Adding hook "tekton" to repo otomi/values`,
@@ -136,7 +132,7 @@ export async function addHook(repoApi: RepositoryApi): Promise<void> {
         repoApi.repoCreateHook(orgName, 'values', {
           type: CreateHookOption.TypeEnum.Gitea,
           config: {
-            url: 'http://el-github-listener.team-admin.svc.cluster.local:8080',
+            url: tektonUrl,
             http_method: 'post',
             content_type: 'json',
           },
