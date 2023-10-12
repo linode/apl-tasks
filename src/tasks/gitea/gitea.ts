@@ -81,7 +81,7 @@ async function hasTektonHook(repoApi: RepositoryApi): Promise<boolean> {
         tektonHook = true
       }
     })
-  }
+  } else console.debug('No hooks')
   if (!tektonHook) console.debug('Tekton Hook needs to be created')
   return tektonHook
 }
