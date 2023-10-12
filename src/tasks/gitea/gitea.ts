@@ -123,10 +123,18 @@ export async function upsertRepo(
 }
 export async function addHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
+  let tektonUrl = 'http://el-tekton-listener.team-admin.svc.cluster.local:8080'
   const k8sApi = k8s.core()
+  try {
+    const service = (await k8sApi.readNamespacedService('event-listener', 'team-admin')).body
+    tektonUrl = service.spec!.clusterIP!
+    console.log('SERVICE: ', service)
+  } catch (error) {
+    // eslint-disable-next-line no-undef
+    console.debug('Tekton service cannot be found')
+  }
   const service = await k8sApi.readNamespacedService('event-listener', 'team-admin')
   console.log('SERVICE: ', service)
-  const tektonUrl = 'http://el-tekton-listener.team-admin.svc.cluster.local:8080'
   const hasHooks = await hasTektonHook(repoApi)
   if (!hasHooks) {
     await doApiCall(
