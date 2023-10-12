@@ -9,6 +9,7 @@ import {
   RepositoryApi,
   Team,
 } from '@redkubes/gitea-client-node'
+import { k8s } from '../../k8s'
 import { doApiCall, waitTillAvailable } from '../../utils'
 import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../../validators'
 import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../common'
@@ -122,6 +123,9 @@ export async function upsertRepo(
 }
 export async function addHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
+  const k8sApi = k8s.core()
+  const service = await k8sApi.readNamespacedService('event-listener', 'team-admin')
+  console.log('SERVICE: ', service)
   const tektonUrl = 'http://el-tekton-listener.team-admin.svc.cluster.local:8080'
   const hasHooks = await hasTektonHook(repoApi)
   if (!hasHooks) {
