@@ -74,7 +74,7 @@ async function hasTektonHook(repoApi: RepositoryApi): Promise<boolean> {
   let tektonHook = false
   if (hooks) {
     hooks.forEach((hook) => {
-      if (hook.config && hook.config.url.includes('el-github-listener')) {
+      if (hook.config && hook.config.url.includes('el-tekton-listener')) {
         console.debug('Tekton Hook already exists')
         tektonHook = true
       }
@@ -122,7 +122,7 @@ export async function upsertRepo(
 }
 export async function addHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
-  const tektonUrl = 'http://el-github-listener.team-admin.svc.cluster.local:8080'
+  const tektonUrl = 'http://el-tekton-listener.team-admin.svc.cluster.local:8080'
   const hasHooks = await hasTektonHook(repoApi)
   if (!hasHooks) {
     await doApiCall(
