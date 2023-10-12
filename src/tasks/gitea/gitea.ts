@@ -68,7 +68,7 @@ async function hasTektonHook(repoApi: RepositoryApi): Promise<boolean> {
   const hooks: any[] = await doApiCall(
     errors,
     `Getting hooks in repo "otomi/values"`,
-    () => repoApi.repoListGitHooks(orgName, 'values'),
+    () => repoApi.repoListHooks(orgName, 'values'),
     400,
   )
 
