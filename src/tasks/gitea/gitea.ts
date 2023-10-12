@@ -116,7 +116,7 @@ export async function addHook(repoApi: RepositoryApi, hasTektonHook: boolean): P
             http_method: 'post',
             content_type: 'json',
           },
-          events: ['push_only'],
+          events: ['push'],
         } as CreateHookOption),
       304,
     )
