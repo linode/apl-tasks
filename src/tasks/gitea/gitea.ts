@@ -76,7 +76,8 @@ async function hasTektonHook(repoApi: RepositoryApi): Promise<boolean> {
   let tektonHook = false
   if (hooks) {
     hooks.forEach((hook) => {
-      if (hook.name.includes('el-github-listener')) {
+      console.debug('Hook: ', hook)
+      if (hook.config && hook.config.url.includes('el-github-listener')) {
         console.debug('Tekton Hook already exists!')
         tektonHook = true
       }
