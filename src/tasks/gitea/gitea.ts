@@ -64,7 +64,7 @@ export async function upsertTeam(
   )
 }
 
-async function hasTekTonHook(repoApi: RepositoryApi): Promise<boolean> {
+async function hasTektonHook(repoApi: RepositoryApi): Promise<boolean> {
   const hooks: any[] = await doApiCall(
     errors,
     `Getting hooks in repo "otomi/values"`,
@@ -73,11 +73,15 @@ async function hasTekTonHook(repoApi: RepositoryApi): Promise<boolean> {
   )
 
   console.debug(`HOOKS: `, hooks)
-  let hasTektonHook = false
+  let tektonHook = false
   hooks.forEach((hook) => {
-    if (hook.name.includes('el-github-listener')) hasTektonHook = true
+    if (hook.name.includes('el-github-listener')) {
+      console.debug('Tekton Hook already exists!')
+      tektonHook = true
+    }
   })
-  return hasTektonHook
+  if (!tektonHook) console.debug('Tekton Hook needs to be created')
+  return tektonHook
 }
 
 export async function upsertRepo(
@@ -118,7 +122,7 @@ export async function upsertRepo(
 }
 export async function addHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
-  const hasHooks = await hasTekTonHook(repoApi)
+  const hasHooks = await hasTektonHook(repoApi)
   if (!hasHooks) {
     console.debug('No Tekton hook')
     console.debug('Trying to add Tekton hook')
