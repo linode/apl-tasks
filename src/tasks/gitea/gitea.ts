@@ -124,6 +124,7 @@ export async function upsertRepo(
 export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
   let clusterIP = ''
+  k8s.kc()
   const k8sApi = k8s.core()
   try {
     const response = await k8sApi.readNamespacedService('event-listener', 'team-admin')
