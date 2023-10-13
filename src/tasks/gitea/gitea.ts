@@ -9,7 +9,6 @@ import {
   RepositoryApi,
   Team,
 } from '@redkubes/gitea-client-node'
-import { k8s } from '../../k8s'
 import { doApiCall, waitTillAvailable } from '../../utils'
 import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../../validators'
 import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../common'
@@ -123,24 +122,24 @@ export async function upsertRepo(
 }
 export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
-  let clusterIP = ''
-  k8s.kc()
-  const k8sApi = k8s.core()
-  try {
-    const response = await k8sApi.readNamespacedService('event-listener', 'team-admin')
-    const service = response.body
-    if (service && service.spec && service.spec.clusterIP) {
-      clusterIP = service.spec.clusterIP
-      console.log(`Service clusterIP: ${clusterIP}`)
-    } else {
-      console.error(`Service "event-listener" in namespace "team-admin" doesn't have a clusterIP.`)
-    }
-  } catch (error) {
-    // eslint-disable-next-line no-undef
-    console.debug(`Error fetching tekton service: ${error}`)
-  }
+  const clusterIP = 'http://el-tekton-listener.team-admin.svc.cluster.local:8080'
+  // k8s.kc()
+  // const k8sApi = k8s.core()
+  // try {
+  //   const response = await k8sApi.readNamespacedService('event-listener', 'team-admin')
+  //   const service = response.body
+  //   if (service && service.spec && service.spec.clusterIP) {
+  //     clusterIP = service.spec.clusterIP
+  //     console.log(`Service clusterIP: ${clusterIP}`)
+  //   } else {
+  //     console.error(`Service "event-listener" in namespace "team-admin" doesn't have a clusterIP.`)
+  //   }
+  // } catch (error) {
+  //   // eslint-disable-next-line no-undef
+  //   console.debug(`Error fetching tekton service: ${error}`)
+  // }
   const hasHooks = await hasTektonHook(repoApi)
-  if (!hasHooks && clusterIP !== '') {
+  if (!hasHooks) {
     await doApiCall(
       errors,
       `Adding hook "tekton" to repo otomi/values`,
