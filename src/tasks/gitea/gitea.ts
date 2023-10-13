@@ -133,8 +133,6 @@ export async function addHook(repoApi: RepositoryApi): Promise<void> {
     // eslint-disable-next-line no-undef
     console.debug('Tekton service cannot be found')
   }
-  const service = await k8sApi.readNamespacedService('event-listener', 'team-admin')
-  console.log('SERVICE: ', service)
   const hasHooks = await hasTektonHook(repoApi)
   if (!hasHooks) {
     await doApiCall(
