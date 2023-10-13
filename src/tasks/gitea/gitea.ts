@@ -121,20 +121,25 @@ export async function upsertRepo(
     )
   return undefined
 }
-export async function addHook(repoApi: RepositoryApi): Promise<void> {
+export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
-  let tektonUrl = 'http://el-tekton-listener.team-admin.svc.cluster.local:8080'
+  let clusterIP = ''
   const k8sApi = k8s.core()
   try {
-    const service = (await k8sApi.readNamespacedService('event-listener', 'team-admin')).body
-    tektonUrl = service.spec!.clusterIP!
-    console.log('SERVICE: ', service)
+    const response = await k8sApi.readNamespacedService('event-listener', 'team-admin')
+    const service = response.body
+    if (service && service.spec && service.spec.clusterIP) {
+      clusterIP = service.spec.clusterIP
+      console.log(`Service clusterIP: ${clusterIP}`)
+    } else {
+      console.error(`Service "event-listener" in namespace "team-admin" doesn't have a clusterIP.`)
+    }
   } catch (error) {
     // eslint-disable-next-line no-undef
-    console.debug('Tekton service cannot be found')
+    console.debug(`Error fetching tekton service: ${error}`)
   }
   const hasHooks = await hasTektonHook(repoApi)
-  if (!hasHooks) {
+  if (!hasHooks && clusterIP !== '') {
     await doApiCall(
       errors,
       `Adding hook "tekton" to repo otomi/values`,
@@ -142,7 +147,7 @@ export async function addHook(repoApi: RepositoryApi): Promise<void> {
         repoApi.repoCreateHook(orgName, 'values', {
           type: CreateHookOption.TypeEnum.Gitea,
           config: {
-            url: tektonUrl,
+            url: clusterIP,
             http_method: 'post',
             content_type: 'json',
           },
@@ -205,7 +210,7 @@ export default async function main(): Promise<void> {
     422,
   )
 
-  await addHook(repoApi)
+  await addTektonHook(repoApi)
 
   if (!hasArgo) return
 
