@@ -143,7 +143,8 @@ export default async function main(): Promise<void> {
 
   // create main org repo: otomi/values
   await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
-  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, { ...repoOption, name: 'otomi-charts' })
+  // create otomi/charts repo for auto image updates
+  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, { ...repoOption, name: 'charts' })
 
   // add repo: otomi/values to the team: otomi-viewer
   await doApiCall(
