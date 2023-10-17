@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/redkubes/otomi-tasks/compare/v1.1.0...v1.2.0) (2023-10-17)
+
+
+### Features
+
+* add values repo to viewer team ([7ba1a57](https://github.com/redkubes/otomi-tasks/commit/7ba1a577816fb733e767f30ef8f9d27b861271b5))
+* changed otomi-viewer rights ([e0c4778](https://github.com/redkubes/otomi-tasks/commit/e0c4778662a3d059d0743d39c47e3c286fb35d3e))
+
 ## [1.1.0](https://github.com/redkubes/otomi-tasks/compare/v1.0.0...v1.1.0) (2023-10-03)
 
 
