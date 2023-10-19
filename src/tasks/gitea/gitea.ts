@@ -74,7 +74,7 @@ async function hasTektonHook(repoApi: RepositoryApi): Promise<boolean> {
   let tektonHook = false
   if (hooks) {
     hooks.forEach((hook) => {
-      if (hook.config && hook.config.url.includes('el-tekton-listener')) {
+      if (hook.config && hook.config.url.includes('el-otomi-tekton-listener')) {
         console.debug('Tekton Hook already exists')
         tektonHook = true
       }
@@ -122,7 +122,7 @@ export async function upsertRepo(
 }
 export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
-  const clusterIP = 'http://el-tekton-listener.team-admin.svc.cluster.local:8080'
+  const clusterIP = 'http://el-otomi-tekton-listener.otomi-pipelines.svc.cluster.local:8080'
   // k8s.kc()
   // const k8sApi = k8s.core()
   // try {
