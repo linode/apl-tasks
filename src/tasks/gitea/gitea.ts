@@ -146,6 +146,7 @@ export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
       () =>
         repoApi.repoCreateHook(orgName, 'values', {
           type: CreateHookOption.TypeEnum.Gitea,
+          active: true,
           config: {
             url: clusterIP,
             http_method: 'post',
