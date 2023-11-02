@@ -24,7 +24,7 @@ async function createNamespacedSecret(
       console.debug(`Secret '${metadata.name!}' cannot be found in namespace '${metadata.namespace!}'`)
     }
     await k8sApi.createNamespacedSecret(targetNamespace, simpleSecret)
-    console.debug(`Secret '${simpleSecret.metadata.name!}' successfully created in namespace '${metadata.namespace!}'`)
+    console.debug(`Secret '${simpleSecret.metadata.name!}' successfully created in namespace '${targetNamespace}'`)
   } catch (err) {
     // we know 409 indicates that secret already exists, ignore this code because it will only happen during start of the operator
     if (err.response.body.code === 409) return
@@ -49,8 +49,7 @@ export default class MyOperator extends Operator {
           try {
             await k8sApi.deleteNamespacedSecret(`copy-${metadata?.namespace}-${metadata?.name}`, targetNamespace)
             console.debug(
-              `Secret 'copy-${metadata?.namespace}-${metadata?.name}' successfully deleted in namespace '${metadata!
-                .namespace!}'`,
+              `Secret 'copy-${metadata?.namespace}-${metadata?.name}' successfully deleted in namespace '${targetNamespace}'`,
             )
           } catch (err) {
             console.debug(
@@ -81,7 +80,7 @@ export default class MyOperator extends Operator {
               { headers },
             )
             console.debug(
-              `Secret '${simpleSecret.metadata.name!}' successfully patched in namespace '${metadata!.namespace!}'`,
+              `Secret '${simpleSecret.metadata.name!}' successfully patched in namespace '${targetNamespace}'`,
             )
             break
           } catch (err) {
