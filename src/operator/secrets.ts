@@ -8,24 +8,30 @@ interface CustomKubernetesObject extends KubernetesObject {
   type: string
 }
 
-async function createNamespacedSecret(metadata: k8s.V1ObjectMeta | undefined) {
+async function createNamespacedSecret(
+  metadata: k8s.V1ObjectMeta | undefined,
+  targetNamespace: string,
+  secretType: string,
+) {
   if (!metadata) return
   const simpleSecret = new k8s.V1Secret()
-  simpleSecret.metadata = { name: `copy-${metadata?.namespace}-${metadata?.name}`, namespace: 'argocd' }
-  simpleSecret.type = 'kubernetes.io/dockerconfigjson'
+  simpleSecret.metadata = { name: `copy-${metadata?.namespace}-${metadata?.name}`, namespace: targetNamespace }
+  simpleSecret.type = secretType
   try {
     try {
       simpleSecret.data = (await k8sApi.readNamespacedSecret(metadata.name!, metadata.namespace!)).body.data
     } catch (error) {
       console.debug(`Secret '${metadata.name!}' cannot be found in namespace '${metadata.namespace!}'`)
     }
-    await k8sApi.createNamespacedSecret('argocd', simpleSecret)
+    await k8sApi.createNamespacedSecret(targetNamespace, simpleSecret)
     console.debug(`Secret '${simpleSecret.metadata.name!}' successfully created in namespace '${metadata.namespace!}'`)
   } catch (err) {
+    // we know 409 indicates that secret already exists, ignore this code because it will only happen during start of the operator
+    if (err.response.body.code === 409) return
     console.debug(`Error copying secret: statuscode: ${err.response.body.code} - message: ${err.response.body.message}`)
   }
 }
-// todo: still need to separate between argocd and istio-system
+
 const kc = new KubeConfig()
 kc.loadFromDefault()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
@@ -36,50 +42,12 @@ export default class MyOperator extends Operator {
       const { object } = e
       const { metadata, type } = object as CustomKubernetesObject
       if (metadata && !metadata.namespace?.startsWith('team-')) return
-      if (type !== 'kubernetes.io/dockerconfigjson') return
+      if (type !== 'kubernetes.io/dockerconfigjson' && type !== 'type=kubernetes.io/tls') return
+      const targetNamespace = type === 'kubernetes.io/dockerconfigjson' ? 'argocd' : 'istio-system'
       switch (e.type) {
-        case ResourceEventType.Added: {
-          await createNamespacedSecret(metadata)
-          break
-        }
-        case ResourceEventType.Modified: {
-          const simpleSecret = new k8s.V1Secret()
-          simpleSecret.metadata = { name: `copy-${metadata?.namespace}-${metadata?.name}`, namespace: 'argocd' }
-          simpleSecret.type = 'kubernetes.io/dockerconfigjson'
-          try {
-            const headers = { 'content-type': 'application/strategic-merge-patch+json' }
-            try {
-              simpleSecret.data = (await k8sApi.readNamespacedSecret(metadata!.name!, metadata!.namespace!)).body.data
-            } catch (error) {
-              console.debug(`Secret '${metadata!.name!}' cannot be found in namespace '${metadata!.namespace!}'`)
-            }
-            await k8sApi.patchNamespacedSecret(
-              simpleSecret.metadata.name!,
-              'argocd',
-              simpleSecret,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              { headers },
-            )
-            console.debug(
-              `Secret '${simpleSecret.metadata.name!}' successfully patched in namespace '${metadata!.namespace!}'`,
-            )
-          } catch (err) {
-            console.debug(
-              `Error patching copied secret: statuscode: ${err.response.body.code} - message: ${err.response.body.message}`,
-            )
-            if (err.response.body.code === 404) {
-              console.debug('Creating one instead')
-              await createNamespacedSecret(metadata)
-            }
-          }
-          break
-        }
         case ResourceEventType.Deleted: {
           try {
-            await k8sApi.deleteNamespacedSecret(`copy-${metadata?.namespace}-${metadata?.name}`, 'argocd')
+            await k8sApi.deleteNamespacedSecret(`copy-${metadata?.namespace}-${metadata?.name}`, targetNamespace)
             console.debug(
               `Secret 'copy-${metadata?.namespace}-${metadata?.name}' successfully deleted in namespace '${metadata!
                 .namespace!}'`,
@@ -91,6 +59,46 @@ export default class MyOperator extends Operator {
           }
           break
         }
+        case ResourceEventType.Modified: {
+          const simpleSecret = new k8s.V1Secret()
+          simpleSecret.metadata = { name: `copy-${metadata?.namespace}-${metadata?.name}`, namespace: targetNamespace }
+          simpleSecret.type = type
+          try {
+            const headers = { 'content-type': 'application/strategic-merge-patch+json' }
+            try {
+              simpleSecret.data = (await k8sApi.readNamespacedSecret(metadata!.name!, metadata!.namespace!)).body.data
+            } catch (error) {
+              console.debug(`Secret '${metadata!.name!}' cannot be found in namespace '${metadata!.namespace!}'`)
+            }
+            await k8sApi.patchNamespacedSecret(
+              simpleSecret.metadata.name!,
+              targetNamespace,
+              simpleSecret,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              { headers },
+            )
+            console.debug(
+              `Secret '${simpleSecret.metadata.name!}' successfully patched in namespace '${metadata!.namespace!}'`,
+            )
+            break
+          } catch (err) {
+            console.debug(
+              `Error patching copied secret: statuscode: ${err.response.body.code} - message: ${err.response.body.message}`,
+            )
+            // we know 404 indicates that a secret does not exist, in this case we recreate a new one because otherwise it will not create a copy
+            if (err.response.body.code !== 404) break
+            console.debug('Recreating a copy of the secret')
+            await createNamespacedSecret(metadata, targetNamespace, type)
+            break
+          }
+        }
+        case ResourceEventType.Added: {
+          await createNamespacedSecret(metadata, targetNamespace, type)
+          break
+        }
         default:
           break
       }
@@ -100,6 +108,8 @@ export default class MyOperator extends Operator {
 
 async function main(): Promise<void> {
   const operator = new MyOperator()
+  console.info(`Listening to secrets changes in all namespaces`)
+  console.info('Setting up namespace prefix filter to "team-"')
   await operator.start()
   // load teams
   // load secrets
