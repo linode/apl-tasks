@@ -138,6 +138,7 @@
     "tasks:wait-for-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/otomi/wait-for.ts",
     "tasks:wait-for": "node dist/tasks/otomi/wait-for.js",
     "operator:secrets-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/secrets.ts",
+    "operator:secrets": "node dist/operator/secrets.ts",
     "test": "NODE_ENV=test mocha -r ts-node/register -r ts-custom-error --exit src/**/*.test.*"
   },
   "standard-version": {
