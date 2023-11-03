@@ -77,15 +77,14 @@ async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Prom
     () => repoApi.repoListHooks(orgName, 'values'),
     400,
   )
-  if (hooks) {
-    hooks.forEach((hook) => {
-      if (hook.config && hook.config.url.includes(hookToFind)) {
-        console.debug(`Hook (${hookToFind}) exists`)
-        console.debug('HOOK:', hook)
-        return { id: hook.id, hasHook: true }
-      }
-      return { hasHook: false }
-    })
+  if (!hooks) return { hasHook: false }
+  const foundHook = hooks.find((hook) => {
+    return hook.config && hook.config.url.includes(hookToFind)
+  })
+  if (foundHook) {
+    console.debug(`Hook (${hookToFind}) exists`)
+    console.debug('HOOK:', foundHook)
+    return { id: foundHook.id, hasHook: true }
   }
   return { hasHook: false }
 }
