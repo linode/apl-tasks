@@ -80,7 +80,8 @@ async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Prom
   if (hooks) {
     hooks.forEach((hook) => {
       if (hook.config && hook.config.url.includes(hookToFind)) {
-        console.debug(`Hook (${hookToFind}) already exists`)
+        console.debug(`Hook (${hookToFind}) exists`)
+        console.debug('HOOK:', hook)
         return { id: hook.id, hasHook: true }
       }
       return { hasHook: false }
@@ -167,6 +168,7 @@ export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
 
 export async function deleteDroneHook(repoApi: RepositoryApi): Promise<void> {
   const hasDroneHook = await hasSpecificHook(repoApi, 'drone')
+  console.debug('HASDRONEHOOK:', hasDroneHook)
   if (hasDroneHook.hasHook) {
     console.debug('Drone Hook needs to be deleted')
     await doApiCall(errors, `Deleting hook "drone" from repo otomi/values`, () =>
