@@ -148,7 +148,7 @@ export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   //   console.debug(`Error fetching tekton service: ${error}`)
   // }
   const hasTektonHook = await hasSpecificHook(repoApi, 'el-otomi-tekton-listener')
-  if (hasTektonHook.hasHook) {
+  if (!hasTektonHook.hasHook) {
     console.debug('Tekton Hook needs to be created')
     await doApiCall(
       errors,
