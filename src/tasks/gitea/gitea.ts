@@ -77,15 +77,19 @@ async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Prom
     () => repoApi.repoListHooks(orgName, 'values'),
     400,
   )
-  if (!hooks) return { hasHook: false }
+  if (!hooks) {
+    console.debug(`No hooks were found in repo "values"`)
+    return { hasHook: false }
+  }
+
   const foundHook = hooks.find((hook) => {
     return hook.config && hook.config.url.includes(hookToFind)
   })
   if (foundHook) {
-    console.debug(`Hook (${hookToFind}) exists`)
-    console.debug('HOOK:', foundHook)
+    console.debug(`Hook (${hookToFind}) exists in repo "values"`)
     return { id: foundHook.id, hasHook: true }
   }
+  console.debug(`Hook (${hookToFind}) not found in repo "values"`)
   return { hasHook: false }
 }
 
@@ -144,7 +148,7 @@ export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   //   console.debug(`Error fetching tekton service: ${error}`)
   // }
   const hasTektonHook = await hasSpecificHook(repoApi, 'el-otomi-tekton-listener')
-  if (!hasTektonHook.hasHook) {
+  if (hasTektonHook.hasHook) {
     console.debug('Tekton Hook needs to be created')
     await doApiCall(
       errors,
@@ -166,8 +170,8 @@ export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
 }
 
 export async function deleteDroneHook(repoApi: RepositoryApi): Promise<void> {
+  console.debug('Check for Drone hook')
   const hasDroneHook = await hasSpecificHook(repoApi, 'drone')
-  console.debug('HASDRONEHOOK:', hasDroneHook)
   if (hasDroneHook.hasHook) {
     console.debug('Drone Hook needs to be deleted')
     await doApiCall(errors, `Deleting hook "drone" from repo otomi/values`, () =>
