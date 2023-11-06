@@ -42,7 +42,7 @@ export default class MyOperator extends Operator {
       const { object } = e
       const { metadata, type } = object as CustomKubernetesObject
       if (metadata && !metadata.namespace?.startsWith('team-')) return
-      if (type !== 'kubernetes.io/dockerconfigjson' && type !== 'type=kubernetes.io/tls') return
+      if (type !== 'kubernetes.io/dockerconfigjson' && type !== 'kubernetes.io/tls') return
       const targetNamespace = type === 'kubernetes.io/dockerconfigjson' ? 'argocd' : 'istio-system'
       switch (e.type) {
         case ResourceEventType.Deleted: {
