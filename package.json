@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.6",
+    "@dot-i/k8s-operator": "^1.3.8",
     "@kubernetes/client-node": "0.12.3",
     "@redkubes/gitea-client-node": "1.19.1",
     "@redkubes/harbor-client-node": "^2.2.1",
@@ -136,6 +137,8 @@
     "tasks:otomi-chart": "node dist/tasks/otomi/otomi-chart.js",
     "tasks:wait-for-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/otomi/wait-for.ts",
     "tasks:wait-for": "node dist/tasks/otomi/wait-for.js",
+    "operator:secrets-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/secrets.ts",
+    "operator:secrets": "node dist/operator/secrets.js",
     "test": "NODE_ENV=test mocha -r ts-node/register -r ts-custom-error --exit src/**/*.test.*"
   },
   "standard-version": {
@@ -143,5 +146,5 @@
       "tag": true
     }
   },
-  "version": "1.1.0"
+  "version": "1.2.0"
 }
