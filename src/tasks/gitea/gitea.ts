@@ -19,6 +19,12 @@ const env = cleanEnv({
   OTOMI_VALUES,
 })
 
+// small interface to store hook information
+interface hookInfo {
+  id?: number
+  hasHook: boolean
+}
+
 const teamConfig = env.OTOMI_VALUES.teamConfig ?? {}
 const teamIds = Object.keys(teamConfig)
 const isMultitenant = !!env.OTOMI_VALUES.otomi?.isMultitenant
@@ -64,24 +70,27 @@ export async function upsertTeam(
   )
 }
 
-async function hasTektonHook(repoApi: RepositoryApi): Promise<boolean> {
+async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Promise<hookInfo> {
   const hooks: any[] = await doApiCall(
     errors,
     `Getting hooks in repo "otomi/values"`,
     () => repoApi.repoListHooks(orgName, 'values'),
     400,
   )
-  let tektonHook = false
-  if (hooks) {
-    hooks.forEach((hook) => {
-      if (hook.config && hook.config.url.includes('el-otomi-tekton-listener')) {
-        console.debug('Tekton Hook already exists')
-        tektonHook = true
-      }
-    })
+  if (!hooks) {
+    console.debug(`No hooks were found in repo "values"`)
+    return { hasHook: false }
   }
-  if (!tektonHook) console.debug('Tekton Hook needs to be created')
-  return tektonHook
+
+  const foundHook = hooks.find((hook) => {
+    return hook.config && hook.config.url.includes(hookToFind)
+  })
+  if (foundHook) {
+    console.debug(`Hook (${hookToFind}) exists in repo "values"`)
+    return { id: foundHook.id, hasHook: true }
+  }
+  console.debug(`Hook (${hookToFind}) not found in repo "values"`)
+  return { hasHook: false }
 }
 
 export async function upsertRepo(
@@ -138,8 +147,9 @@ export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   //   // eslint-disable-next-line no-undef
   //   console.debug(`Error fetching tekton service: ${error}`)
   // }
-  const hasHooks = await hasTektonHook(repoApi)
-  if (!hasHooks) {
+  const hasTektonHook = await hasSpecificHook(repoApi, 'el-otomi-tekton-listener')
+  if (!hasTektonHook.hasHook) {
+    console.debug('Tekton Hook needs to be created')
     await doApiCall(
       errors,
       `Adding hook "tekton" to repo otomi/values`,
@@ -155,6 +165,17 @@ export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
           events: ['push'],
         } as CreateHookOption),
       304,
+    )
+  }
+}
+
+export async function deleteDroneHook(repoApi: RepositoryApi): Promise<void> {
+  console.debug('Check for Drone hook')
+  const hasDroneHook = await hasSpecificHook(repoApi, 'drone')
+  if (hasDroneHook.hasHook) {
+    console.debug('Drone Hook needs to be deleted')
+    await doApiCall(errors, `Deleting hook "drone" from repo otomi/values`, () =>
+      repoApi.repoDeleteHook(orgName, 'values', hasDroneHook.id!),
     )
   }
 }
@@ -221,7 +242,9 @@ export default async function main(): Promise<void> {
     422,
   )
 
+  // check for specific hooks
   await addTektonHook(repoApi)
+  await deleteDroneHook(repoApi)
 
   if (!hasArgo) return
 
