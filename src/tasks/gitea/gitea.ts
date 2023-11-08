@@ -36,7 +36,7 @@ const readOnlyTeam: CreateTeamOption = {
   ...new CreateTeamOption(),
   canCreateOrgRepo: false,
   name: teamNameViewer,
-  includesAllRepositories: true,
+  includesAllRepositories: false,
   permission: CreateTeamOption.PermissionEnum.Read,
   units: ['repo.code'],
 }
@@ -223,6 +223,16 @@ export default async function main(): Promise<void> {
 
   // create main org repo: otomi/values
   await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
+  // create otomi/charts repo for auto image updates
+  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, { ...repoOption, name: 'charts' })
+
+  // add repo: otomi/values to the team: otomi-viewer
+  await doApiCall(
+    errors,
+    `Adding repo values to team otomi-viewer`,
+    () => repoApi.repoAddTeam(orgName, 'values', 'otomi-viewer'),
+    422,
+  )
 
   // add repo: otomi/values to the team: otomi-viewer
   await doApiCall(
