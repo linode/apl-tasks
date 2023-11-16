@@ -1,4 +1,5 @@
 import {
+  CreateHookOption,
   CreateOrgOption,
   CreateRepoOption,
   CreateTeamOption,
@@ -17,6 +18,12 @@ const env = cleanEnv({
   GITEA_URL,
   OTOMI_VALUES,
 })
+
+// small interface to store hook information
+interface hookInfo {
+  id?: number
+  hasHook: boolean
+}
 
 const teamConfig = env.OTOMI_VALUES.teamConfig ?? {}
 const teamIds = Object.keys(teamConfig)
@@ -63,6 +70,29 @@ export async function upsertTeam(
   )
 }
 
+async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Promise<hookInfo> {
+  const hooks: any[] = await doApiCall(
+    errors,
+    `Getting hooks in repo "otomi/values"`,
+    () => repoApi.repoListHooks(orgName, 'values'),
+    400,
+  )
+  if (!hooks) {
+    console.debug(`No hooks were found in repo "values"`)
+    return { hasHook: false }
+  }
+
+  const foundHook = hooks.find((hook) => {
+    return hook.config && hook.config.url.includes(hookToFind)
+  })
+  if (foundHook) {
+    console.debug(`Hook (${hookToFind}) exists in repo "values"`)
+    return { id: foundHook.id, hasHook: true }
+  }
+  console.debug(`Hook (${hookToFind}) not found in repo "values"`)
+  return { hasHook: false }
+}
+
 export async function upsertRepo(
   existingTeams: Team[] = [],
   existingRepos: Repository[] = [],
@@ -98,6 +128,56 @@ export async function upsertRepo(
       422,
     )
   return undefined
+}
+export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
+  console.debug('Check for Tekton hook')
+  const clusterIP = 'http://el-otomi-tekton-listener.otomi-pipelines.svc.cluster.local:8080'
+  // k8s.kc()
+  // const k8sApi = k8s.core()
+  // try {
+  //   const response = await k8sApi.readNamespacedService('event-listener', 'team-admin')
+  //   const service = response.body
+  //   if (service && service.spec && service.spec.clusterIP) {
+  //     clusterIP = service.spec.clusterIP
+  //     console.log(`Service clusterIP: ${clusterIP}`)
+  //   } else {
+  //     console.error(`Service "event-listener" in namespace "team-admin" doesn't have a clusterIP.`)
+  //   }
+  // } catch (error) {
+  //   // eslint-disable-next-line no-undef
+  //   console.debug(`Error fetching tekton service: ${error}`)
+  // }
+  const hasTektonHook = await hasSpecificHook(repoApi, 'el-otomi-tekton-listener')
+  if (!hasTektonHook.hasHook) {
+    console.debug('Tekton Hook needs to be created')
+    await doApiCall(
+      errors,
+      `Adding hook "tekton" to repo otomi/values`,
+      () =>
+        repoApi.repoCreateHook(orgName, 'values', {
+          type: CreateHookOption.TypeEnum.Gitea,
+          active: true,
+          config: {
+            url: clusterIP,
+            http_method: 'post',
+            content_type: 'json',
+          },
+          events: ['push'],
+        } as CreateHookOption),
+      304,
+    )
+  }
+}
+
+export async function deleteDroneHook(repoApi: RepositoryApi): Promise<void> {
+  console.debug('Check for Drone hook')
+  const hasDroneHook = await hasSpecificHook(repoApi, 'drone')
+  if (hasDroneHook.hasHook) {
+    console.debug('Drone Hook needs to be deleted')
+    await doApiCall(errors, `Deleting hook "drone" from repo otomi/values`, () =>
+      repoApi.repoDeleteHook(orgName, 'values', hasDroneHook.id!),
+    )
+  }
 }
 
 export default async function main(): Promise<void> {
@@ -153,6 +233,18 @@ export default async function main(): Promise<void> {
     () => repoApi.repoAddTeam(orgName, 'values', 'otomi-viewer'),
     422,
   )
+
+  // add repo: otomi/values to the team: otomi-viewer
+  await doApiCall(
+    errors,
+    `Adding repo values to team otomi-viewer`,
+    () => repoApi.repoAddTeam(orgName, 'values', 'otomi-viewer'),
+    422,
+  )
+
+  // check for specific hooks
+  await addTektonHook(repoApi)
+  await deleteDroneHook(repoApi)
 
   if (!hasArgo) return
 
