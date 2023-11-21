@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/redkubes/otomi-tasks/compare/v1.2.0...v2.0.0) (2023-11-21)
+
+
+### Features
+
+* add tekton hook remove drone hook ([#91](https://github.com/redkubes/otomi-tasks/issues/91)) ([5bf344a](https://github.com/redkubes/otomi-tasks/commit/5bf344a0e6a21c959f8e921d6b680c2a5e03db94))
+* copy secrets operator ([#90](https://github.com/redkubes/otomi-tasks/issues/90)) ([c9257d3](https://github.com/redkubes/otomi-tasks/commit/c9257d3ccc07671683295e1edeffd9a475e5aacb))
+* gitea otomi charts repo ([#88](https://github.com/redkubes/otomi-tasks/issues/88)) ([72a56ca](https://github.com/redkubes/otomi-tasks/commit/72a56ca548d09dc74b722eb6ba5d730506a4485e))
+
 ## [1.2.0](https://github.com/redkubes/otomi-tasks/compare/v1.1.0...v1.2.0) (2023-10-17)
 
 
