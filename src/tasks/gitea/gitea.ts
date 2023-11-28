@@ -216,15 +216,27 @@ export default async function main(): Promise<void> {
     name: otomiValuesRepoName,
     _private: true,
   }
+  const valuesRepoOption: CreateRepoOption = {
+    ...new CreateRepoOption(),
+    autoInit: true,
+    name: otomiValuesRepoName,
+    _private: true,
+  }
+  const chartsRepoOption: CreateRepoOption = {
+    ...new CreateRepoOption(),
+    autoInit: false,
+    name: 'charts',
+    _private: true,
+  }
 
   const existingRepos = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
   )
 
   // create main org repo: otomi/values
-  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
+  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, valuesRepoOption)
   // create otomi/charts repo for auto image updates
-  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, { ...repoOption, name: 'charts' })
+  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, chartsRepoOption)
 
   // add repo: otomi/values to the team: otomi-viewer
   await doApiCall(
