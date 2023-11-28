@@ -74,7 +74,7 @@ async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Prom
   const hooks: any[] = await doApiCall(
     errors,
     `Getting hooks in repo "otomi/values"`,
-    () => repoApi.repoListHooks(orgName, 'values'),
+    () => repoApi.repoListHooks(orgName, otomiValuesRepoName),
     400,
   )
   if (!hooks) {
@@ -154,7 +154,7 @@ export async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
       errors,
       `Adding hook "tekton" to repo otomi/values`,
       () =>
-        repoApi.repoCreateHook(orgName, 'values', {
+        repoApi.repoCreateHook(orgName, otomiValuesRepoName, {
           type: CreateHookOption.TypeEnum.Gitea,
           active: true,
           config: {
@@ -175,7 +175,7 @@ export async function deleteDroneHook(repoApi: RepositoryApi): Promise<void> {
   if (hasDroneHook.hasHook) {
     console.debug('Drone Hook needs to be deleted')
     await doApiCall(errors, `Deleting hook "drone" from repo otomi/values`, () =>
-      repoApi.repoDeleteHook(orgName, 'values', hasDroneHook.id!),
+      repoApi.repoDeleteHook(orgName, otomiValuesRepoName, hasDroneHook.id!),
     )
   }
 }
@@ -213,7 +213,7 @@ export default async function main(): Promise<void> {
   const repoOption: CreateRepoOption = {
     ...new CreateRepoOption(),
     autoInit: false,
-    name: otomiValuesRepoName,
+    name: '',
     _private: true,
   }
   const valuesRepoOption: CreateRepoOption = {
@@ -242,7 +242,7 @@ export default async function main(): Promise<void> {
   await doApiCall(
     errors,
     `Adding repo values to team otomi-viewer`,
-    () => repoApi.repoAddTeam(orgName, 'values', 'otomi-viewer'),
+    () => repoApi.repoAddTeam(orgName, otomiValuesRepoName, 'otomi-viewer'),
     422,
   )
 
@@ -250,7 +250,7 @@ export default async function main(): Promise<void> {
   await doApiCall(
     errors,
     `Adding repo values to team otomi-viewer`,
-    () => repoApi.repoAddTeam(orgName, 'values', 'otomi-viewer'),
+    () => repoApi.repoAddTeam(orgName, otomiValuesRepoName, 'otomi-viewer'),
     422,
   )
 
