@@ -1,6 +1,7 @@
 import Operator from '@dot-i/k8s-operator'
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
+import stream from 'stream'
 
 const kc = new KubeConfig()
 kc.loadFromDefault()
@@ -32,13 +33,12 @@ export default class MyOperator extends Operator {
     await this.watchResource('', 'v1', 'namespaces', async (e) => {
       const { object } = e
       const { metadata } = object
-      if (metadata && !metadata.namespace?.startsWith('team-')) return
+      if (metadata && !metadata.name?.startsWith('team-')) return
       try {
         const namespaces = await k8sApi.listNamespace()
         const teamNamespaces = namespaces.body.items
           .map((namespace) => namespace.metadata?.name)
-          .filter((name) => name && name.startsWith('team-'))
-        console.info('team namespace: ', teamNamespaces)
+          .filter((name) => name && name.startsWith('team-') && name !== 'team-admin')
         if (teamNamespaces.length > 0) {
           const giteaPodLabel = 'app=gitea'
           const giteaPodList = await k8sApi.listNamespacedPod(
@@ -50,19 +50,31 @@ export default class MyOperator extends Operator {
             giteaPodLabel,
           )
           const giteaPod = giteaPodList.body.items[0]
-          const execCommand = `gitea admin auth update-oauth --id 1 --group-team-map ${buildTeamString(teamNamespaces)}`
-          await k8sApi.connectPostNamespacedPodExec(
-            giteaPod.metadata?.name || 'gitea-0',
+          const execCommand = [
+            'sh',
+            '-c',
+            `gitea admin auth update-oauth --id 1 --group-team-map '${buildTeamString(teamNamespaces)}'`,
+          ]
+          const exec = new k8s.Exec(kc)
+          exec.exec(
             giteaPod.metadata?.namespace || 'gitea',
+            giteaPod.metadata?.name || 'gitea-0',
+            'gitea',
             execCommand,
-            undefined,
+            process.stdout as stream.Writable,
+            process.stderr as stream.Writable,
+            process.stdin as stream.Readable,
             true,
-            true,
-            true,
+            (status: k8s.V1Status) => {
+              console.log('Exited with status:')
+              console.log(JSON.stringify(status, null, 2))
+            },
           )
         }
       } catch (error) {
-        console.debug(error)
+        console.debug(
+          `Error updating IDP group mapping: statuscode: ${error.response.body.code} - message: ${error.response.body.message}`,
+        )
       }
     })
   }
@@ -73,8 +85,6 @@ async function main(): Promise<void> {
   console.info(`Listening to secrets changes in all namespaces`)
   console.info('Setting up namespace prefix filter to "team-"')
   await operator.start()
-  // load teams
-  // load secrets
   const exit = (reason: string) => {
     operator.stop()
     process.exit(0)
