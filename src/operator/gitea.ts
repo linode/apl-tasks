@@ -30,9 +30,11 @@ function buildTeamString(teamNames: any[]): string {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
+    // Watch all namespaces
     await this.watchResource('', 'v1', 'namespaces', async (e) => {
       const { object } = e
       const { metadata } = object
+      // Check if namespace starts with prefix 'team-'
       if (metadata && !metadata.name?.startsWith('team-')) return
       try {
         const namespaces = await k8sApi.listNamespace()
@@ -56,6 +58,7 @@ export default class MyOperator extends Operator {
             `gitea admin auth update-oauth --id 1 --group-team-map '${buildTeamString(teamNamespaces)}'`,
           ]
           const exec = new k8s.Exec(kc)
+          // Run gitea CLI command to update the gitea oauth group mapping
           exec.exec(
             giteaPod.metadata?.namespace || 'gitea',
             giteaPod.metadata?.name || 'gitea-0',
@@ -82,7 +85,7 @@ export default class MyOperator extends Operator {
 
 async function main(): Promise<void> {
   const operator = new MyOperator()
-  console.info(`Listening to secrets changes in all namespaces`)
+  console.info(`Listening to team namespace changes in all namespaces`)
   console.info('Setting up namespace prefix filter to "team-"')
   await operator.start()
   const exit = (reason: string) => {
