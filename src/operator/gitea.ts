@@ -33,8 +33,11 @@ export default class MyOperator extends Operator {
     console.debug('Starting initializing')
     // Watch all namespaces
     await this.watchResource('', 'v1', 'namespaces', async (e) => {
+      console.debug(e)
       const { object } = e
+      console.debug(object)
       const { metadata } = object
+      console.debug(metadata)
       // Check if namespace starts with prefix 'team-'
       if (metadata && !metadata.name?.startsWith('team-')) return
       try {
