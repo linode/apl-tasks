@@ -101,7 +101,7 @@ export default class MyOperator extends Operator {
                 },
               )
               .catch((error) => {
-                console.debug('Error occurred:', error)
+                console.debug('Error occurred during exec:', error)
               })
               .then(() => console.debug('Commands are executed!'))
           } else {
