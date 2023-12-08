@@ -50,7 +50,7 @@ export default class MyOperator extends Operator {
             console.debug('No namespaces found, exited with error:', error)
           }
           console.debug('Filtering namespaces with "team-" prefix')
-          let teamNamespaces
+          let teamNamespaces: any
           try {
             teamNamespaces = namespaces.body.items
               .map((namespace) => namespace.metadata?.name)
@@ -61,7 +61,7 @@ export default class MyOperator extends Operator {
           if (teamNamespaces.length > 0) {
             const giteaPodLabel = 'app=gitea'
             console.debug('Getting giteapod list')
-            let giteaPodList
+            let giteaPodList: any
             try {
               giteaPodList = await k8sApi.listNamespacedPod(
                 'gitea',
