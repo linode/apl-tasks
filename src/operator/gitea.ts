@@ -37,12 +37,15 @@ export default class MyOperator extends Operator {
       // Check if namespace starts with prefix 'team-'
       if (metadata && !metadata.name?.startsWith('team-')) return
       try {
+        console.debug('Finding namespaces')
         const namespaces = await k8sApi.listNamespace()
+        console.debug('Filtering namespaces with "team-" prefix')
         const teamNamespaces = namespaces.body.items
           .map((namespace) => namespace.metadata?.name)
           .filter((name) => name && name.startsWith('team-') && name !== 'team-admin')
         if (teamNamespaces.length > 0) {
           const giteaPodLabel = 'app=gitea'
+          console.debug('Getting giteapod list')
           const giteaPodList = await k8sApi.listNamespacedPod(
             'gitea',
             undefined,
@@ -51,13 +54,17 @@ export default class MyOperator extends Operator {
             undefined,
             giteaPodLabel,
           )
+          console.debug('Selecting giteapod from list')
           const giteaPod = giteaPodList.body.items[0]
+          console.debug('Creating exec command')
           const execCommand = [
             'sh',
             '-c',
             `gitea admin auth update-oauth --id 1 --group-team-map '${buildTeamString(teamNamespaces)}'`,
           ]
           const exec = new k8s.Exec(kc)
+          console.debug('Trying to run the following commands:')
+          console.debug(execCommand)
           // Run gitea CLI command to update the gitea oauth group mapping
           exec.exec(
             giteaPod.metadata?.namespace || 'gitea',
@@ -73,6 +80,8 @@ export default class MyOperator extends Operator {
               console.log(JSON.stringify(status, null, 2))
             },
           )
+        } else {
+          console.debug('No team namespaces found')
         }
       } catch (error) {
         console.debug(
