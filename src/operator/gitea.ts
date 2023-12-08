@@ -4,7 +4,7 @@ import { KubeConfig } from '@kubernetes/client-node'
 import stream from 'stream'
 
 const kc = new KubeConfig()
-kc.loadFromDefault()
+kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 function buildTeamString(teamNames: any[]): string {
