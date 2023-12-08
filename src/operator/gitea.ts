@@ -100,6 +100,9 @@ export default class MyOperator extends Operator {
                   console.log(JSON.stringify(status, null, 2))
                 },
               )
+              .catch((error) => {
+                console.debug('Error occurred:', error)
+              })
               .then(() => console.debug('Commands are executed!'))
           } else {
             console.debug('No team namespaces found')
