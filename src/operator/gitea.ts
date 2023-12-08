@@ -80,6 +80,8 @@ export default class MyOperator extends Operator {
               `gitea admin auth update-oauth --id 1 --group-team-map '${buildTeamString(teamNamespaces)}'`,
             ]
             const exec = new k8s.Exec(kc)
+            console.debug('giteapod namespace:', giteaPod.metadata?.namespace)
+            console.debug('giteapod name:', giteaPod.metadata?.name)
             console.debug('Trying to run the following commands:')
             console.debug(execCommand)
             // Run gitea CLI command to update the gitea oauth group mapping
