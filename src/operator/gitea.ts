@@ -30,6 +30,7 @@ function buildTeamString(teamNames: any[]): string {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
+    console.debug('Starting initializing')
     // Watch all namespaces
     await this.watchResource('', 'v1', 'namespaces', async (e) => {
       const { object } = e
