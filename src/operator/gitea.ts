@@ -43,22 +43,37 @@ export default class MyOperator extends Operator {
         if (metadata && !metadata.name?.startsWith('team-')) return
         try {
           console.debug('Finding namespaces')
-          const namespaces = await k8sApi.listNamespace()
+          let namespaces: any
+          try {
+            namespaces = await k8sApi.listNamespace()
+          } catch (error) {
+            console.debug('No namespaces found, exited with error:', error)
+          }
           console.debug('Filtering namespaces with "team-" prefix')
-          const teamNamespaces = namespaces.body.items
-            .map((namespace) => namespace.metadata?.name)
-            .filter((name) => name && name.startsWith('team-') && name !== 'team-admin')
+          let teamNamespaces
+          try {
+            teamNamespaces = namespaces.body.items
+              .map((namespace) => namespace.metadata?.name)
+              .filter((name) => name && name.startsWith('team-') && name !== 'team-admin')
+          } catch (error) {
+            console.debug('Teamnamespace, exited with error:', error)
+          }
           if (teamNamespaces.length > 0) {
             const giteaPodLabel = 'app=gitea'
             console.debug('Getting giteapod list')
-            const giteaPodList = await k8sApi.listNamespacedPod(
-              'gitea',
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              giteaPodLabel,
-            )
+            let giteaPodList
+            try {
+              giteaPodList = await k8sApi.listNamespacedPod(
+                'gitea',
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                giteaPodLabel,
+              )
+            } catch (error) {
+              console.debug('Giteapodlist, exited with error:', error)
+            }
             console.debug('Selecting giteapod from list')
             const giteaPod = giteaPodList.body.items[0]
             console.debug('Creating exec command')
@@ -85,6 +100,7 @@ export default class MyOperator extends Operator {
                 console.log(JSON.stringify(status, null, 2))
               },
             )
+            console.debug('Commands are executed!')
           } else {
             console.debug('No team namespaces found')
           }
