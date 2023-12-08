@@ -34,11 +34,8 @@ export default class MyOperator extends Operator {
     // Watch all namespaces
     try {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
-        console.debug(e)
         const { object } = e
-        console.debug(object)
         const { metadata } = object
-        console.debug(metadata)
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
         try {
@@ -86,21 +83,22 @@ export default class MyOperator extends Operator {
             console.debug('Trying to run the following commands:')
             console.debug(execCommand)
             // Run gitea CLI command to update the gitea oauth group mapping
-            exec.exec(
-              giteaPod.metadata?.namespace || 'gitea',
-              giteaPod.metadata?.name || 'gitea-0',
-              'gitea',
-              execCommand,
-              process.stdout as stream.Writable,
-              process.stderr as stream.Writable,
-              process.stdin as stream.Readable,
-              true,
-              (status: k8s.V1Status) => {
-                console.log('Exited with status:')
-                console.log(JSON.stringify(status, null, 2))
-              },
-            )
-            console.debug('Commands are executed!')
+            await exec
+              .exec(
+                giteaPod.metadata?.namespace || 'gitea',
+                giteaPod.metadata?.name || 'gitea-0',
+                'gitea',
+                execCommand,
+                process.stdout as stream.Writable,
+                process.stderr as stream.Writable,
+                process.stdin as stream.Readable,
+                false,
+                (status: k8s.V1Status) => {
+                  console.log('Exited with status:')
+                  console.log(JSON.stringify(status, null, 2))
+                },
+              )
+              .then(() => console.debug('Commands are executed!'))
           } else {
             console.debug('No team namespaces found')
           }
