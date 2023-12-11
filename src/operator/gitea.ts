@@ -27,91 +27,107 @@ function buildTeamString(teamNames: any[]): string {
   return result
 }
 
+async function execGiteaCLICommand(object: k8s.V1Pod) {
+  try {
+    console.debug('Finding namespaces')
+    let namespaces: any
+    try {
+      namespaces = (await k8sApi.listNamespace()).body
+    } catch (error) {
+      console.debug('No namespaces found, exited with error:', error)
+    }
+    console.debug('Filtering namespaces with "team-" prefix')
+    let teamNamespaces: any
+    try {
+      teamNamespaces = namespaces.items
+        .map((namespace) => namespace.metadata?.name)
+        .filter((name) => name && name.startsWith('team-') && name !== 'team-admin')
+    } catch (error) {
+      console.debug('Teamnamespace, exited with error:', error)
+    }
+    if (teamNamespaces.length > 0) {
+      console.debug('giteapod namespace:', object.metadata?.namespace)
+      console.debug('giteapod name:', object.metadata?.name)
+      console.debug('Creating exec command')
+      const execCommand = [
+        'sh',
+        '-c',
+        `gitea admin auth update-oauth --id 1 --group-team-map '${buildTeamString(teamNamespaces)}'`,
+      ]
+      console.debug('Trying to run the following commands:')
+      console.debug(execCommand)
+      if (object && object.metadata && object.metadata.namespace && object.metadata.name) {
+        const exec = new k8s.Exec(kc)
+        // Run gitea CLI command to update the gitea oauth group mapping
+        await exec
+          .exec(
+            object.metadata?.namespace,
+            object.metadata?.name,
+            'gitea',
+            execCommand,
+            process.stdout as stream.Writable,
+            process.stderr as stream.Writable,
+            process.stdin as stream.Readable,
+            false,
+            (status: k8s.V1Status) => {
+              console.log('Exited with status:')
+              console.log(JSON.stringify(status, null, 2))
+            },
+          )
+          .catch((error) => {
+            console.debug('Error occurred during exec:', error)
+          })
+          .then(() => console.debug('Commands are executed!'))
+      }
+    } else {
+      console.debug('No team namespaces found')
+    }
+  } catch (error) {
+    console.debug(
+      `Error updating IDP group mapping: statuscode: ${error.response.body.code} - message: ${error.response.body.message}`,
+    )
+  }
+}
+
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     console.debug('Starting initializing')
-    // Watch all namespaces
+    // Watch all pods
     try {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
         const { object } = e
         const { metadata } = object
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
-        try {
-          console.debug('Finding namespaces')
-          let namespaces: any
-          try {
-            namespaces = await k8sApi.listNamespace()
-          } catch (error) {
-            console.debug('No namespaces found, exited with error:', error)
-          }
-          console.debug('Filtering namespaces with "team-" prefix')
-          let teamNamespaces: any
-          try {
-            teamNamespaces = namespaces.body.items
-              .map((namespace) => namespace.metadata?.name)
-              .filter((name) => name && name.startsWith('team-') && name !== 'team-admin')
-          } catch (error) {
-            console.debug('Teamnamespace, exited with error:', error)
-          }
-          if (teamNamespaces.length > 0) {
-            const giteaPodLabel = 'app=gitea'
-            console.debug('Getting giteapod list')
-            let giteaPodList: any
-            try {
-              giteaPodList = await k8sApi.listNamespacedPod(
-                'gitea',
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                giteaPodLabel,
-              )
-            } catch (error) {
-              console.debug('Giteapodlist, exited with error:', error)
-            }
-            console.debug('Selecting giteapod from list')
-            const giteaPod = giteaPodList.body.items[0]
-            console.debug('Creating exec command')
-            const execCommand = [
-              'sh',
-              '-c',
-              `gitea admin auth update-oauth --id 1 --group-team-map '${buildTeamString(teamNamespaces)}'`,
-            ]
-            const exec = new k8s.Exec(kc)
-            console.debug('giteapod namespace:', giteaPod.metadata?.namespace)
-            console.debug('giteapod name:', giteaPod.metadata?.name)
-            console.debug('Trying to run the following commands:')
-            console.debug(execCommand)
-            // Run gitea CLI command to update the gitea oauth group mapping
-            await exec
-              .exec(
-                giteaPod.metadata?.namespace || 'gitea',
-                giteaPod.metadata?.name || 'gitea-0',
-                'gitea',
-                execCommand,
-                process.stdout as stream.Writable,
-                process.stderr as stream.Writable,
-                process.stdin as stream.Readable,
-                false,
-                (status: k8s.V1Status) => {
-                  console.log('Exited with status:')
-                  console.log(JSON.stringify(status, null, 2))
-                },
-              )
-              .catch((error) => {
-                console.debug('Error occurred during exec:', error)
-              })
-              .then(() => console.debug('Commands are executed!'))
-          } else {
-            console.debug('No team namespaces found')
-          }
-        } catch (error) {
-          console.debug(
-            `Error updating IDP group mapping: statuscode: ${error.response.body.code} - message: ${error.response.body.message}`,
-          )
+        const giteaPod = (await k8sApi.readNamespacedPod('gitea-0', 'gitea')).body
+        // Check if pod is named 'gitea-0' and if it is 'MODIFIED'
+        const containerStatuses = giteaPod.status?.containerStatuses || []
+        const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
+        // Check if the gitea container is 'READY'
+        if (giteaContainer && !giteaContainer.ready) {
+          console.debug('Gitea container is not ready: ', giteaContainer.state!.toString())
+          return
         }
+        await execGiteaCLICommand(giteaPod)
+      })
+    } catch (error) {
+      console.debug(error)
+    }
+    try {
+      await this.watchResource('', 'v1', 'pods', async (e) => {
+        const { object }: { object: k8s.V1Pod } = e
+        const { metadata } = object
+        // Check if pod is named 'gitea-0'
+        if (metadata && metadata.name !== 'gitea-0') return
+        const containerStatuses = object.status?.containerStatuses || []
+        const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
+        // Check if the gitea container is 'READY'
+        if (giteaContainer && !giteaContainer.ready) {
+          console.debug('Gitea container is not ready: ', giteaContainer.state!.toString())
+          return
+        }
+        await execGiteaCLICommand(object)
       })
     } catch (error) {
       console.debug(error)
@@ -121,6 +137,7 @@ export default class MyOperator extends Operator {
 
 async function main(): Promise<void> {
   const operator = new MyOperator()
+  console.info(`Listening to pods and if they are 'MODIFIED'`)
   console.info(`Listening to team namespace changes in all namespaces`)
   console.info('Setting up namespace prefix filter to "team-"')
   await operator.start()
