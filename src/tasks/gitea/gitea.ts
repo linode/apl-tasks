@@ -237,7 +237,7 @@ export default async function main(): Promise<void> {
   // add repo: otomi/charts to the team: otomi-viewer
   await doApiCall(
     errors,
-    `Adding repo values to team otomi-viewer`,
+    `Adding repo charts to team otomi-viewer`,
     () => repoApi.repoAddTeam(orgName, 'charts', 'otomi-viewer'),
     422,
   )
