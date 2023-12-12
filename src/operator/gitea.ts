@@ -28,6 +28,14 @@ function buildTeamString(teamNames: any[]): string {
 }
 
 async function execGiteaCLICommand(object: k8s.V1Pod) {
+  // Check if 'gitea-0' pod has a container named 'gitea'
+  const containerStatuses = object.status?.containerStatuses || []
+  const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
+  // Check if the gitea container is 'READY'
+  if (giteaContainer && !giteaContainer.ready) {
+    console.debug('Gitea container is not ready: ', giteaContainer.state!)
+    return
+  }
   try {
     console.debug('Finding namespaces')
     let namespaces: any
@@ -76,7 +84,7 @@ async function execGiteaCLICommand(object: k8s.V1Pod) {
           )
           .catch((error) => {
             console.debug('Error occurred during exec:', error)
-          })
+          }) // needs to be done better, currently always fires
           .then(() => console.debug('Commands are executed!'))
       }
     } else {
@@ -101,14 +109,6 @@ export default class MyOperator extends Operator {
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
         const giteaPod = (await k8sApi.readNamespacedPod('gitea-0', 'gitea')).body
-        // Check if pod is named 'gitea-0' and if it is 'MODIFIED'
-        const containerStatuses = giteaPod.status?.containerStatuses || []
-        const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
-        // Check if the gitea container is 'READY'
-        if (giteaContainer && !giteaContainer.ready) {
-          console.debug('Gitea container is not ready: ', giteaContainer.state!.toString())
-          return
-        }
         await execGiteaCLICommand(giteaPod)
       })
     } catch (error) {
@@ -120,13 +120,6 @@ export default class MyOperator extends Operator {
         const { metadata } = object
         // Check if pod is named 'gitea-0'
         if (metadata && metadata.name !== 'gitea-0') return
-        const containerStatuses = object.status?.containerStatuses || []
-        const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
-        // Check if the gitea container is 'READY'
-        if (giteaContainer && !giteaContainer.ready) {
-          console.debug('Gitea container is not ready: ', giteaContainer.state!.toString())
-          return
-        }
         await execGiteaCLICommand(object)
       })
     } catch (error) {
