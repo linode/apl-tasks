@@ -32,7 +32,6 @@ async function execGiteaCLICommand(object: k8s.V1Pod) {
   const containerStatuses = object.status?.containerStatuses || []
   const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
   // Check if the gitea container is 'READY'
-  console.debug('GiteaContainer: ', giteaContainer)
   if (giteaContainer === undefined) {
     console.debug('Gitea container is not found')
     return
@@ -56,19 +55,14 @@ async function execGiteaCLICommand(object: k8s.V1Pod) {
         .map((namespace) => namespace.metadata?.name)
         .filter((name) => name && name.startsWith('team-') && name !== 'team-admin')
     } catch (error) {
-      console.debug('Teamnamespace, exited with error:', error)
+      console.debug('Teamnamespaces exited with error:', error)
     }
     if (teamNamespaces.length > 0) {
-      console.debug('giteapod namespace:', object.metadata?.namespace)
-      console.debug('giteapod name:', object.metadata?.name)
-      console.debug('Creating exec command')
       const execCommand = [
         'sh',
         '-c',
         `gitea admin auth update-oauth --id 1 --group-team-map '${buildTeamString(teamNamespaces)}'`,
       ]
-      console.debug('Trying to run the following commands:')
-      console.debug(execCommand)
       if (object && object.metadata && object.metadata.namespace && object.metadata.name) {
         const exec = new k8s.Exec(kc)
         // Run gitea CLI command to update the gitea oauth group mapping
