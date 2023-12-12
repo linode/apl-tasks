@@ -32,6 +32,7 @@ async function execGiteaCLICommand(object: k8s.V1Pod) {
   const containerStatuses = object.status?.containerStatuses || []
   const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
   // Check if the gitea container is 'READY'
+  console.debug('GiteaContainer: ', giteaContainer)
   if (giteaContainer && !giteaContainer.ready) {
     console.debug('Gitea container is not ready: ', giteaContainer.state!)
     return
