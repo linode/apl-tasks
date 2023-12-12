@@ -100,7 +100,7 @@ export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     console.debug('Starting initializing')
-    // Watch all pods
+    // Watch all namespaces
     try {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
         const { object } = e
@@ -129,7 +129,6 @@ export default class MyOperator extends Operator {
 
 async function main(): Promise<void> {
   const operator = new MyOperator()
-  console.info(`Listening to pods and if they are 'MODIFIED'`)
   console.info(`Listening to team namespace changes in all namespaces`)
   console.info('Setting up namespace prefix filter to "team-"')
   await operator.start()
