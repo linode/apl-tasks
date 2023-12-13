@@ -3,8 +3,13 @@ import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import stream from 'stream'
 
+interface ConditionCheckResult {
+  ready: boolean
+  pod: k8s.V1Pod // Replace 'Pod' with the type you have for your pod
+}
+
 const kc = new KubeConfig()
-kc.loadFromCluster()
+kc.loadFromDefault()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 function buildTeamString(teamNames: any[]): string {
@@ -28,18 +33,6 @@ function buildTeamString(teamNames: any[]): string {
 }
 
 async function execGiteaCLICommand(object: k8s.V1Pod) {
-  // Check if 'gitea-0' pod has a container named 'gitea'
-  const containerStatuses = object.status?.containerStatuses || []
-  const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
-  // Check if the gitea container is 'READY'
-  if (giteaContainer === undefined) {
-    console.debug('Gitea container is not found')
-    return
-  }
-  if (!giteaContainer?.ready) {
-    console.debug('Gitea container is not ready: ', giteaContainer.state!)
-    return
-  }
   try {
     console.debug('Finding namespaces')
     let namespaces: any
@@ -96,6 +89,23 @@ async function execGiteaCLICommand(object: k8s.V1Pod) {
   }
 }
 
+async function checkGiteaContainer(object: k8s.V1Pod): Promise<ConditionCheckResult> {
+  const giteaPod = (await k8sApi.readNamespacedPod('gitea-0', 'gitea')).body
+  // Check if 'gitea-0' pod has a container named 'gitea'
+  const containerStatuses = object.status?.containerStatuses || []
+  const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
+  // Check if the gitea container is 'READY'
+  if (giteaContainer === undefined) {
+    console.debug('Gitea container is not found')
+    return { ready: false, pod: giteaPod }
+  }
+  if (!giteaContainer?.ready) {
+    console.debug('Gitea container is not ready: ', giteaContainer.state!)
+    return { ready: false, pod: giteaPod }
+  }
+  return { ready: true, pod: giteaPod }
+}
+
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
@@ -103,23 +113,19 @@ export default class MyOperator extends Operator {
     // Watch all namespaces
     try {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
-        const { object } = e
+        const { object }: { object: k8s.V1Pod } = e
         const { metadata } = object
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
-        const giteaPod = (await k8sApi.readNamespacedPod('gitea-0', 'gitea')).body
-        await execGiteaCLICommand(giteaPod)
-      })
-    } catch (error) {
-      console.debug(error)
-    }
-    try {
-      await this.watchResource('', 'v1', 'pods', async (e) => {
-        const { object }: { object: k8s.V1Pod } = e
-        const { metadata } = object
-        // Check if pod is named 'gitea-0'
-        if (metadata && metadata.name !== 'gitea-0') return
-        await execGiteaCLICommand(object)
+        let giteaPod = await checkGiteaContainer(object)
+        while (!giteaPod.ready) {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, 30000))
+          // eslint-disable-next-line no-await-in-loop
+          giteaPod = await checkGiteaContainer(object)
+        }
+
+        await execGiteaCLICommand(giteaPod.pod)
       })
     } catch (error) {
       console.debug(error)
