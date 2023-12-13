@@ -5,13 +5,13 @@ import stream from 'stream'
 
 interface ConditionCheckResult {
   ready: boolean
-  pod: k8s.V1Pod
+  pod: k8s.V1Pod | undefined
 }
 
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
-kc.loadFromCluster()
+kc.loadFromDefault()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 function buildTeamString(teamNames: any[]): string {
@@ -92,15 +92,22 @@ async function execGiteaCLICommand(object: k8s.V1Pod) {
 }
 
 async function checkGiteaContainer(): Promise<ConditionCheckResult> {
-  const giteaPod = (await k8sApi.readNamespacedPod('gitea-0', 'gitea')).body
+  let giteaPod: any
+  try {
+    giteaPod = (await k8sApi.readNamespacedPod('gitea-0', 'gitea')).body
+  } catch (error) {
+    console.debug('Gitea Pod error: ', error)
+    return { ready: false, pod: undefined }
+  }
   // Check if 'gitea-0' pod has a container named 'gitea'
   const containerStatuses = giteaPod.status?.containerStatuses || []
   const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
-  // Check if the gitea container is 'READY'
+  // Check if the gitea container exists'
   if (giteaContainer === undefined) {
     console.debug('Gitea container is not found')
-    return { ready: false, pod: giteaPod }
+    return { ready: false, pod: undefined }
   }
+  // Check if the gitea container has status 'READY'
   if (!giteaContainer?.ready) {
     console.debug('Gitea container is not ready: ', giteaContainer.state!)
     return { ready: false, pod: giteaPod }
@@ -121,13 +128,14 @@ export default class MyOperator extends Operator {
         if (metadata && metadata.name === 'team-admin') return
         let giteaPod = await checkGiteaContainer()
         while (!giteaPod.ready) {
+          console.debug('Waiting 30 seconds to try again')
           // eslint-disable-next-line no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 30000))
           // eslint-disable-next-line no-await-in-loop
           giteaPod = await checkGiteaContainer()
         }
 
-        await execGiteaCLICommand(giteaPod.pod)
+        await execGiteaCLICommand(giteaPod.pod!)
       })
     } catch (error) {
       console.debug(error)
