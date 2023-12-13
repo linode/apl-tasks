@@ -89,10 +89,10 @@ async function execGiteaCLICommand(object: k8s.V1Pod) {
   }
 }
 
-async function checkGiteaContainer(object: k8s.V1Pod): Promise<ConditionCheckResult> {
+async function checkGiteaContainer(): Promise<ConditionCheckResult> {
   const giteaPod = (await k8sApi.readNamespacedPod('gitea-0', 'gitea')).body
   // Check if 'gitea-0' pod has a container named 'gitea'
-  const containerStatuses = object.status?.containerStatuses || []
+  const containerStatuses = giteaPod.status?.containerStatuses || []
   const giteaContainer = containerStatuses.find((container) => container.name === 'gitea')
   // Check if the gitea container is 'READY'
   if (giteaContainer === undefined) {
@@ -117,12 +117,12 @@ export default class MyOperator extends Operator {
         const { metadata } = object
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
-        let giteaPod = await checkGiteaContainer(object)
+        let giteaPod = await checkGiteaContainer()
         while (!giteaPod.ready) {
           // eslint-disable-next-line no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 30000))
           // eslint-disable-next-line no-await-in-loop
-          giteaPod = await checkGiteaContainer(object)
+          giteaPod = await checkGiteaContainer()
         }
 
         await execGiteaCLICommand(giteaPod.pod)
