@@ -9,6 +9,8 @@ interface ConditionCheckResult {
 }
 
 const kc = new KubeConfig()
+// loadFromCluster when deploying on cluster
+// loadFromDefault when locally connecting to cluster
 kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
@@ -116,6 +118,7 @@ export default class MyOperator extends Operator {
         const { metadata } = object
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
+        if (metadata && metadata.name === 'team-admin') return
         let giteaPod = await checkGiteaContainer()
         while (!giteaPod.ready) {
           // eslint-disable-next-line no-await-in-loop
