@@ -5,11 +5,11 @@ import stream from 'stream'
 
 interface ConditionCheckResult {
   ready: boolean
-  pod: k8s.V1Pod // Replace 'Pod' with the type you have for your pod
+  pod: k8s.V1Pod
 }
 
 const kc = new KubeConfig()
-kc.loadFromDefault()
+kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 function buildTeamString(teamNames: any[]): string {
@@ -109,7 +109,6 @@ async function checkGiteaContainer(): Promise<ConditionCheckResult> {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
-    console.debug('Starting initializing')
     // Watch all namespaces
     try {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
