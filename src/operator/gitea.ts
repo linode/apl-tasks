@@ -96,7 +96,7 @@ async function checkGiteaContainer(): Promise<ConditionCheckResult> {
   try {
     giteaPod = (await k8sApi.readNamespacedPod('gitea-0', 'gitea')).body
   } catch (error) {
-    console.debug('Gitea Pod error: ', error)
+    console.debug('Gitea pod could not be found')
     return { ready: false, pod: undefined }
   }
   // Check if 'gitea-0' pod has a container named 'gitea'
