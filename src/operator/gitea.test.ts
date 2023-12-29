@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { buildTeamString } from './operator/gitea'
+import { buildTeamString } from './gitea'
 
 describe('giteaOperator', () => {
   const teamNames = ['team-demo', 'team-demo2', 'team-demo3']
