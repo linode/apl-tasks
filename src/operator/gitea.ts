@@ -15,7 +15,7 @@ const kc = new KubeConfig()
 kc.loadFromDefault()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
-function buildTeamString(teamNames: any[]): string {
+export function buildTeamString(teamNames: any[]): string {
   if (teamNames === undefined) return '{}'
   const teamObject: groupMapping = {}
   teamNames.forEach((teamName: string) => {
