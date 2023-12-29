@@ -76,21 +76,21 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
       console.debug('No team namespaces found')
     }
   } catch (error) {
-    console.debug(
-      `Error updating IDP group mapping: statuscode: ${error.response.body.code} - message: ${error.response.body.message}`,
-    )
+    console.debug(`Error updating IDP group mapping: ${error.message}`)
     throw error
   }
 }
 
 async function runExecCommand() {
-  await execGiteaCLICommand('gitea', 'gitea-0').catch(async () => {
-    console.debug('Error could not run exec command')
+  try {
+    await execGiteaCLICommand('gitea', 'gitea-0')
+  } catch (error) {
+    console.debug('Error could not run exec command', error)
     console.debug('Retrying in 30 seconds')
     await new Promise((resolve) => setTimeout(resolve, 30000))
     console.log('Retrying to run exec command')
     await runExecCommand()
-  })
+  }
 }
 
 export default class MyOperator extends Operator {
