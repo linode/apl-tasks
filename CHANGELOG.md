@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.1.0](https://github.com/redkubes/otomi-tasks/compare/v2.0.0...v2.1.0) (2023-12-15)
+
+
+### Features
+
+* add charts repo to otomi-viewer ([00c7c83](https://github.com/redkubes/otomi-tasks/commit/00c7c83be0326139884a4276b0f5531f51812496))
+* add charts repo to otomi-viewer ([f9afc99](https://github.com/redkubes/otomi-tasks/commit/f9afc99665bd77d900b869fe8ddd2f8fbdfd05e8))
+
 ## [2.0.0](https://github.com/redkubes/otomi-tasks/compare/v1.2.0...v2.0.0) (2023-11-21)
 
 
