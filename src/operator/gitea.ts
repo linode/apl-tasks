@@ -12,7 +12,7 @@ interface groupMapping {
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
-kc.loadFromDefault()
+kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 export function buildTeamString(teamNames: any[]): string {
