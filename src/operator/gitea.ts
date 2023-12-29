@@ -32,6 +32,7 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
       namespaces = (await k8sApi.listNamespace(undefined, undefined, undefined, undefined, 'type=team')).body
     } catch (error) {
       console.debug('No namespaces found, exited with error:', error)
+      throw error
     }
     console.debug('Filtering namespaces with "team-" prefix')
     let teamNamespaces: any
@@ -39,6 +40,7 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
       teamNamespaces = namespaces.items.map((namespace) => namespace.metadata?.name)
     } catch (error) {
       console.debug('Teamnamespaces exited with error:', error)
+      throw error
     }
     if (teamNamespaces.length > 0) {
       const teamNamespaceString = buildTeamString(teamNamespaces)
@@ -77,6 +79,7 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
     console.debug(
       `Error updating IDP group mapping: statuscode: ${error.response.body.code} - message: ${error.response.body.message}`,
     )
+    throw error
   }
 }
 
