@@ -45,8 +45,7 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
       const execCommand = [
         'sh',
         '-c',
-        // no-useless-escape, prettier/prettier, no-undef
-        `export AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE '\\|OAuth2\\s+\\|' | awk -F " " '{print \\$1}') && gitea admin auth update-oauth --id "\\\${AUTH_ID}" --group-team-map '${teamNamespaceString}'`,
+        `AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\n') && gitea admin auth update-oauth --id "$AUTH_ID" --group-team-map '${teamNamespaceString}'`,
       ]
       if (podNamespace && podName) {
         const exec = new k8s.Exec(kc)
@@ -68,6 +67,7 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
           )
           .catch((error) => {
             console.debug('Error occurred during exec:', error)
+            throw error
           })
       }
     } else {
@@ -81,14 +81,13 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
 }
 
 async function runExecCommand() {
-  try {
-    await execGiteaCLICommand('gitea', 'gitea-0')
-  } catch (error) {
-    console.debug('Error could not run exec command: ', error)
+  await execGiteaCLICommand('gitea', 'gitea-0').catch(async () => {
+    console.debug('Error could not run exec command')
     console.debug('Retrying in 30 seconds')
     await new Promise((resolve) => setTimeout(resolve, 30000))
+    console.log('Retrying to run exec command')
     await runExecCommand()
-  }
+  })
 }
 
 export default class MyOperator extends Operator {
