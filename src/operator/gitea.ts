@@ -58,13 +58,14 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
             podName,
             'gitea',
             execCommand,
-            process.stdout as stream.Writable,
+            null,
             process.stderr as stream.Writable,
             process.stdin as stream.Readable,
             false,
             (status: k8s.V1Status) => {
               console.log('Exited with status:')
               console.log(JSON.stringify(status, null, 2))
+              console.debug('Changed group mapping to: ', teamNamespaceString)
             },
           )
           .catch((error) => {
