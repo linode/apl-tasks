@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.2.0](https://github.com/redkubes/otomi-tasks/compare/v2.1.0...v2.2.0) (2024-01-04)
+
+
+### Features
+
+* gitea operator for mapping teams ([#95](https://github.com/redkubes/otomi-tasks/issues/95)) ([e38d297](https://github.com/redkubes/otomi-tasks/commit/e38d2972ab92d5420fd5a5b034e10c9d23244ff0))
+
 ## [2.1.0](https://github.com/redkubes/otomi-tasks/compare/v2.0.0...v2.1.0) (2023-12-15)
 
 
