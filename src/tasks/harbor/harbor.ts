@@ -17,10 +17,9 @@ import {
   // eslint-disable-next-line no-unused-vars
   RobotCreated,
 } from '@redkubes/harbor-client-node'
-import { createK8sSecret, createBuildsK8sSecret, createSecret, getSecret, k8s } from '../../k8s'
+import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
-  cleanEnv,
   HARBOR_BASE_REPO_URL,
   HARBOR_BASE_URL,
   HARBOR_PASSWORD,
@@ -29,6 +28,7 @@ import {
   OIDC_ENDPOINT,
   OIDC_VERIFY_CERT,
   TEAM_IDS,
+  cleanEnv,
 } from '../../validators'
 
 const env = cleanEnv({
@@ -81,7 +81,7 @@ const systemRobot: any = {
     },
   ],
 }
-
+// ToDo: add username for OIDC
 const robotPrefix = 'otomi-'
 const config: any = {
   auth_mode: 'oidc_auth',
