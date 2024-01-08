@@ -93,6 +93,7 @@ const config: any = {
   oidc_name: 'otomi',
   oidc_scope: 'openid',
   oidc_verify_cert: env.OIDC_VERIFY_CERT,
+  oidc_username_claim: 'otomi',
   project_creation_restriction: 'adminonly',
   robot_name_prefix: robotPrefix,
   self_registration: false,
