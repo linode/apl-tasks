@@ -81,7 +81,7 @@ const systemRobot: any = {
     },
   ],
 }
-// ToDo: add username for OIDC
+
 const robotPrefix = 'otomi-'
 const config: any = {
   auth_mode: 'oidc_auth',
