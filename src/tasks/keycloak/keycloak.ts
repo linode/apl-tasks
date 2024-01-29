@@ -68,7 +68,7 @@ async function main(): Promise<void> {
   await waitTillAvailable(env.KEYCLOAK_ADDRESS_INTERNAL)
   const basePath = `${env.KEYCLOAK_ADDRESS_INTERNAL}/admin/realms`
   let token: TokenSet
-  custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_HOSTNAME_INTERNAL } })
+  custom.setHttpOptionsDefaults({ timeout: 7000, headers: { host: env.KEYCLOAK_HOSTNAME_INTERNAL } })
   const clientOptions: any = {
     client_id: 'admin-cli',
     client_secret: 'unused',
