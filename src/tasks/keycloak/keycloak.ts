@@ -33,6 +33,7 @@ import {
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_REALM,
   KEYCLOAK_TOKEN_TTL,
+  WAIT_OPTIONS,
 } from '../../validators'
 import { keycloakRealm } from './config'
 import {
@@ -58,12 +59,13 @@ const env = cleanEnv({
   KEYCLOAK_REALM,
   KEYCLOAK_TOKEN_TTL,
   FEAT_EXTERNAL_IDP,
+  WAIT_OPTIONS,
 })
 
 const errors: string[] = []
 
 async function main(): Promise<void> {
-  await waitTillAvailable(env.KC_HOSTNAME_URL)
+  await waitTillAvailable(env.KC_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
   const keycloakAddress = env.KC_HOSTNAME_URL
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
