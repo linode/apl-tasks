@@ -74,11 +74,16 @@ async function main(): Promise<void> {
     client_secret: 'unused',
   }
   try {
-    const issuer = `${env.KEYCLOAK_ADDRESS_INTERNAL}/realms/${env.KEYCLOAK_REALM}/`
-    console.log(`Discovering keycloak issuer: ${issuer}`)
-    const keycloakIssuer = await Issuer.discover(issuer)
-    // console.log(keycloakIssuer)
+    const issuerUri = `${env.KEYCLOAK_ADDRESS_INTERNAL}/realms/${env.KEYCLOAK_REALM}/`
+    console.log(`Discovering keycloak issuer: ${issuerUri}`)
+    const keycloakIssuer = await Issuer.discover(issuerUri)
+    keycloakIssuer.metadata[
+      'token-service'
+    ] = `${env.KEYCLOAK_ADDRESS_INTERNAL}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect`
+    keycloakIssuer.metadata['account-service'] = `${env.KEYCLOAK_ADDRESS_INTERNAL}/realms/${env.KEYCLOAK_REALM}/account`
     const openIdConnectClient = new keycloakIssuer.Client(clientOptions)
+    console.log('Found issuer:', keycloakIssuer.metadata)
+    console.log(`Obtainig token for admin access`)
     token = await openIdConnectClient.grant({
       grant_type: 'password',
       username: env.KEYCLOAK_ADMIN,
@@ -102,6 +107,7 @@ async function main(): Promise<void> {
     realms: new RealmsAdminApi(basePath),
     users: new UsersApi(basePath),
   }
+
   // eslint-disable-next-line no-return-assign,no-param-reassign
   forEach(api, (a) => (a.accessToken = String(token.access_token)))
 
