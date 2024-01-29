@@ -49,7 +49,14 @@ export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
 export const GITEA_URL = url({ desc: 'The gitea core service url' })
 export const KC_HOSTNAME_URL = str({ desc: 'The Keycloak Server address' })
 export const KC_HOSTNAME = str({ desc: 'The Keycloak hostname without protocol' })
-export const KEYCLOAK_ADDRESS_INTERNAL = str({ desc: 'The internal Keycloak kubernetes svc address' })
+export const KEYCLOAK_ADDRESS_INTERNAL = str({
+  desc: 'The internal Keycloak kubernetes svc address',
+  default: 'http://keycloak-service.keycloak:8080',
+})
+export const KEYCLOAK_HOSTNAME_INTERNAL = str({
+  desc: 'The internal Keycloak kubernetes svc address',
+  default: 'keycloak-service.keycloak',
+})
 export const KEYCLOAK_ADMIN = str({ desc: 'Default admin username for KeyCloak Server', default: 'admin' })
 export const KEYCLOAK_ADMIN_PASSWORD = str({ desc: 'Default password for admin' })
 export const KEYCLOAK_CLIENT_ID = str({ desc: 'Default Keycloak Client', default: 'otomi' })

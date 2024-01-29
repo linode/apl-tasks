@@ -31,6 +31,7 @@ import {
   KEYCLOAK_ADDRESS_INTERNAL,
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
+  KEYCLOAK_HOSTNAME_INTERNAL,
   KEYCLOAK_REALM,
   KEYCLOAK_TOKEN_TTL,
 } from '../../validators'
@@ -55,6 +56,7 @@ const env = cleanEnv({
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_ADDRESS_INTERNAL,
+  KEYCLOAK_HOSTNAME_INTERNAL,
   KEYCLOAK_REALM,
   KEYCLOAK_TOKEN_TTL,
   FEAT_EXTERNAL_IDP,
@@ -66,13 +68,15 @@ async function main(): Promise<void> {
   await waitTillAvailable(env.KEYCLOAK_ADDRESS_INTERNAL)
   const basePath = `${env.KEYCLOAK_ADDRESS_INTERNAL}/admin/realms`
   let token: TokenSet
-  custom.setHttpOptionsDefaults({ headers: { host: env.KC_HOSTNAME } })
+  custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_HOSTNAME_INTERNAL } })
   const clientOptions: any = {
     client_id: 'admin-cli',
     client_secret: 'unused',
   }
   try {
-    const keycloakIssuer = await Issuer.discover(`${env.KEYCLOAK_ADDRESS_INTERNAL}/realms/${env.KEYCLOAK_REALM}/`)
+    const issuer = `${env.KEYCLOAK_ADDRESS_INTERNAL}/realms/${env.KEYCLOAK_REALM}/`
+    console.log(`Discovering keycloak issuer: ${issuer}`)
+    const keycloakIssuer = await Issuer.discover(issuer)
     // console.log(keycloakIssuer)
     const openIdConnectClient = new keycloakIssuer.Client(clientOptions)
     token = await openIdConnectClient.grant({

@@ -111,7 +111,9 @@ export const waitTillAvailable = async (url: string, host?: string, opts?: WaitT
           } else throw err
         } else {
           confirmations += 1
-          console.debug(`${confirmations}/${options.confirmations} success`)
+          console.debug(
+            `Availability check: GET ${url} ${res.status}, (${confirmations}/${options.confirmations} success)`,
+          )
           await sleep(1000)
         }
       } catch (e) {
