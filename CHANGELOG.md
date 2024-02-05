@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.3.0](https://github.com/redkubes/otomi-tasks/compare/v2.2.0...v2.3.0) (2024-02-05)
+
+
+### Features
+
+* add todo comment ([2976078](https://github.com/redkubes/otomi-tasks/commit/2976078120cd36788be5b2aeb72061aa1e3f9e58))
+* added auto onboarding ([e3b7eed](https://github.com/redkubes/otomi-tasks/commit/e3b7eed823ff85cb2da974079968b1b39bc5f306))
+* username claim ([989cd58](https://github.com/redkubes/otomi-tasks/commit/989cd582cc9700d460d9f6be2733b41ad4f23d83))
+* wait options ([#98](https://github.com/redkubes/otomi-tasks/issues/98)) ([38f9053](https://github.com/redkubes/otomi-tasks/commit/38f9053dfc0cbaed5b9ad7dbd2e0c720a2585893))
+
+
+### Bug Fixes
+
+* config keys ([15a3dc5](https://github.com/redkubes/otomi-tasks/commit/15a3dc507c306b67786a98b5c57ea40594b7d487))
+* removed todo comment ([255be55](https://github.com/redkubes/otomi-tasks/commit/255be557126e003b8d2ca3ed52f0e95f35aa48e8))
+* removes stdout add log for what is added ([#96](https://github.com/redkubes/otomi-tasks/issues/96)) ([e6b8665](https://github.com/redkubes/otomi-tasks/commit/e6b86659e1101c7ad80a493b44d1c04a9892e111))
+
 ## [2.2.0](https://github.com/redkubes/otomi-tasks/compare/v2.1.0...v2.2.0) (2024-01-04)
 
 
