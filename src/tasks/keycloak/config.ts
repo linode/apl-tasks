@@ -209,7 +209,7 @@ export const oidcCfg = (
 })
 
 export async function getDiscoveryUrls(oidcUrl: string, version = 'v2.0'): Promise<OidcProviderCfg> {
-  const response = await axios.get(`${oidcUrl}${version}/.well-known/openid-configuration`)
+  const response = await axios.get(`${oidcUrl}/.well-known/openid-configuration`)
   if (!response.data) throw Error('Oidc Provider Address not found!')
   return response.data
 }
