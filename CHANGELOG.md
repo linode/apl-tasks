@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.4.0](https://github.com/redkubes/otomi-tasks/compare/v2.3.0...v2.4.0) (2024-02-09)
+
+
+### Bug Fixes
+
+* harbor user auto-onboard ([#99](https://github.com/redkubes/otomi-tasks/issues/99)) ([69f02d9](https://github.com/redkubes/otomi-tasks/commit/69f02d91415dfe3fcbb3acac801e80b41faff6fc))
+
 ## [2.3.0](https://github.com/redkubes/otomi-tasks/compare/v2.2.0...v2.3.0) (2024-02-05)
 
 
