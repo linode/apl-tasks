@@ -32,6 +32,10 @@ export const IDP_GROUP_MAPPINGS_TEAMS = json({
 export const IDP_GROUP_TEAM_ADMIN = str({ desc: 'Otomi team-admin group name' })
 export const IDP_GROUP_OTOMI_ADMIN = str({ desc: 'Otomi admin group name', default: undefined })
 export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url", default: undefined })
+export const IDP_OIDC_WELL_KNOWN_URL = str({
+  desc: "The IDP's well known OIDC enpoints url. Takes precedence over the IDP_OIDC_URL",
+  default: undefined,
+})
 export const IDP_USERNAME_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to username mapper string",
   // eslint-disable-next-line no-template-curly-in-string

@@ -208,8 +208,8 @@ export const oidcCfg = (
   defaultScope: 'openid email profile',
 })
 
-export async function getDiscoveryUrls(oidcUrl: string, version = 'v2.0'): Promise<OidcProviderCfg> {
-  const response = await axios.get(`${oidcUrl}${version}/.well-known/openid-configuration`)
+export async function getDiscoveryUrls(oidcUrl: string): Promise<OidcProviderCfg> {
+  const response = await axios.get(oidcUrl)
   if (!response.data) throw Error('Oidc Provider Address not found!')
   return response.data
 }

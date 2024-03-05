@@ -11,9 +11,9 @@ import {
   UserRepresentation,
 } from '@redkubes/keycloak-client-node'
 import { defaultsDeep } from 'lodash'
+import { URL } from 'url'
 import * as utils from '../../utils'
 import {
-  cleanEnv,
   FEAT_EXTERNAL_IDP,
   IDP_ALIAS,
   IDP_CLIENT_ID,
@@ -29,8 +29,10 @@ import {
   KEYCLOAK_REALM,
   REDIRECT_URIS,
   TEAM_IDS,
+  cleanEnv,
 } from '../../validators'
 import {
+  TeamMapping,
   adminUserCfgTpl,
   clientEmailClaimMapper,
   clientScopeCfgTpl,
@@ -41,7 +43,6 @@ import {
   protocolMappersList,
   realmCfgTpl,
   roleTpl,
-  TeamMapping,
 } from './config'
 
 const env = cleanEnv({
@@ -110,7 +111,9 @@ export async function createIdProvider(): Promise<IdentityProviderRepresentation
   const clientId = env.IDP_CLIENT_ID
   const alias = env.IDP_ALIAS
   const clientSecret = env.IDP_CLIENT_SECRET
-  const oidcUrl = env.IDP_OIDC_URL
+  let oidcUrl = env.IDP_OIDC_WELL_KNOWN_URL
+  if (!oidcUrl) oidcUrl = new URL('/v2.0/.well-known/openid-configuration', env.IDP_OIDC_URL).toString()
+
   const otomiClientIdp = defaultsDeep(
     new IdentityProviderRepresentation(),
     await idpProviderCfgTpl(alias, clientId, clientSecret, oidcUrl),
