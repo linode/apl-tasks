@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.4.1](https://github.com/redkubes/otomi-tasks/compare/v2.3.0...v2.4.1) (2024-05-03)
+
+
+### Bug Fixes
+
+* harbor user auto-onboard ([#99](https://github.com/redkubes/otomi-tasks/issues/99)) ([69f02d9](https://github.com/redkubes/otomi-tasks/commit/69f02d91415dfe3fcbb3acac801e80b41faff6fc))
+* set the offline session to seven days ([bd09ba7](https://github.com/redkubes/otomi-tasks/commit/bd09ba7976cdea64d2bbed7892cf7d866847c201))
+
 ## [2.4.0](https://github.com/redkubes/otomi-tasks/compare/v2.3.0...v2.4.0) (2024-02-09)
 
 
