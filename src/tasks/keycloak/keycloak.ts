@@ -32,6 +32,8 @@ import {
   KEYCLOAK_ADMIN,
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_REALM,
+  KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
+  KEYCLOAK_TOKEN_OFFLINE_TTL,
   KEYCLOAK_TOKEN_TTL,
   WAIT_OPTIONS,
 } from '../../validators'
@@ -58,6 +60,8 @@ const env = cleanEnv({
   KEYCLOAK_ADDRESS_INTERNAL,
   KEYCLOAK_REALM,
   KEYCLOAK_TOKEN_TTL,
+  KEYCLOAK_TOKEN_OFFLINE_TTL,
+  KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
   FEAT_EXTERNAL_IDP,
   WAIT_OPTIONS,
 })
@@ -110,6 +114,9 @@ async function main(): Promise<void> {
   realmConf.ssoSessionMaxLifespan = env.KEYCLOAK_TOKEN_TTL
   realmConf.accessTokenLifespan = env.KEYCLOAK_TOKEN_TTL
   realmConf.accessTokenLifespanForImplicitFlow = env.KEYCLOAK_TOKEN_TTL
+  realmConf.offlineSessionMaxLifespanEnabled = env.KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED
+  realmConf.offlineSessionIdleTimeout = env.KEYCLOAK_TOKEN_OFFLINE_TTL
+  realmConf.offlineSessionMaxLifespan = env.KEYCLOAK_TOKEN_OFFLINE_TTL
   // the api does not offer a list method, and trying to get by id throws an error
   // which we wan to discard, so we run the next command with an empty errors array
   const existingRealm = (await doApiCall([], `Getting realm ${keycloakRealm}`, () =>
