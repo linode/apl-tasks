@@ -65,7 +65,7 @@ export const KEYCLOAK_TOKEN_OFFLINE_TTL = num({
 })
 export const KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED = bool({
   desc: 'Allows the Keycloak access token TTL to have max limit for offline use',
-  default: false,
+  default: true,
 })
 export const NODE_EXTRA_CA_CERTS = str({ default: undefined })
 export const NODE_TLS_REJECT_UNAUTHORIZED = bool({ default: true })
