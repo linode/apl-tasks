@@ -74,7 +74,10 @@ export const OIDC_ENDPOINT = str({ desc: 'The OIDC endpoint used by keycloak to 
 export const OIDC_VERIFY_CERT = bool({ desc: 'Wether to validate the OIDC endpoint cert', default: true })
 export const OIDC_USER_CLAIM = str({ desc: 'Claim name containing username values', default: 'email' })
 export const OIDC_AUTO_ONBOARD = bool({ desc: 'Wether users should be automatically onboarded', default: true })
-export const OTOMI_VALUES = json({ desc: 'The main values such as cluster.* otomi.* teamConfig.*', default: {} })
+export const OTOMI_VALUES = json({
+  desc: 'The main values such as cluster.* otomi.* teamConfig.*',
+  default: JSON.stringify({}),
+})
 export const OTOMI_SCHEMA_PATH = str({ desc: 'The path to the values-schema.yaml schema file' })
 export const OTOMI_ENV_DIR = str({ desc: 'The path to the otomi-values folder' })
 export const OTOMI_FLAGS = json({ default: '{}' })
