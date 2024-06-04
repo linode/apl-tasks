@@ -515,11 +515,16 @@ export default class MyOperator extends Operator {
     } catch (error) {
       console.debug('GITEA SETUP ERROR:', error)
     }
-    // try {
-    //   await setupGiteaDroneOAuth()
-    // } catch (error) {
-    //   console.debug('GITEA DRONE OAUTH SETUP ERROR:', error)
-    // }
+    let hasRun = false
+
+    if (!hasRun) {
+      try {
+        await setupGiteaDroneOAuth()
+        hasRun = true
+      } catch (error) {
+        console.debug('GITEA DRONE OAUTH SETUP ERROR:', error)
+      }
+    }
   }
 }
 
