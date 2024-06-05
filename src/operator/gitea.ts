@@ -17,23 +17,34 @@ import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../tasks
 import { doApiCall, waitTillAvailable } from '../utils'
 import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../validators'
 
+// Constants
+const VALUES_REPO = 'values'
+const CHARTS_REPO = 'charts'
+const OTOMI_VIEWER_TEAM = 'otomi-viewer'
+
+// Environment variables
 const env = cleanEnv({
   GITEA_PASSWORD,
   GITEA_URL,
   OTOMI_VALUES,
 })
 
-// small interface to store hook information
+// Interfaces
 interface hookInfo {
   id?: number
   hasHook: boolean
 }
 
+interface groupMapping {
+  [key: string]: {
+    otomi: string[]
+  }
+}
+
+// Variables
 const teamConfig = env.OTOMI_VALUES.teamConfig ?? {}
 const teamIds = Object.keys(teamConfig)
-const isMultitenant = !!env.OTOMI_VALUES.otomi?.isMultitenant
 const hasArgo = !!env.OTOMI_VALUES.apps?.argocd?.enabled
-
 const errors: string[] = []
 
 const readOnlyTeam: CreateTeamOption = {
@@ -52,20 +63,14 @@ const editorTeam: CreateTeamOption = {
 }
 
 const adminTeam: CreateTeamOption = { ...editorTeam, permission: CreateTeamOption.PermissionEnum.Admin }
-interface groupMapping {
-  [key: string]: {
-    otomi: string[]
-  }
-}
 
 const kc = new k8s.KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
-kc.loadFromDefault()
+kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
-// SETUP GITEA =====================================================================================
-
+// Setup Gitea
 async function upsertTeam(
   existingTeams: Team[] = [],
   orgApi: OrganizationApi,
@@ -150,21 +155,6 @@ async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Prom
 async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   console.debug('Check for Tekton hook')
   const clusterIP = 'http://el-otomi-tekton-listener.otomi-pipelines.svc.cluster.local:8080'
-  // k8s.kc()
-  // const k8sApi = k8s.core()
-  // try {
-  //   const response = await k8sApi.readNamespacedService('event-listener', 'team-admin')
-  //   const service = response.body
-  //   if (service && service.spec && service.spec.clusterIP) {
-  //     clusterIP = service.spec.clusterIP
-  //     console.log(`Service clusterIP: ${clusterIP}`)
-  //   } else {
-  //     console.error(`Service "event-listener" in namespace "team-admin" doesn't have a clusterIP.`)
-  //   }
-  // } catch (error) {
-  //   // eslint-disable-next-line no-undef
-  //   console.debug(`Error fetching tekton service: ${error}`)
-  // }
   const hasTektonHook = await hasSpecificHook(repoApi, 'el-otomi-tekton-listener')
   if (!hasTektonHook.hasHook) {
     console.debug('Tekton Hook needs to be created')
@@ -198,23 +188,10 @@ async function deleteDroneHook(repoApi: RepositoryApi): Promise<void> {
   }
 }
 
-async function setupGitea() {
-  await waitTillAvailable(env.GITEA_URL)
-
-  let giteaUrl = env.GITEA_URL
-  if (giteaUrl.endsWith('/')) {
-    giteaUrl = giteaUrl.slice(0, -1)
-  }
-
-  // create the org
-  const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
-  const repoApi = new RepositoryApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[]) {
   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
   await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
 
-  const existingTeams = await doApiCall(errors, `Getting all teams in org "${orgName}"`, () =>
-    orgApi.orgListTeams(orgName),
-  )
   // create all the teams first
   await Promise.all(
     teamIds.map((teamId) => {
@@ -227,38 +204,60 @@ async function setupGitea() {
   )
   // create org wide viewer team for otomi role "team-viewer"
   await upsertTeam(existingTeams, orgApi, readOnlyTeam)
-  // create the org repo
-  const repoOption: CreateRepoOption = {
-    ...new CreateRepoOption(),
-    autoInit: false,
-    name: otomiValuesRepoName,
-    _private: true,
-  }
+}
 
-  const existingRepos = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
-    orgApi.orgListRepos(orgName),
-  )
-
+async function createReposAndAddToTeam(
+  orgApi: OrganizationApi,
+  repoApi: RepositoryApi,
+  existingTeams: Team[],
+  existingRepos: Repository[],
+  repoOption: CreateRepoOption,
+) {
   // create main org repo: otomi/values
   await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
   // create otomi/charts repo for auto image updates
-  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, { ...repoOption, name: 'charts' })
+  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, { ...repoOption, name: CHARTS_REPO })
 
   // add repo: otomi/values to the team: otomi-viewer
   await doApiCall(
     errors,
-    `Adding repo values to team otomi-viewer`,
-    () => repoApi.repoAddTeam(orgName, 'values', 'otomi-viewer'),
+    `Adding repo ${VALUES_REPO} to team ${OTOMI_VIEWER_TEAM}`,
+    () => repoApi.repoAddTeam(orgName, VALUES_REPO, OTOMI_VIEWER_TEAM),
     422,
   )
 
   // add repo: otomi/charts to the team: otomi-viewer
   await doApiCall(
     errors,
-    `Adding repo charts to team otomi-viewer`,
-    () => repoApi.repoAddTeam(orgName, 'charts', 'otomi-viewer'),
+    `Adding repo ${CHARTS_REPO} to team ${OTOMI_VIEWER_TEAM}`,
+    () => repoApi.repoAddTeam(orgName, CHARTS_REPO, OTOMI_VIEWER_TEAM),
     422,
   )
+}
+
+async function setupGitea() {
+  await waitTillAvailable(env.GITEA_URL)
+  const giteaUrl: string = env.GITEA_URL.endsWith('/') ? env.GITEA_URL.slice(0, -1) : env.GITEA_URL
+
+  // create the org
+  const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  const repoApi = new RepositoryApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+
+  const existingTeams = await doApiCall(errors, `Getting all teams in org "${orgName}"`, () =>
+    orgApi.orgListTeams(orgName),
+  )
+  await createOrgAndTeams(orgApi, existingTeams)
+
+  const existingRepos = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
+    orgApi.orgListRepos(orgName),
+  )
+  const repoOption: CreateRepoOption = {
+    ...new CreateRepoOption(),
+    autoInit: false,
+    name: otomiValuesRepoName,
+    _private: true,
+  }
+  await createReposAndAddToTeam(orgApi, repoApi, existingTeams, existingRepos, repoOption)
 
   // check for specific hooks
   await addTektonHook(repoApi)
@@ -271,12 +270,6 @@ async function setupGitea() {
     teamIds.map(async (teamId) => {
       const name = `team-${teamId}-argocd`
       const option = { ...repoOption, autoInit: true, name }
-      // const existingTeamRepos = await doApiCall(
-      //   errors,
-      //   `Getting all repos from team "${teamId}"`,
-      //   () => orgApi.orgListTeamRepos(teamId),
-      //   404,
-      // )
       return upsertRepo(existingTeams, existingRepos, orgApi, repoApi, option, `team-${teamId}`)
     }),
   )
@@ -288,8 +281,7 @@ async function setupGitea() {
   }
 }
 
-// EXEC GITEA CLI COMMAND ========================================================================
-
+// Exec Gitea CLI command
 export function buildTeamString(teamNames: any[]): string {
   if (teamNames === undefined) return '{}'
   const teamObject: groupMapping = {}
@@ -369,8 +361,7 @@ async function runExecCommand() {
   }
 }
 
-// OPERATOR ========================================================================================
-
+// Operator
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
@@ -390,7 +381,7 @@ export default class MyOperator extends Operator {
     try {
       await setupGitea()
     } catch (error) {
-      console.debug('GITEA SETUP ERROR:', error)
+      console.debug('Gitea setup error:', error)
     }
   }
 }
