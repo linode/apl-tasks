@@ -25,7 +25,6 @@ To create a personal access token, go to GitHub -> settings -> developer setting
 #
 Then start a proxy to the api you wish to target:
 
-- drone: `k -n team-admin port-forward svc/drone 8081:80 &`
 - gitea: `k -n gitea port-forward svc/gitea-http 8082:3000 &`
 - harbor: `k -n harbor port-forward svc/harbor-core 8083:80 &`
 - keycloak: `k -n keycloak port-forward svc/keycloak-http 8084:80 &`

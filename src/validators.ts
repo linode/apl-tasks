@@ -42,9 +42,6 @@ export const IDP_SUB_CLAIM_MAPPER = str({
   default: 'sub',
 })
 
-export const DRONE_NAMESPACE = str({ desc: 'The namespace of the drone release', default: 'drone' })
-export const DRONE_TOKEN = str({ desc: 'The admin token to use for drone api server' })
-export const DRONE_URL = str({ desc: 'The public url of the drone server' })
 export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
 export const GITEA_URL = url({ desc: 'The gitea core service url' })
 export const KC_HOSTNAME_URL = str({ desc: 'The Keycloak Server address' })

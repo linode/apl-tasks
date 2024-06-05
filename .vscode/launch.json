@@ -42,19 +42,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Drone task",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:drone-dev"],
-      "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Debug certs-aws Tasks",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:certs-aws-dev"],
@@ -91,32 +78,6 @@
       "name": "Debug copy-certs task",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:copy-certs-dev"],
-      "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Gitea task",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:gitea-dev"],
-      "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Gitea drone auth task",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:gitea-drone-auth-dev"],
       "cwd": "${workspaceRoot}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",

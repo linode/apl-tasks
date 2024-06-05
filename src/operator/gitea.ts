@@ -13,14 +13,9 @@ import {
   RepositoryApi,
   Team,
 } from '@redkubes/gitea-client-node'
-import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../tasks/common'
 import { doApiCall, waitTillAvailable } from '../utils'
 import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../validators'
-
-// Constants
-const VALUES_REPO = 'values'
-const CHARTS_REPO = 'charts'
-const OTOMI_VIEWER_TEAM = 'otomi-viewer'
+import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
 
 // Environment variables
 const env = cleanEnv({
@@ -177,17 +172,6 @@ async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   }
 }
 
-async function deleteDroneHook(repoApi: RepositoryApi): Promise<void> {
-  console.debug('Check for Drone hook')
-  const hasDroneHook = await hasSpecificHook(repoApi, 'drone')
-  if (hasDroneHook.hasHook) {
-    console.debug('Drone Hook needs to be deleted')
-    await doApiCall(errors, `Deleting hook "drone" from repo otomi/values`, () =>
-      repoApi.repoDeleteHook(orgName, 'values', hasDroneHook.id!),
-    )
-  }
-}
-
 async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[]) {
   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
   await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
@@ -216,21 +200,21 @@ async function createReposAndAddToTeam(
   // create main org repo: otomi/values
   await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
   // create otomi/charts repo for auto image updates
-  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, { ...repoOption, name: CHARTS_REPO })
+  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, { ...repoOption, name: otomiChartsRepoName })
 
   // add repo: otomi/values to the team: otomi-viewer
   await doApiCall(
     errors,
-    `Adding repo ${VALUES_REPO} to team ${OTOMI_VIEWER_TEAM}`,
-    () => repoApi.repoAddTeam(orgName, VALUES_REPO, OTOMI_VIEWER_TEAM),
+    `Adding repo ${otomiValuesRepoName} to team ${teamNameViewer}`,
+    () => repoApi.repoAddTeam(orgName, otomiValuesRepoName, teamNameViewer),
     422,
   )
 
   // add repo: otomi/charts to the team: otomi-viewer
   await doApiCall(
     errors,
-    `Adding repo ${CHARTS_REPO} to team ${OTOMI_VIEWER_TEAM}`,
-    () => repoApi.repoAddTeam(orgName, CHARTS_REPO, OTOMI_VIEWER_TEAM),
+    `Adding repo ${otomiChartsRepoName} to team ${teamNameViewer}`,
+    () => repoApi.repoAddTeam(orgName, otomiChartsRepoName, teamNameViewer),
     422,
   )
 }
@@ -261,7 +245,6 @@ async function setupGitea() {
 
   // check for specific hooks
   await addTektonHook(repoApi)
-  await deleteDroneHook(repoApi)
 
   if (!hasArgo) return
 
