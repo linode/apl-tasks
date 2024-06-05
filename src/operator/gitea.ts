@@ -14,7 +14,7 @@ import {
   Team,
 } from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../utils'
-import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../validators'
+import { GITEA_PASSWORD, GITEA_URL, IDP_OIDC_URL, OTOMI_VALUES, cleanEnv } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
 
 // Environment variables
@@ -22,7 +22,9 @@ const env = cleanEnv({
   GITEA_PASSWORD,
   GITEA_URL,
   OTOMI_VALUES,
+  IDP_OIDC_URL,
 })
+console.log('env', env)
 
 // Interfaces
 interface hookInfo {
@@ -264,6 +266,18 @@ async function setupGitea() {
   }
 }
 
+async function runSetupGitea() {
+  try {
+    await setupGitea()
+  } catch (error) {
+    console.debug('Error could not run setup gitea', error)
+    console.debug('Retrying in 30 seconds')
+    await new Promise((resolve) => setTimeout(resolve, 30000))
+    console.log('Retrying to setup gitea')
+    await runExecCommand()
+  }
+}
+
 // Exec Gitea CLI command
 export function buildTeamString(teamNames: any[]): string {
   if (teamNames === undefined) return '{}'
@@ -362,9 +376,9 @@ export default class MyOperator extends Operator {
       console.debug(error)
     }
     try {
-      await setupGitea()
+      await runSetupGitea()
     } catch (error) {
-      console.debug('Gitea setup error:', error)
+      console.debug(error)
     }
   }
 }
