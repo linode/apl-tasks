@@ -363,6 +363,11 @@ async function runExecCommand() {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
+    try {
+      await runSetupGitea()
+    } catch (error) {
+      console.debug(error)
+    }
     // Watch all namespaces
     try {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
