@@ -392,6 +392,24 @@ export default class MyOperator extends Operator {
     // } catch (error) {
     //   console.debug(error)
     // }
+    try {
+      await this.watchResource('', 'v1', 'configmaps', async (e) => {
+        const { object }: { object: k8s.V1ConfigMap } = e
+        const { metadata } = object
+        if (metadata?.namespace !== 'argocd-cm') return
+        const { managedFields } = metadata
+        if (
+          managedFields &&
+          managedFields.length > 0 &&
+          (managedFields[0].operation === 'Update' || managedFields[0].operation === 'Create')
+        ) {
+          await runSetupGitea()
+        }
+      })
+    } catch (error) {
+      console.debug(error)
+      // Consider re-throwing the error, handling it in some other way, or at least logging more information about it.
+    }
   }
 }
 
