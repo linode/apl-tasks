@@ -66,6 +66,7 @@ const kc = new k8s.KubeConfig()
 // loadFromDefault when locally connecting to cluster
 kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
+const watch = new k8s.Watch(kc)
 
 // Setup Gitea
 async function upsertTeam(
@@ -375,8 +376,24 @@ export default class MyOperator extends Operator {
     } catch (error) {
       console.debug(error)
     }
+    // Watch configmaps to check if gitea need to be updated
     try {
-      await runSetupGitea()
+      watch.watch(
+        `/api/v1/namespaces/argocd/configmaps/argocd-cm`,
+        {},
+        (type, apiObj) => {
+          if (type === 'ADDED' || type === 'MODIFIED') {
+            console.log(`ConfigMap argocd-cm has been ${type.toLowerCase()}:`)
+            console.log(JSON.stringify(apiObj, null, 2))
+            runSetupGitea()
+          }
+        },
+        (err) => {
+          if (err) {
+            console.error('Error watching ConfigMap:', err)
+          }
+        },
+      )
     } catch (error) {
       console.debug(error)
     }
