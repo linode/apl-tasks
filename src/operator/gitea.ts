@@ -14,7 +14,7 @@ import {
   Team,
 } from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../utils'
-import { GITEA_PASSWORD, GITEA_URL, IDP_OIDC_URL, OTOMI_VALUES, cleanEnv } from '../validators'
+import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
 
 // Environment variables
@@ -22,9 +22,7 @@ const env = cleanEnv({
   GITEA_PASSWORD,
   GITEA_URL,
   OTOMI_VALUES,
-  IDP_OIDC_URL,
 })
-console.log('env', env)
 
 // Interfaces
 interface hookInfo {
@@ -382,18 +380,18 @@ export default class MyOperator extends Operator {
       console.debug(error)
     }
     // Watch configmaps to check if gitea need to be updated
-    try {
-      await this.watchResource('', 'v1', 'configmaps', async (e) => {
-        const { object }: { object: k8s.V1ConfigMap } = e
-        const { metadata } = object
-        // Check if namespace starts with prefix 'team-'
-        if (metadata && !metadata.name?.startsWith('team-')) return
-        if (metadata && metadata.name === 'team-admin') return
-        await runSetupGitea()
-      })
-    } catch (error) {
-      console.debug(error)
-    }
+    // try {
+    //   await this.watchResource('', 'v1', 'configmaps', async (e) => {
+    //     const { object }: { object: k8s.V1ConfigMap } = e
+    //     const { metadata } = object
+    //     // Check if namespace starts with prefix 'team-'
+    //     if (metadata && !metadata.name?.startsWith('team-')) return
+    //     if (metadata && metadata.name === 'team-admin') return
+    //     await runSetupGitea()
+    //   })
+    // } catch (error) {
+    //   console.debug(error)
+    // }
   }
 }
 
