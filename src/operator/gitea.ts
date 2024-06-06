@@ -23,6 +23,7 @@ const env = cleanEnv({
   GITEA_URL,
   OTOMI_VALUES,
 })
+console.log('env', env)
 
 // Interfaces
 interface hookInfo {
