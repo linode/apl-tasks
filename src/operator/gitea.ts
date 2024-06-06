@@ -268,6 +268,7 @@ async function setupGitea() {
 async function runSetupGitea() {
   try {
     await setupGitea()
+    console.debug('Gitea setup/retries completed')
   } catch (error) {
     console.debug('Error could not run setup gitea', error)
     console.debug('Retrying in 30 seconds')
