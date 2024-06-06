@@ -268,7 +268,7 @@ async function setupGitea() {
 async function runSetupGitea() {
   try {
     await setupGitea()
-    console.debug('Gitea setup/retries completed')
+    console.debug('Gitea setup/reconfiguration completed')
   } catch (error) {
     console.debug('Error could not run setup gitea', error)
     console.debug('Retrying in 30 seconds')
@@ -380,36 +380,6 @@ export default class MyOperator extends Operator {
     } catch (error) {
       console.debug(error)
     }
-    // Watch configmaps to check if gitea need to be updated
-    // try {
-    //   await this.watchResource('', 'v1', 'configmaps', async (e) => {
-    //     const { object }: { object: k8s.V1ConfigMap } = e
-    //     const { metadata } = object
-    //     // Check if namespace starts with prefix 'team-'
-    //     if (metadata && !metadata.name?.startsWith('team-')) return
-    //     if (metadata && metadata.name === 'team-admin') return
-    //     await runSetupGitea()
-    //   })
-    // } catch (error) {
-    //   console.debug(error)
-    // }
-    // try {
-    //   await this.watchResource('', 'v1', 'configmaps', async (e) => {
-    //     const { object }: { object: k8s.V1ConfigMap } = e
-    //     const { metadata } = object
-    //     if (metadata?.namespace !== 'argocd-cm') return
-    //     const { managedFields } = metadata
-    //     if (
-    //       managedFields &&
-    //       managedFields.length > 0 &&
-    //       (managedFields[0].operation === 'Update' || managedFields[0].operation === 'Create')
-    //     ) {
-    //       await runSetupGitea()
-    //     }
-    //   })
-    // } catch (error) {
-    //   console.debug(error)
-    // }
   }
 }
 
