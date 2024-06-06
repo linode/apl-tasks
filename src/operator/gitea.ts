@@ -383,22 +383,14 @@ export default class MyOperator extends Operator {
     }
     // Watch configmaps to check if gitea need to be updated
     try {
-      watch.watch(
-        `/api/v1/namespaces/argocd/configmaps/argocd-cm`,
-        {},
-        (type, apiObj) => {
-          if (type === 'ADDED' || type === 'MODIFIED') {
-            console.log(`ConfigMap argocd-cm has been ${type.toLowerCase()}:`)
-            console.log(JSON.stringify(apiObj, null, 2))
-            runSetupGitea()
-          }
-        },
-        (err) => {
-          if (err) {
-            console.error('Error watching ConfigMap:', err)
-          }
-        },
-      )
+      await this.watchResource('', 'v1', 'configmaps', async (e) => {
+        const { object }: { object: k8s.V1ConfigMap } = e
+        const { metadata } = object
+        // Check if namespace starts with prefix 'team-'
+        if (metadata && !metadata.name?.startsWith('team-')) return
+        if (metadata && metadata.name === 'team-admin') return
+        await runSetupGitea()
+      })
     } catch (error) {
       console.debug(error)
     }
