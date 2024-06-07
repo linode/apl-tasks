@@ -355,9 +355,13 @@ export default class MyOperator extends Operator {
   protected async init() {
     const operatorSecrets = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
     let GITEA_PASSWORD = Buffer.from(operatorSecrets.GITEA_PASSWORD, 'base64').toString()
+    console.log('GITEA_PASSWORD', GITEA_PASSWORD)
     const operatorConfigMap = (await k8sApi.readNamespacedConfigMap('gitea-operator-cm', 'gitea-operator')).body
       .data as any
     let { GITEA_URL, HAS_ARGOCD, TEAM_CONFIG } = operatorConfigMap
+    console.log('GITEA_URL', GITEA_URL)
+    console.log('HAS_ARGOCD', HAS_ARGOCD)
+    console.log('TEAM_CONFIG', TEAM_CONFIG)
     // Watch gitea-operator-secrets
     try {
       await this.watchResource(
