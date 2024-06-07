@@ -50,7 +50,11 @@ const adminTeam: CreateTeamOption = { ...editorTeam, permission: CreateTeamOptio
 const kc = new k8s.KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
-kc.loadFromCluster()
+if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) {
+  kc.loadFromCluster()
+} else {
+  kc.loadFromDefault()
+}
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 // Setup Gitea
@@ -169,6 +173,7 @@ async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[],
     teamIds.map((teamId) => {
       // determine self service flags
       const name = `team-${teamId}`
+      console.log('TEAM_CONFIG', TEAM_CONFIG)
       if ((TEAM_CONFIG[teamId]?.selfService?.apps || []).includes('gitea'))
         return upsertTeam(existingTeams, orgApi, { ...adminTeam, name })
       return upsertTeam(existingTeams, orgApi, { ...editorTeam, name })
@@ -369,7 +374,8 @@ export default class MyOperator extends Operator {
                 const GITEA_PASSWORD = Buffer.from(secretData.GITEA_PASSWORD, 'base64').toString()
                 const { GITEA_URL, HAS_ARGOCD } = data as any
                 const hasArgocd = HAS_ARGOCD === 'true'
-                await runSetupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, hasArgocd)
+                const TeamConfig = JSON.parse(TEAM_CONFIG)
+                await runSetupGitea(GITEA_PASSWORD, 'https://gitea.172.233.37.210.nip.io/', TeamConfig, hasArgocd)
               } catch (error) {
                 console.debug(error)
               }
