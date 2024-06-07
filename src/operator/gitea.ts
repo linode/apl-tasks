@@ -351,8 +351,10 @@ async function runExecCommand() {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
+    console.log('Starting operator')
     // Watch gitea-operator-cm
     try {
+      console.log('Watching configmap!')
       await this.watchResource(
         '',
         'v1',
@@ -387,6 +389,7 @@ export default class MyOperator extends Operator {
         },
         'gitea-operator',
       )
+      console.log('Watching configmap done!')
     } catch (error) {
       console.debug(error)
     }
