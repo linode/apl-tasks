@@ -50,9 +50,8 @@ const adminTeam: CreateTeamOption = { ...editorTeam, permission: CreateTeamOptio
 const kc = new k8s.KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
-kc.loadFromDefault()
+kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
-const watch = new k8s.Watch(kc)
 
 // Setup Gitea
 async function upsertTeam(
