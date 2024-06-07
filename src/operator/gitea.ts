@@ -362,6 +362,7 @@ export default class MyOperator extends Operator {
         async (e) => {
           const { object }: { object: k8s.V1ConfigMap } = e
           const { metadata, data } = object
+          console.log('metadata', metadata)
           const { TEAM_CONFIG } = data as any
           console.log('TEAM_CONFIG', TEAM_CONFIG)
           if (metadata && metadata.name !== 'gitea-operator-cm') return
@@ -369,8 +370,9 @@ export default class MyOperator extends Operator {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
               try {
-                const secretData = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
-                const GITEA_PASSWORD = Buffer.from(secretData.GITEA_PASSWORD, 'base64').toString()
+                // const secretData = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
+                // const GITEA_PASSWORD = Buffer.from(secretData.GITEA_PASSWORD, 'base64').toString()
+                const GITEA_PASSWORD = 'welcomeotomi'
                 console.log('GITEA_PASSWORD', GITEA_PASSWORD)
                 const { GITEA_URL, HAS_ARGOCD } = data as any
                 console.log('HAS_ARGOCD', HAS_ARGOCD)
@@ -394,18 +396,18 @@ export default class MyOperator extends Operator {
       console.debug(error)
     }
     // Watch all namespaces
-    try {
-      await this.watchResource('', 'v1', 'namespaces', async (e) => {
-        const { object }: { object: k8s.V1Pod } = e
-        const { metadata } = object
-        // Check if namespace starts with prefix 'team-'
-        if (metadata && !metadata.name?.startsWith('team-')) return
-        if (metadata && metadata.name === 'team-admin') return
-        await runExecCommand()
-      })
-    } catch (error) {
-      console.debug(error)
-    }
+    // try {
+    //   await this.watchResource('', 'v1', 'namespaces', async (e) => {
+    //     const { object }: { object: k8s.V1Pod } = e
+    //     const { metadata } = object
+    //     // Check if namespace starts with prefix 'team-'
+    //     if (metadata && !metadata.name?.startsWith('team-')) return
+    //     if (metadata && metadata.name === 'team-admin') return
+    //     await runExecCommand()
+    //   })
+    // } catch (error) {
+    //   console.debug(error)
+    // }
   }
 }
 
