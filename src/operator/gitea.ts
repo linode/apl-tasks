@@ -1,4 +1,4 @@
-import Operator from '@dot-i/k8s-operator'
+import Operator, { ResourceEventType } from '@dot-i/k8s-operator'
 import * as k8s from '@kubernetes/client-node'
 import stream from 'stream'
 
@@ -362,8 +362,26 @@ async function runExecCommand() {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
+    // Watch gitea-operator-cm
     try {
-      await runSetupGitea()
+      await this.watchResource('', 'v1', 'configmaps', async (e) => {
+        const { object }: { object: k8s.V1ConfigMap } = e
+        const { metadata } = object
+        if (metadata && metadata.name !== 'gitea-operator-cm') return
+        switch (e.type) {
+          case ResourceEventType.Added:
+          case ResourceEventType.Modified: {
+            try {
+              await runSetupGitea()
+            } catch (error) {
+              console.debug(error)
+            }
+            break
+          }
+          default:
+            break
+        }
+      })
     } catch (error) {
       console.debug(error)
     }
