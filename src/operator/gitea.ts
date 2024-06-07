@@ -169,7 +169,6 @@ async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[],
     teamIds.map((teamId) => {
       // determine self service flags
       const name = `team-${teamId}`
-      console.log('TEAM_CONFIG', TEAM_CONFIG)
       if ((TEAM_CONFIG[teamId]?.selfService?.apps || []).includes('gitea'))
         return upsertTeam(existingTeams, orgApi, { ...adminTeam, name })
       return upsertTeam(existingTeams, orgApi, { ...editorTeam, name })
@@ -254,7 +253,12 @@ async function setupGitea(GITEA_PASSWORD: string, GITEA_URL: string, TEAM_CONFIG
   }
 }
 
-async function runSetupGitea(GITEA_PASSWORD: string, GITEA_URL: string, TEAM_CONFIG: any, HAS_ARGOCD: string) {
+async function runSetupGitea() {
+  const operatorSecrets = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
+  const operatorConfigMap = (await k8sApi.readNamespacedConfigMap('gitea-operator-cm', 'gitea-operator')).body
+    .data as any
+  const GITEA_PASSWORD = Buffer.from(operatorSecrets.GITEA_PASSWORD, 'base64').toString()
+  const { GITEA_URL, HAS_ARGOCD, TEAM_CONFIG } = operatorConfigMap
   const hasArgocd = HAS_ARGOCD === 'true'
   const TeamConfig = JSON.parse(TEAM_CONFIG)
   try {
@@ -264,7 +268,7 @@ async function runSetupGitea(GITEA_PASSWORD: string, GITEA_URL: string, TEAM_CON
     console.debug('Error could not run setup gitea', error)
     console.debug('Retrying in 30 seconds')
     await new Promise((resolve) => setTimeout(resolve, 30000))
-    console.log('Retrying to setup gitea')
+    console.debug('Retrying to setup gitea')
     await setupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, hasArgocd)
   }
 }
@@ -344,8 +348,31 @@ async function runExecCommand() {
     console.debug('Error could not run exec command', error)
     console.debug('Retrying in 30 seconds')
     await new Promise((resolve) => setTimeout(resolve, 30000))
-    console.log('Retrying to run exec command')
+    console.debug('Retrying to run exec command')
     await runExecCommand()
+  }
+}
+
+// Callbacks
+const resourceCallback = async (e: any) => {
+  const { object } = e
+  const { metadata } = object
+
+  if (object.kind === 'Secret' && metadata.name !== 'gitea-admin') return
+  if (object.kind === 'ConfigMap' && metadata.name !== 'gitea-operator-cm') return
+
+  switch (e.type) {
+    case ResourceEventType.Added:
+    case ResourceEventType.Modified: {
+      try {
+        await runSetupGitea()
+      } catch (error) {
+        console.debug(error)
+      }
+      break
+    }
+    default:
+      break
   }
 }
 
@@ -353,80 +380,15 @@ async function runExecCommand() {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
-    const operatorSecrets = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
-    let GITEA_PASSWORD = Buffer.from(operatorSecrets.GITEA_PASSWORD, 'base64').toString()
-    console.log('GITEA_PASSWORD', GITEA_PASSWORD)
-    const operatorConfigMap = (await k8sApi.readNamespacedConfigMap('gitea-operator-cm', 'gitea-operator')).body
-      .data as any
-    let { GITEA_URL, HAS_ARGOCD, TEAM_CONFIG } = operatorConfigMap
-    console.log('GITEA_URL', GITEA_URL)
-    console.log('HAS_ARGOCD', HAS_ARGOCD)
-    console.log('TEAM_CONFIG', TEAM_CONFIG)
     // Watch gitea-operator-secrets
     try {
-      await this.watchResource(
-        '',
-        'v1',
-        'secrets',
-        async (e) => {
-          const { object } = e
-          const { metadata, data } = object as any
-          console.log('metadata', metadata)
-          console.log('secrets data', data)
-          if (metadata && metadata.name !== 'gitea-admin') return
-          console.log('before secrets:', GITEA_PASSWORD)
-          GITEA_PASSWORD = Buffer.from(data.GITEA_PASSWORD, 'base64').toString()
-          console.log('after secrets:', GITEA_PASSWORD)
-          switch (e.type) {
-            case ResourceEventType.Added:
-            case ResourceEventType.Modified: {
-              try {
-                await runSetupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, HAS_ARGOCD)
-              } catch (error) {
-                console.debug(error)
-              }
-              break
-            }
-            default:
-              break
-          }
-        },
-        'gitea-operator',
-      )
+      await this.watchResource('', 'v1', 'secrets', resourceCallback, 'gitea-operator')
     } catch (error) {
       console.debug(error)
     }
     // Watch gitea-operator-cm
     try {
-      await this.watchResource(
-        '',
-        'v1',
-        'configmaps',
-        async (e) => {
-          const { object }: { object: k8s.V1ConfigMap } = e
-          const { metadata, data } = object as any
-          console.log('before configmaps:', GITEA_URL, HAS_ARGOCD, TEAM_CONFIG)
-          if (metadata && metadata.name !== 'gitea-operator-cm') return
-          GITEA_URL = data.GITEA_URL
-          HAS_ARGOCD = data.HAS_ARGOCD
-          TEAM_CONFIG = data.TEAM_CONFIG
-          console.log('after configmaps:', GITEA_URL, HAS_ARGOCD, TEAM_CONFIG)
-          switch (e.type) {
-            case ResourceEventType.Added:
-            case ResourceEventType.Modified: {
-              try {
-                await runSetupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, HAS_ARGOCD)
-              } catch (error) {
-                console.debug(error)
-              }
-              break
-            }
-            default:
-              break
-          }
-        },
-        'gitea-operator',
-      )
+      await this.watchResource('', 'v1', 'configmaps', resourceCallback, 'gitea-operator')
     } catch (error) {
       console.debug(error)
     }
