@@ -14,13 +14,11 @@ import {
   Team,
 } from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../utils'
-import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../validators'
+import { OTOMI_VALUES, cleanEnv } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
 
 // Environment variables
 const env = cleanEnv({
-  GITEA_PASSWORD,
-  GITEA_URL,
   OTOMI_VALUES,
 })
 
@@ -220,7 +218,7 @@ async function createReposAndAddToTeam(
   )
 }
 
-async function setupGitea() {
+async function setupGitea(GITEA_PASSWORD: string, GITEA_URL: string) {
   await waitTillAvailable(env.GITEA_URL)
   const giteaUrl: string = env.GITEA_URL.endsWith('/') ? env.GITEA_URL.slice(0, -1) : env.GITEA_URL
 
@@ -265,9 +263,9 @@ async function setupGitea() {
   }
 }
 
-async function runSetupGitea() {
+async function runSetupGitea(GITEA_PASSWORD: string, GITEA_URL: string) {
   try {
-    await setupGitea()
+    await setupGitea(GITEA_PASSWORD, GITEA_URL)
     console.debug('Gitea setup/reconfiguration completed')
   } catch (error) {
     console.debug('Error could not run setup gitea', error)
@@ -366,13 +364,17 @@ export default class MyOperator extends Operator {
     try {
       await this.watchResource('', 'v1', 'configmaps', async (e) => {
         const { object }: { object: k8s.V1ConfigMap } = e
-        const { metadata } = object
+        const { metadata, data } = object
         if (metadata && metadata.name !== 'gitea-operator-cm') return
         switch (e.type) {
           case ResourceEventType.Added:
           case ResourceEventType.Modified: {
             try {
-              await runSetupGitea()
+              const secretData = (await k8sApi.readNamespacedSecret('gitea-operator-secret', 'gitea-operator')).body
+                .data as any
+              const GITEA_PASSWORD = Buffer.from(secretData.GITEA_PASSWORD, 'base64').toString()
+              const { GITEA_URL } = data as any
+              await runSetupGitea(GITEA_PASSWORD, GITEA_URL)
             } catch (error) {
               console.debug(error)
             }
