@@ -1,4 +1,4 @@
-import Operator from '@dot-i/k8s-operator'
+import Operator, { ResourceEventType } from '@dot-i/k8s-operator'
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import {
@@ -74,7 +74,18 @@ interface KeycloakApi {
 interface RealmRole {
   name: string
 }
-
+const newEnv = {
+  IDP_ALIAS: '',
+  IDP_OIDC_URL: '',
+  KEYCLOAK_ADMIN: '',
+  KEYCLOAK_ADMIN_PASSWORD: '',
+  KC_HOSTNAME_URL: '',
+  KEYCLOAK_ADDRESS_INTERNAL: '',
+  KEYCLOAK_REALM: '',
+  KEYCLOAK_TOKEN_TTL: 0,
+  FEAT_EXTERNAL_IDP: 'false',
+  WAIT_OPTIONS: '',
+}
 const env = cleanEnv({
   IDP_ALIAS,
   IDP_OIDC_URL,
@@ -87,6 +98,7 @@ const env = cleanEnv({
   FEAT_EXTERNAL_IDP,
   WAIT_OPTIONS,
 })
+
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
@@ -136,6 +148,78 @@ async function runKeycloakUpdater(key: string) {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
+    // Watch otomi-keycloak-operator-secret
+    try {
+      console.log('Watching secrets!')
+      await this.watchResource(
+        '',
+        'v1',
+        'secrets',
+        async (e) => {
+          const { object }: { object: k8s.V1Secret } = e
+          const { metadata, data } = object
+          if (metadata && metadata.name !== 'otomi-keycloak-operator-secret') return
+          switch (e.type) {
+            case ResourceEventType.Added:
+            case ResourceEventType.Modified: {
+              try {
+                const secretData = (await k8sApi.readNamespacedSecret('keycloak-admin', 'otomi-keycloak-operator')).body.data as any
+                newEnv.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(secretData.password, 'base64').toString()
+                newEnv.KEYCLOAK_ADMIN = Buffer.from(secretData.username, 'base64').toString()
+                console.log('KEYCLOAK_ADMIN_PASSWORD', newEnv.KEYCLOAK_ADMIN_PASSWORD)
+              } catch (error) {
+                console.debug(error)
+              }
+              break
+            }
+            default:
+              break
+          }
+        },
+        'otomi-keycloak-operator',
+      )
+      console.log('Watching secrets done!')
+    } catch (error) {
+      console.debug(error)
+    }
+    // Watch otomi-keycloak-operator-cm
+    try {
+      console.log('Watching configmap!')
+      await this.watchResource(
+        '',
+        'v1',
+        'configmaps',
+        async (e) => {
+          const { object }: { object: k8s.V1ConfigMap } = e
+          const { metadata, data } = object
+          if (metadata && metadata.name !== 'otomi-keycloak-operator-cm') return
+          switch (e.type) {
+            case ResourceEventType.Added:
+            case ResourceEventType.Modified: {
+              try {
+                newEnv.FEAT_EXTERNAL_IDP = data!.FEAT_EXTERNAL_IDP
+                newEnv.IDP_ALIAS = data!.IDP_ALIAS
+                newEnv.IDP_OIDC_URL = data!.IDP_OIDC_URL
+                newEnv.KC_HOSTNAME_URL = data!.KC_HOSTNAME_URL
+                newEnv.KEYCLOAK_ADDRESS_INTERNAL = data!.KEYCLOAK_ADDRESS_INTERNAL
+                newEnv.KEYCLOAK_REALM = data!.KEYCLOAK_REALM
+                newEnv.KEYCLOAK_TOKEN_TTL = data!.KEYCLOAK_TOKEN_TTL as unknown as number
+                newEnv.WAIT_OPTIONS = data!.WAIT_OPTIONS
+              } catch (error) {
+                console.debug(error)
+              }
+              break
+            }
+            default:
+              break
+          }
+        },
+        'otomi-keycloak-operator',
+      )
+      console.log('Watching configmap done!')
+    } catch (error) {
+      console.debug(error)
+    }
     // Watch team namespaces to see if teams get added or removed
     try {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
@@ -150,7 +234,7 @@ export default class MyOperator extends Operator {
     } catch (error) {
       console.debug(error)
     }
-    // Watch configmaps to check if keycloak, harbor and gitea need to be updated
+    // Watch configmaps to check if keycloak need to be updated
     try {
       await this.watchResource('', 'v1', 'configmaps', async (e) => {
         const { object }: { object: k8s.V1Pod } = e

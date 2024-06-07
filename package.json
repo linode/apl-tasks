@@ -141,6 +141,8 @@
     "operator:secrets": "node dist/operator/secrets.js",
     "operator:gitea-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/gitea.ts",
     "operator:gitea": "node dist/operator/gitea.js",
+    "operator:keycloak-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/keycloak.ts",
+    "operator:keycloak": "node dist/operator/keycloak.js",
     "test": "NODE_ENV=test mocha -r ts-node/register -r ts-custom-error --exit src/**/*.test.*"
   },
   "standard-version": {
