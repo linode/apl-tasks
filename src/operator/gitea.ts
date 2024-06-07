@@ -354,12 +354,20 @@ export default class MyOperator extends Operator {
     console.log('Starting operator')
     // Watch gitea-operator-cm
     try {
+      console.log('Reading configmap!')
+      const { body } = await k8sApi.readNamespacedConfigMap('gitea-operator-cm', 'gitea-operator')
+      console.log('Configmap found!', body.data)
+    } catch (error) {
+      console.log('congigmap error', error)
+    }
+    try {
       console.log('Watching configmap!')
       await this.watchResource(
         '',
         'v1',
         'configmaps',
         async (e) => {
+          console.log('Event received!')
           const { object }: { object: k8s.V1ConfigMap } = e
           const { metadata, data } = object
           console.log('metadata', metadata)
