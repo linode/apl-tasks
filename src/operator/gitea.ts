@@ -375,7 +375,7 @@ export default class MyOperator extends Operator {
                 const { GITEA_URL, HAS_ARGOCD } = data as any
                 const hasArgocd = HAS_ARGOCD === 'true'
                 const TeamConfig = JSON.parse(TEAM_CONFIG)
-                await runSetupGitea(GITEA_PASSWORD, 'https://gitea.172.233.37.210.nip.io/', TeamConfig, hasArgocd)
+                await runSetupGitea(GITEA_PASSWORD, GITEA_URL, TeamConfig, hasArgocd)
               } catch (error) {
                 console.debug(error)
               }
