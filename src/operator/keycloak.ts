@@ -138,7 +138,8 @@ export default class MyOperator extends Operator {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
               try {
-                const secretData = (await k8sApi.readNamespacedSecret('keycloak-admin', 'otomi-keycloak-operator')).body.data as any
+                const secretData = (await k8sApi.readNamespacedSecret('keycloak-admin', 'otomi-keycloak-operator')).body
+                  .data as any
                 env.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(secretData.password, 'base64').toString()
                 env.KEYCLOAK_ADMIN = Buffer.from(secretData.username, 'base64').toString()
                 console.log('KEYCLOAK_ADMIN_PASSWORD', env.KEYCLOAK_ADMIN_PASSWORD)
