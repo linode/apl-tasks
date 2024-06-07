@@ -254,9 +254,11 @@ async function setupGitea(GITEA_PASSWORD: string, GITEA_URL: string, TEAM_CONFIG
   }
 }
 
-async function runSetupGitea(GITEA_PASSWORD: string, GITEA_URL: string, TEAM_CONFIG: any, hasArgocd: boolean) {
+async function runSetupGitea(GITEA_PASSWORD: string, GITEA_URL: string, TEAM_CONFIG: any, HAS_ARGOCD: string) {
+  const hasArgocd = HAS_ARGOCD === 'true'
+  const TeamConfig = JSON.parse(TEAM_CONFIG)
   try {
-    await setupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, hasArgocd)
+    await setupGitea(GITEA_PASSWORD, GITEA_URL, TeamConfig, hasArgocd)
     console.debug('Gitea setup/reconfiguration completed')
   } catch (error) {
     console.debug('Error could not run setup gitea', error)
@@ -351,43 +353,27 @@ async function runExecCommand() {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
-    console.log('Starting operator')
-    // Watch gitea-operator-cm
+    const operatorSecrets = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
+    let GITEA_PASSWORD = Buffer.from(operatorSecrets.GITEA_PASSWORD, 'base64').toString()
+    const operatorConfigMap = (await k8sApi.readNamespacedConfigMap('gitea-operator-cm', 'gitea-operator')).body
+      .data as any
+    let { GITEA_URL, HAS_ARGOCD, TEAM_CONFIG } = operatorConfigMap
+    // Watch gitea-operator-secrets
     try {
-      console.log('Reading configmap!')
-      const { body } = await k8sApi.readNamespacedConfigMap('gitea-operator-cm', 'gitea-operator')
-      console.log('Configmap found!', body.data)
-    } catch (error) {
-      console.log('congigmap error', error)
-    }
-    try {
-      console.log('Watching configmap!')
       await this.watchResource(
         '',
         'v1',
-        'configmaps',
+        'secrets',
         async (e) => {
-          console.log('Event received!')
           const { object }: { object: k8s.V1ConfigMap } = e
-          const { metadata, data } = object
-          console.log('metadata', metadata)
-          const { TEAM_CONFIG } = data as any
-          console.log('TEAM_CONFIG', TEAM_CONFIG)
-          if (metadata && metadata.name !== 'gitea-operator-cm') return
+          const { metadata, data } = object as any
+          if (metadata && metadata.name !== 'gitea-admin') return
+          GITEA_PASSWORD = Buffer.from(data.GITEA_PASSWORD, 'base64').toString()
           switch (e.type) {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
               try {
-                // const secretData = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
-                // const GITEA_PASSWORD = Buffer.from(secretData.GITEA_PASSWORD, 'base64').toString()
-                const GITEA_PASSWORD = 'welcomeotomi'
-                console.log('GITEA_PASSWORD', GITEA_PASSWORD)
-                const { GITEA_URL, HAS_ARGOCD } = data as any
-                console.log('HAS_ARGOCD', HAS_ARGOCD)
-                console.log('GITEA_URL', GITEA_URL)
-                const hasArgocd = HAS_ARGOCD === 'true'
-                const TeamConfig = JSON.parse(TEAM_CONFIG)
-                await runSetupGitea(GITEA_PASSWORD, GITEA_URL, TeamConfig, hasArgocd)
+                await runSetupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, HAS_ARGOCD)
               } catch (error) {
                 console.debug(error)
               }
@@ -399,23 +385,54 @@ export default class MyOperator extends Operator {
         },
         'gitea-operator',
       )
-      console.log('Watching configmap done!')
+    } catch (error) {
+      console.debug(error)
+    }
+    // Watch gitea-operator-cm
+    try {
+      await this.watchResource(
+        '',
+        'v1',
+        'configmaps',
+        async (e) => {
+          const { object }: { object: k8s.V1ConfigMap } = e
+          const { metadata, data } = object as any
+          if (metadata && metadata.name !== 'gitea-operator-cm') return
+          GITEA_URL = data.GITEA_URL
+          HAS_ARGOCD = data.HAS_ARGOCD
+          TEAM_CONFIG = data.TEAM_CONFIG
+          switch (e.type) {
+            case ResourceEventType.Added:
+            case ResourceEventType.Modified: {
+              try {
+                await runSetupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, HAS_ARGOCD)
+              } catch (error) {
+                console.debug(error)
+              }
+              break
+            }
+            default:
+              break
+          }
+        },
+        'gitea-operator',
+      )
     } catch (error) {
       console.debug(error)
     }
     // Watch all namespaces
-    // try {
-    //   await this.watchResource('', 'v1', 'namespaces', async (e) => {
-    //     const { object }: { object: k8s.V1Pod } = e
-    //     const { metadata } = object
-    //     // Check if namespace starts with prefix 'team-'
-    //     if (metadata && !metadata.name?.startsWith('team-')) return
-    //     if (metadata && metadata.name === 'team-admin') return
-    //     await runExecCommand()
-    //   })
-    // } catch (error) {
-    //   console.debug(error)
-    // }
+    try {
+      await this.watchResource('', 'v1', 'namespaces', async (e) => {
+        const { object }: { object: k8s.V1Pod } = e
+        const { metadata } = object
+        // Check if namespace starts with prefix 'team-'
+        if (metadata && !metadata.name?.startsWith('team-')) return
+        if (metadata && metadata.name === 'team-admin') return
+        await runExecCommand()
+      })
+    } catch (error) {
+      console.debug(error)
+    }
   }
 }
 
