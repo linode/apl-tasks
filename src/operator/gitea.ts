@@ -28,6 +28,15 @@ interface groupMapping {
   }
 }
 
+// Constants
+const giteaOperator = {
+  giteaPassword: '',
+  giteaUrl: '',
+  hasArgocd: false,
+  teamConfig: {},
+  domainSuffix: '',
+  oidcConfig: {},
+}
 const errors: string[] = []
 
 const readOnlyTeam: CreateTeamOption = {
@@ -57,7 +66,112 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 }
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
-// Setup Gitea
+// Callbacks
+const secretsAndConfigmapsCallback = async (e: any) => {
+  const { object } = e
+  const { metadata, data } = object
+
+  if (object.kind === 'Secret' && metadata.name === 'gitea-admin') {
+    giteaOperator.giteaPassword = Buffer.from(data.giteaPassword, 'base64').toString()
+    giteaOperator.oidcConfig = JSON.parse(Buffer.from(data.oidcConfig, 'base64').toString())
+  } else if (object.kind === 'ConfigMap' && metadata.name === 'gitea-operator-cm') {
+    giteaOperator.giteaUrl = data.giteaUrl
+    giteaOperator.hasArgocd = data.hasArgocd === 'true'
+    giteaOperator.teamConfig = JSON.parse(data.teamConfig)
+    giteaOperator.domainSuffix = data.domainSuffix
+  } else return
+
+  switch (e.type) {
+    case ResourceEventType.Added:
+    case ResourceEventType.Modified: {
+      try {
+        await runSetupGitea()
+      } catch (error) {
+        console.debug(error)
+      }
+      break
+    }
+    default:
+      break
+  }
+}
+
+const namespacesCallback = async (e: any) => {
+  const { object }: { object: k8s.V1Pod } = e
+  const { metadata } = object
+  // Check if namespace starts with prefix 'team-'
+  if (metadata && !metadata.name?.startsWith('team-')) return
+  if (metadata && metadata.name === 'team-admin') return
+  await runExecCommand()
+}
+
+// Operator
+export default class MyOperator extends Operator {
+  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+  protected async init() {
+    // Watch gitea-operator-secrets
+    try {
+      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, 'gitea-operator')
+    } catch (error) {
+      console.debug(error)
+    }
+    // Watch gitea-operator-cm
+    try {
+      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, 'gitea-operator')
+    } catch (error) {
+      console.debug(error)
+    }
+    // Watch all namespaces
+    try {
+      await this.watchResource('', 'v1', 'namespaces', namespacesCallback)
+    } catch (error) {
+      console.debug(error)
+    }
+  }
+}
+
+async function main(): Promise<void> {
+  const operator = new MyOperator()
+  console.info(`Listening to secrets, configmaps and namespaces`)
+  await operator.start()
+  const exit = (reason: string) => {
+    operator.stop()
+    process.exit(0)
+  }
+
+  process.on('SIGTERM', () => exit('SIGTERM')).on('SIGINT', () => exit('SIGINT'))
+}
+
+if (typeof require !== 'undefined' && require.main === module) {
+  main()
+}
+
+// Runners
+async function runSetupGitea() {
+  try {
+    await setupGitea()
+  } catch (error) {
+    console.debug('Error could not run setup gitea', error)
+    console.debug('Retrying in 30 seconds')
+    await new Promise((resolve) => setTimeout(resolve, 30000))
+    console.debug('Retrying to setup gitea')
+    await runSetupGitea()
+  }
+}
+
+async function runExecCommand() {
+  try {
+    await execGiteaCLICommand('gitea', 'gitea-0')
+  } catch (error) {
+    console.debug('Error could not run exec command', error)
+    console.debug('Retrying in 30 seconds')
+    await new Promise((resolve) => setTimeout(resolve, 30000))
+    console.debug('Retrying to run exec command')
+    await runExecCommand()
+  }
+}
+
+// Setup Gitea Functions
 async function upsertTeam(
   existingTeams: Team[] = [],
   orgApi: OrganizationApi,
@@ -211,7 +325,13 @@ async function createReposAndAddToTeam(
   )
 }
 
-async function setupGitea(giteaPassword: string, inputGiteaUrl: string, teamConfig: any, argocdEnabled: boolean) {
+async function setupGitea() {
+  const { giteaPassword, giteaUrl: inputGiteaUrl, teamConfig, hasArgocd } = giteaOperator
+  if (!giteaPassword || !inputGiteaUrl || !teamConfig || !hasArgocd) {
+    console.info('Missing required variables for Gitea setup/reconfiguration')
+    return
+  }
+  console.info('Starting Gitea setup/reconfiguration')
   const teamIds = Object.keys(teamConfig)
   await waitTillAvailable(inputGiteaUrl)
   const giteaUrl: string = inputGiteaUrl.endsWith('/') ? inputGiteaUrl.slice(0, -1) : inputGiteaUrl
@@ -239,7 +359,7 @@ async function setupGitea(giteaPassword: string, inputGiteaUrl: string, teamConf
   // check for specific hooks
   await addTektonHook(repoApi)
 
-  if (!argocdEnabled) return
+  if (!hasArgocd) return
 
   // then create initial gitops repo for teams
   await Promise.all(
@@ -253,31 +373,11 @@ async function setupGitea(giteaPassword: string, inputGiteaUrl: string, teamConf
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
     process.exit(1)
   } else {
-    console.info('Success!')
+    console.info('Success! Gitea setup/reconfiguration completed')
   }
 }
 
-async function runSetupGitea() {
-  const operatorSecrets = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
-  const operatorConfigMap = (await k8sApi.readNamespacedConfigMap('gitea-operator-cm', 'gitea-operator')).body
-    .data as any
-  const giteaPassword = Buffer.from(operatorSecrets.giteaPassword, 'base64').toString()
-  const { giteaUrl, hasArgocd, teamConfig } = operatorConfigMap
-  const argocdEnabled = hasArgocd === 'true'
-  const teamConfigObj = JSON.parse(teamConfig)
-  try {
-    await setupGitea(giteaPassword, giteaUrl, teamConfigObj, argocdEnabled)
-    console.debug('Gitea setup/reconfiguration completed')
-  } catch (error) {
-    console.debug('Error could not run setup gitea', error)
-    console.debug('Retrying in 30 seconds')
-    await new Promise((resolve) => setTimeout(resolve, 30000))
-    console.debug('Retrying to setup gitea')
-    await setupGitea(giteaPassword, giteaUrl, teamConfigObj, argocdEnabled)
-  }
-}
-
-// Exec Gitea CLI command
+// Exec Gitea CLI Functions
 export function buildTeamString(teamNames: any[]): string {
   if (teamNames === undefined) return '{}'
   const teamObject: groupMapping = {}
@@ -343,88 +443,4 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
     console.debug(`Error updating IDP group mapping: ${error.message}`)
     throw error
   }
-}
-
-async function runExecCommand() {
-  try {
-    await execGiteaCLICommand('gitea', 'gitea-0')
-  } catch (error) {
-    console.debug('Error could not run exec command', error)
-    console.debug('Retrying in 30 seconds')
-    await new Promise((resolve) => setTimeout(resolve, 30000))
-    console.debug('Retrying to run exec command')
-    await runExecCommand()
-  }
-}
-
-// Callbacks
-const resourceCallback = async (e: any) => {
-  const { object } = e
-  const { metadata } = object
-
-  if (object.kind === 'Secret' && metadata.name !== 'gitea-admin') return
-  if (object.kind === 'ConfigMap' && metadata.name !== 'gitea-operator-cm') return
-
-  switch (e.type) {
-    case ResourceEventType.Added:
-    case ResourceEventType.Modified: {
-      try {
-        await runSetupGitea()
-      } catch (error) {
-        console.debug(error)
-      }
-      break
-    }
-    default:
-      break
-  }
-}
-
-// Operator
-export default class MyOperator extends Operator {
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-  protected async init() {
-    // Watch gitea-operator-secrets
-    try {
-      await this.watchResource('', 'v1', 'secrets', resourceCallback, 'gitea-operator')
-    } catch (error) {
-      console.debug(error)
-    }
-    // Watch gitea-operator-cm
-    try {
-      await this.watchResource('', 'v1', 'configmaps', resourceCallback, 'gitea-operator')
-    } catch (error) {
-      console.debug(error)
-    }
-    // Watch all namespaces
-    try {
-      await this.watchResource('', 'v1', 'namespaces', async (e) => {
-        const { object }: { object: k8s.V1Pod } = e
-        const { metadata } = object
-        // Check if namespace starts with prefix 'team-'
-        if (metadata && !metadata.name?.startsWith('team-')) return
-        if (metadata && metadata.name === 'team-admin') return
-        await runExecCommand()
-      })
-    } catch (error) {
-      console.debug(error)
-    }
-  }
-}
-
-async function main(): Promise<void> {
-  const operator = new MyOperator()
-  console.info(`Listening to team namespace changes in all namespaces`)
-  console.info('Setting up namespace prefix filter to "team-"')
-  await operator.start()
-  const exit = (reason: string) => {
-    operator.stop()
-    process.exit(0)
-  }
-
-  process.on('SIGTERM', () => exit('SIGTERM')).on('SIGINT', () => exit('SIGINT'))
-}
-
-if (typeof require !== 'undefined' && require.main === module) {
-  main()
 }
