@@ -14,13 +14,7 @@ import {
   Team,
 } from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../utils'
-import { OTOMI_VALUES, cleanEnv } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
-
-// Environment variables
-const env = cleanEnv({
-  OTOMI_VALUES,
-})
 
 // Interfaces
 interface hookInfo {
@@ -34,10 +28,6 @@ interface groupMapping {
   }
 }
 
-// Variables
-const teamConfig = env.OTOMI_VALUES.teamConfig ?? {}
-const teamIds = Object.keys(teamConfig)
-const hasArgo = !!env.OTOMI_VALUES.apps?.argocd?.enabled
 const errors: string[] = []
 
 const readOnlyTeam: CreateTeamOption = {
@@ -60,7 +50,7 @@ const adminTeam: CreateTeamOption = { ...editorTeam, permission: CreateTeamOptio
 const kc = new k8s.KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
-kc.loadFromCluster()
+kc.loadFromDefault()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 const watch = new k8s.Watch(kc)
 
@@ -171,7 +161,7 @@ async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   }
 }
 
-async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[]) {
+async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[], teamIds: string[], TEAM_CONFIG: any) {
   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
   await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
 
@@ -180,7 +170,7 @@ async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[])
     teamIds.map((teamId) => {
       // determine self service flags
       const name = `team-${teamId}`
-      if ((teamConfig[teamId]?.selfService?.apps || []).includes('gitea'))
+      if ((TEAM_CONFIG[teamId]?.selfService?.apps || []).includes('gitea'))
         return upsertTeam(existingTeams, orgApi, { ...adminTeam, name })
       return upsertTeam(existingTeams, orgApi, { ...editorTeam, name })
     }),
@@ -218,18 +208,19 @@ async function createReposAndAddToTeam(
   )
 }
 
-async function setupGitea(GITEA_PASSWORD: string, GITEA_URL: string) {
-  await waitTillAvailable(env.GITEA_URL)
-  const giteaUrl: string = env.GITEA_URL.endsWith('/') ? env.GITEA_URL.slice(0, -1) : env.GITEA_URL
+async function setupGitea(GITEA_PASSWORD: string, GITEA_URL: string, TEAM_CONFIG: any, hasArgocd: boolean) {
+  const teamIds = Object.keys(TEAM_CONFIG)
+  await waitTillAvailable(GITEA_URL)
+  const giteaUrl: string = GITEA_URL.endsWith('/') ? GITEA_URL.slice(0, -1) : GITEA_URL
 
   // create the org
-  const orgApi = new OrganizationApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
-  const repoApi = new RepositoryApi(username, env.GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  const orgApi = new OrganizationApi(username, GITEA_PASSWORD, `${giteaUrl}/api/v1`)
+  const repoApi = new RepositoryApi(username, GITEA_PASSWORD, `${giteaUrl}/api/v1`)
 
   const existingTeams = await doApiCall(errors, `Getting all teams in org "${orgName}"`, () =>
     orgApi.orgListTeams(orgName),
   )
-  await createOrgAndTeams(orgApi, existingTeams)
+  await createOrgAndTeams(orgApi, existingTeams, teamIds, TEAM_CONFIG)
 
   const existingRepos = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
@@ -245,7 +236,7 @@ async function setupGitea(GITEA_PASSWORD: string, GITEA_URL: string) {
   // check for specific hooks
   await addTektonHook(repoApi)
 
-  if (!hasArgo) return
+  if (!hasArgocd) return
 
   // then create initial gitops repo for teams
   await Promise.all(
@@ -263,16 +254,16 @@ async function setupGitea(GITEA_PASSWORD: string, GITEA_URL: string) {
   }
 }
 
-async function runSetupGitea(GITEA_PASSWORD: string, GITEA_URL: string) {
+async function runSetupGitea(GITEA_PASSWORD: string, GITEA_URL: string, TEAM_CONFIG: any, hasArgocd: boolean) {
   try {
-    await setupGitea(GITEA_PASSWORD, GITEA_URL)
+    await setupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, hasArgocd)
     console.debug('Gitea setup/reconfiguration completed')
   } catch (error) {
     console.debug('Error could not run setup gitea', error)
     console.debug('Retrying in 30 seconds')
     await new Promise((resolve) => setTimeout(resolve, 30000))
     console.log('Retrying to setup gitea')
-    await runExecCommand()
+    await setupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, hasArgocd)
   }
 }
 
@@ -362,28 +353,35 @@ export default class MyOperator extends Operator {
   protected async init() {
     // Watch gitea-operator-cm
     try {
-      await this.watchResource('', 'v1', 'configmaps', async (e) => {
-        const { object }: { object: k8s.V1ConfigMap } = e
-        const { metadata, data } = object
-        if (metadata && metadata.name !== 'gitea-operator-cm') return
-        switch (e.type) {
-          case ResourceEventType.Added:
-          case ResourceEventType.Modified: {
-            try {
-              const secretData = (await k8sApi.readNamespacedSecret('gitea-operator-secret', 'gitea-operator')).body
-                .data as any
-              const GITEA_PASSWORD = Buffer.from(secretData.GITEA_PASSWORD, 'base64').toString()
-              const { GITEA_URL } = data as any
-              await runSetupGitea(GITEA_PASSWORD, GITEA_URL)
-            } catch (error) {
-              console.debug(error)
+      await this.watchResource(
+        '',
+        'v1',
+        'configmaps',
+        async (e) => {
+          const { object }: { object: k8s.V1ConfigMap } = e
+          const { metadata, data } = object
+          const { TEAM_CONFIG } = data as any
+          if (metadata && metadata.name !== 'gitea-operator-cm') return
+          switch (e.type) {
+            case ResourceEventType.Added:
+            case ResourceEventType.Modified: {
+              try {
+                const secretData = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
+                const GITEA_PASSWORD = Buffer.from(secretData.GITEA_PASSWORD, 'base64').toString()
+                const { GITEA_URL, HAS_ARGOCD } = data as any
+                const hasArgocd = HAS_ARGOCD === 'true'
+                await runSetupGitea(GITEA_PASSWORD, GITEA_URL, TEAM_CONFIG, hasArgocd)
+              } catch (error) {
+                console.debug(error)
+              }
+              break
             }
-            break
+            default:
+              break
           }
-          default:
-            break
-        }
-      })
+        },
+        'gitea-operator',
+      )
     } catch (error) {
       console.debug(error)
     }
