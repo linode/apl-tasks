@@ -369,8 +369,9 @@ export default class MyOperator extends Operator {
         'v1',
         'secrets',
         async (e) => {
-          const { object }: { object: k8s.V1ConfigMap } = e
+          const { object } = e
           const { metadata, data } = object as any
+          console.log('secrets data', data)
           if (metadata && metadata.name !== 'gitea-admin') return
           console.log('before secrets:', GITEA_PASSWORD)
           GITEA_PASSWORD = Buffer.from(data.GITEA_PASSWORD, 'base64').toString()
