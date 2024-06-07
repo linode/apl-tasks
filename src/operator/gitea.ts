@@ -372,7 +372,9 @@ export default class MyOperator extends Operator {
           const { object }: { object: k8s.V1ConfigMap } = e
           const { metadata, data } = object as any
           if (metadata && metadata.name !== 'gitea-admin') return
+          console.log('before secrets:', GITEA_PASSWORD)
           GITEA_PASSWORD = Buffer.from(data.GITEA_PASSWORD, 'base64').toString()
+          console.log('after secrets:', GITEA_PASSWORD)
           switch (e.type) {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
@@ -401,10 +403,12 @@ export default class MyOperator extends Operator {
         async (e) => {
           const { object }: { object: k8s.V1ConfigMap } = e
           const { metadata, data } = object as any
+          console.log('before configmaps:', GITEA_URL, HAS_ARGOCD, TEAM_CONFIG)
           if (metadata && metadata.name !== 'gitea-operator-cm') return
           GITEA_URL = data.GITEA_URL
           HAS_ARGOCD = data.HAS_ARGOCD
           TEAM_CONFIG = data.TEAM_CONFIG
+          console.log('after configmaps:', GITEA_URL, HAS_ARGOCD, TEAM_CONFIG)
           switch (e.type) {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
