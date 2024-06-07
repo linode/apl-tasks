@@ -371,6 +371,7 @@ export default class MyOperator extends Operator {
         async (e) => {
           const { object } = e
           const { metadata, data } = object as any
+          console.log('metadata', metadata)
           console.log('secrets data', data)
           if (metadata && metadata.name !== 'gitea-admin') return
           console.log('before secrets:', GITEA_PASSWORD)
