@@ -37,19 +37,6 @@ import {
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
 import { doApiCall, waitTillAvailable } from '../utils'
-import {
-  cleanEnv,
-  FEAT_EXTERNAL_IDP,
-  IDP_ALIAS,
-  IDP_OIDC_URL,
-  KC_HOSTNAME_URL,
-  KEYCLOAK_ADDRESS_INTERNAL,
-  KEYCLOAK_ADMIN,
-  KEYCLOAK_ADMIN_PASSWORD,
-  KEYCLOAK_REALM,
-  KEYCLOAK_TOKEN_TTL,
-  WAIT_OPTIONS,
-} from '../validators'
 
 const errors: string[] = []
 
@@ -74,7 +61,7 @@ interface KeycloakApi {
 interface RealmRole {
   name: string
 }
-const newEnv = {
+const env = {
   IDP_ALIAS: '',
   IDP_OIDC_URL: '',
   KEYCLOAK_ADMIN: '',
@@ -84,20 +71,8 @@ const newEnv = {
   KEYCLOAK_REALM: '',
   KEYCLOAK_TOKEN_TTL: 0,
   FEAT_EXTERNAL_IDP: 'false',
-  WAIT_OPTIONS: '',
+  WAIT_OPTIONS: {},
 }
-const env = cleanEnv({
-  IDP_ALIAS,
-  IDP_OIDC_URL,
-  KEYCLOAK_ADMIN,
-  KEYCLOAK_ADMIN_PASSWORD,
-  KC_HOSTNAME_URL,
-  KEYCLOAK_ADDRESS_INTERNAL,
-  KEYCLOAK_REALM,
-  KEYCLOAK_TOKEN_TTL,
-  FEAT_EXTERNAL_IDP,
-  WAIT_OPTIONS,
-})
 
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
@@ -164,9 +139,9 @@ export default class MyOperator extends Operator {
             case ResourceEventType.Modified: {
               try {
                 const secretData = (await k8sApi.readNamespacedSecret('keycloak-admin', 'otomi-keycloak-operator')).body.data as any
-                newEnv.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(secretData.password, 'base64').toString()
-                newEnv.KEYCLOAK_ADMIN = Buffer.from(secretData.username, 'base64').toString()
-                console.log('KEYCLOAK_ADMIN_PASSWORD', newEnv.KEYCLOAK_ADMIN_PASSWORD)
+                env.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(secretData.password, 'base64').toString()
+                env.KEYCLOAK_ADMIN = Buffer.from(secretData.username, 'base64').toString()
+                console.log('KEYCLOAK_ADMIN_PASSWORD', env.KEYCLOAK_ADMIN_PASSWORD)
               } catch (error) {
                 console.debug(error)
               }
@@ -197,14 +172,14 @@ export default class MyOperator extends Operator {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
               try {
-                newEnv.FEAT_EXTERNAL_IDP = data!.FEAT_EXTERNAL_IDP
-                newEnv.IDP_ALIAS = data!.IDP_ALIAS
-                newEnv.IDP_OIDC_URL = data!.IDP_OIDC_URL
-                newEnv.KC_HOSTNAME_URL = data!.KC_HOSTNAME_URL
-                newEnv.KEYCLOAK_ADDRESS_INTERNAL = data!.KEYCLOAK_ADDRESS_INTERNAL
-                newEnv.KEYCLOAK_REALM = data!.KEYCLOAK_REALM
-                newEnv.KEYCLOAK_TOKEN_TTL = data!.KEYCLOAK_TOKEN_TTL as unknown as number
-                newEnv.WAIT_OPTIONS = data!.WAIT_OPTIONS
+                env.FEAT_EXTERNAL_IDP = data!.FEAT_EXTERNAL_IDP
+                env.IDP_ALIAS = data!.IDP_ALIAS
+                env.IDP_OIDC_URL = data!.IDP_OIDC_URL
+                env.KC_HOSTNAME_URL = data!.KC_HOSTNAME_URL
+                env.KEYCLOAK_ADDRESS_INTERNAL = data!.KEYCLOAK_ADDRESS_INTERNAL
+                env.KEYCLOAK_REALM = data!.KEYCLOAK_REALM
+                env.KEYCLOAK_TOKEN_TTL = data!.KEYCLOAK_TOKEN_TTL as unknown as number
+                env.WAIT_OPTIONS = data!.WAIT_OPTIONS
               } catch (error) {
                 console.debug(error)
               }
