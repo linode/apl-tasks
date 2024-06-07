@@ -50,11 +50,7 @@ const adminTeam: CreateTeamOption = { ...editorTeam, permission: CreateTeamOptio
 const kc = new k8s.KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
-if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) {
-  kc.loadFromCluster()
-} else {
-  kc.loadFromDefault()
-}
+kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 // Setup Gitea
@@ -365,6 +361,7 @@ export default class MyOperator extends Operator {
           const { object }: { object: k8s.V1ConfigMap } = e
           const { metadata, data } = object
           const { TEAM_CONFIG } = data as any
+          console.log('TEAM_CONFIG', TEAM_CONFIG)
           if (metadata && metadata.name !== 'gitea-operator-cm') return
           switch (e.type) {
             case ResourceEventType.Added:
@@ -372,7 +369,10 @@ export default class MyOperator extends Operator {
               try {
                 const secretData = (await k8sApi.readNamespacedSecret('gitea-admin', 'gitea-operator')).body.data as any
                 const GITEA_PASSWORD = Buffer.from(secretData.GITEA_PASSWORD, 'base64').toString()
+                console.log('GITEA_PASSWORD', GITEA_PASSWORD)
                 const { GITEA_URL, HAS_ARGOCD } = data as any
+                console.log('HAS_ARGOCD', HAS_ARGOCD)
+                console.log('GITEA_URL', GITEA_URL)
                 const hasArgocd = HAS_ARGOCD === 'true'
                 const TeamConfig = JSON.parse(TEAM_CONFIG)
                 await runSetupGitea(GITEA_PASSWORD, GITEA_URL, TeamConfig, hasArgocd)
