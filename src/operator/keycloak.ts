@@ -81,7 +81,18 @@ kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 async function runKeycloakUpdater(key: string) {
-  if (!env.FEAT_EXTERNAL_IDP || !env.IDP_ALIAS || !env.IDP_OIDC_URL || !env.KC_HOSTNAME_URL || !env.KEYCLOAK_ADDRESS_INTERNAL || !env.KEYCLOAK_ADMIN || !env.KEYCLOAK_ADMIN_PASSWORD || !env.KEYCLOAK_REALM || !env.KEYCLOAK_TOKEN_TTL || !env.WAIT_OPTIONS) {
+  if (
+    !env.FEAT_EXTERNAL_IDP ||
+    !env.IDP_ALIAS ||
+    !env.IDP_OIDC_URL ||
+    !env.KC_HOSTNAME_URL ||
+    !env.KEYCLOAK_ADDRESS_INTERNAL ||
+    !env.KEYCLOAK_ADMIN ||
+    !env.KEYCLOAK_ADMIN_PASSWORD ||
+    !env.KEYCLOAK_REALM ||
+    !env.KEYCLOAK_TOKEN_TTL ||
+    !env.WAIT_OPTIONS
+  ) {
     console.info('Missing required variables for Keycloak setup/reconfiguration')
     return
   }
