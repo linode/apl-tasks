@@ -62,30 +62,45 @@ interface RealmRole {
   name: string
 }
 const env = {
+  FEAT_EXTERNAL_IDP: 'false',
   IDP_ALIAS: '',
   IDP_OIDC_URL: '',
+  IDP_CLIENT_ID: '',
+  IDP_CLIENT_SECRET: '',
+  IDP_GROUP_OTOMI_ADMIN: '',
+  IDP_GROUP_TEAM_ADMIN: '',
+  IDP_GROUP_MAPPINGS_TEAMS: [] as string[],
+  IDP_SUB_CLAIM_MAPPER: '',
+  IDP_USERNAME_CLAIM_MAPPER: '',
+  KEYCLOAK_ADDRESS_INTERNAL: '',
   KEYCLOAK_ADMIN: '',
   KEYCLOAK_ADMIN_PASSWORD: '',
-  KC_HOSTNAME_URL: '',
-  KEYCLOAK_ADDRESS_INTERNAL: '',
+  KEYCLOAK_CLIENT_SECRET: '',
+  KEYCLOAK_HOSTNAME_URL: [] as string[],
   KEYCLOAK_REALM: '',
   KEYCLOAK_TOKEN_TTL: 0,
-  FEAT_EXTERNAL_IDP: 'false',
+  REDIRECT_URIS: [] as string[],
+  TEAM_IDS: [] as string[],
   WAIT_OPTIONS: {},
 }
 
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
-kc.loadFromCluster()
+if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) {
+  kc.loadFromCluster()
+} else {
+  kc.loadFromDefault()
+}
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 async function runKeycloakUpdater(key: string) {
+  console.log('before checking variables')
   if (
     !env.FEAT_EXTERNAL_IDP ||
     !env.IDP_ALIAS ||
     !env.IDP_OIDC_URL ||
-    !env.KC_HOSTNAME_URL ||
+    !env.KEYCLOAK_HOSTNAME_URL ||
     !env.KEYCLOAK_ADDRESS_INTERNAL ||
     !env.KEYCLOAK_ADMIN ||
     !env.KEYCLOAK_ADMIN_PASSWORD ||
@@ -191,7 +206,7 @@ export default class MyOperator extends Operator {
                 env.FEAT_EXTERNAL_IDP = data!.FEAT_EXTERNAL_IDP
                 env.IDP_ALIAS = data!.IDP_ALIAS
                 env.IDP_OIDC_URL = data!.IDP_OIDC_URL
-                env.KC_HOSTNAME_URL = data!.KC_HOSTNAME_URL
+                env.KEYCLOAK_HOSTNAME_URL[0] = (data!.KEYCLOAK_HOSTNAME_URL!)
                 env.KEYCLOAK_ADDRESS_INTERNAL = data!.KEYCLOAK_ADDRESS_INTERNAL
                 env.KEYCLOAK_REALM = data!.KEYCLOAK_REALM
                 env.KEYCLOAK_TOKEN_TTL = data!.KEYCLOAK_TOKEN_TTL as unknown as number
@@ -277,12 +292,12 @@ async function keycloakTeamDeleted() {
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
-  await waitTillAvailable(env.KC_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
-  const keycloakAddress = env.KC_HOSTNAME_URL
+  await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL[0], undefined, env.WAIT_OPTIONS)
+  const keycloakAddress = env.KEYCLOAK_HOSTNAME_URL
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
   try {
-    custom.setHttpOptionsDefaults({ headers: { host: env.KC_HOSTNAME_URL.replace('https://', '') } })
+    custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_HOSTNAME_URL[0].replace('https://', '') } })
     const keycloakIssuer = await Issuer.discover(`${keycloakAddress}/realms/${env.KEYCLOAK_REALM}/`)
     // console.log(keycloakIssuer)
     const clientOptions: any = {
@@ -357,7 +372,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     )
   }
 
-  const teamRoles = mapTeamsToRoles()
+  const teamRoles = mapTeamsToRoles(env.TEAM_IDS, env.IDP_GROUP_MAPPINGS_TEAMS, env.IDP_GROUP_TEAM_ADMIN, env.IDP_GROUP_OTOMI_ADMIN, env.KEYCLOAK_REALM)
   const existingRealmRoles = ((await doApiCall(errors, `Getting all roles from realm ${keycloakRealm}`, async () =>
     api.roles.realmRolesGet(keycloakRealm),
   )) || []) as Array<RealmRole>
@@ -374,7 +389,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   )
 
   // Create Otomi Client
-  const client = createClient()
+  const client = createClient(env.REDIRECT_URIS, env.KEYCLOAK_HOSTNAME_URL, env.KEYCLOAK_CLIENT_SECRET)
   const allClients = ((await doApiCall(errors, 'Getting otomi client', () =>
     api.clients.realmClientsGet(keycloakRealm),
   )) || []) as Array<ClientRepresentation>
@@ -405,7 +420,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
 async function externalIDP(api: KeycloakApi) {
   // Keycloak acts as broker
   // Create Identity Provider
-  const idp = await createIdProvider()
+  const idp = await createIdProvider(env.IDP_CLIENT_ID, env.IDP_ALIAS, env.IDP_CLIENT_SECRET, env.IDP_OIDC_URL)
 
   const existingProviders = ((await doApiCall(errors, 'Geting identity provider', async () =>
     api.providers.realmIdentityProviderInstancesGet(keycloakRealm),
@@ -422,7 +437,7 @@ async function externalIDP(api: KeycloakApi) {
   }
 
   // Create Identity Provider Mappers
-  const idpMappers = createIdpMappers()
+  const idpMappers = createIdpMappers(env.IDP_ALIAS, env.IDP_GROUP_MAPPINGS_TEAMS, env.IDP_GROUP_OTOMI_ADMIN, env.IDP_GROUP_TEAM_ADMIN, env.IDP_USERNAME_CLAIM_MAPPER, env.IDP_SUB_CLAIM_MAPPER)
 
   const existingMappers = ((await doApiCall(errors, `Getting role mappers`, () =>
     api.providers.realmIdentityProviderInstancesAliasMappersGet(keycloakRealm, env.IDP_ALIAS),
@@ -567,7 +582,7 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
 async function manageGroups(connection: KeycloakConnection) {
   const { basePath } = connection
   const groups = new GroupsApi(basePath)
-  const teamGroups = createGroups()
+  const teamGroups = createGroups(env.TEAM_IDS)
 
   const existingGroups = ((await doApiCall(errors, 'Getting realm groups', () =>
     groups.realmGroupsGet(keycloakRealm),
