@@ -81,6 +81,11 @@ kc.loadFromCluster()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 async function runKeycloakUpdater(key: string) {
+  if (!env.FEAT_EXTERNAL_IDP || !env.IDP_ALIAS || !env.IDP_OIDC_URL || !env.KC_HOSTNAME_URL || !env.KEYCLOAK_ADDRESS_INTERNAL || !env.KEYCLOAK_ADMIN || !env.KEYCLOAK_ADMIN_PASSWORD || !env.KEYCLOAK_REALM || !env.KEYCLOAK_TOKEN_TTL || !env.WAIT_OPTIONS) {
+    console.info('Missing required variables for Keycloak setup/reconfiguration')
+    return
+  }
+
   switch (key) {
     case 'addTeam':
       try {
@@ -138,11 +143,10 @@ export default class MyOperator extends Operator {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
               try {
-                const secretData = (await k8sApi.readNamespacedSecret('keycloak-admin', 'otomi-keycloak-operator')).body
-                  .data as any
-                env.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(secretData.password, 'base64').toString()
-                env.KEYCLOAK_ADMIN = Buffer.from(secretData.username, 'base64').toString()
+                env.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(data!.password, 'base64').toString()
+                env.KEYCLOAK_ADMIN = Buffer.from(data!.username, 'base64').toString()
                 console.log('KEYCLOAK_ADMIN_PASSWORD', env.KEYCLOAK_ADMIN_PASSWORD)
+                await runKeycloakUpdater('updateConfig')
               } catch (error) {
                 console.debug(error)
               }
@@ -181,6 +185,7 @@ export default class MyOperator extends Operator {
                 env.KEYCLOAK_REALM = data!.KEYCLOAK_REALM
                 env.KEYCLOAK_TOKEN_TTL = data!.KEYCLOAK_TOKEN_TTL as unknown as number
                 env.WAIT_OPTIONS = data!.WAIT_OPTIONS
+                await runKeycloakUpdater('updateConfig')
               } catch (error) {
                 console.debug(error)
               }
@@ -252,13 +257,11 @@ async function keycloakConfigMapChanges() {
 
 async function keycloakTeamAdded() {
   const connection = await createKeycloakConnection()
-  const api = setupKeycloakApi(connection)
   await manageGroups(connection)
 }
 
 async function keycloakTeamDeleted() {
   const connection = await createKeycloakConnection()
-  const api = setupKeycloakApi(connection)
   await manageGroups(connection)
 }
 
