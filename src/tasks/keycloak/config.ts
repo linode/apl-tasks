@@ -8,7 +8,7 @@ export const keycloakRealm = 'otomi'
 export const defaultsIdpMapperTpl = (
   idpAlias: string,
   idpUsernameClaimMapper: string,
-  idpSubClaimMapper: string
+  idpSubClaimMapper: string,
 ): Array<Record<string, unknown>> => [
   {
     name: 'upn to email',

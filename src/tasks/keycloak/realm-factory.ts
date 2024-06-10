@@ -46,7 +46,7 @@ export function createIdpMappers(
   adminGroupMapping: string,
   teamAdminGroupMapping: string,
   userClaimMapper: string,
-  idpSubClaimMapper: string
+  idpSubClaimMapper: string,
 ): Array<IdentityProviderMapperRepresentation> {
   // admin idp mapper case
   const admin = idpMapperTpl('otomi-admin group to role', idpAlias, 'admin', adminGroupMapping)
@@ -74,7 +74,7 @@ export async function createIdProvider(
   clientId: string,
   alias: string,
   clientSecret: string,
-  oidcUrl: string
+  oidcUrl: string,
 ): Promise<IdentityProviderRepresentation> {
   const otomiClientIdp = defaultsDeep(
     new IdentityProviderRepresentation(),
@@ -113,7 +113,13 @@ export function createClientScopes(): ClientScopeRepresentation {
   return clientScopeRepresentation
 }
 
-export function mapTeamsToRoles(teamIds: string[], idpGroupMappings: string[], idpGroupTeamAdmin: string, groupOtomiAdmin: string, realm: string): Array<RoleRepresentation> {
+export function mapTeamsToRoles(
+  teamIds: string[],
+  idpGroupMappings: string[],
+  idpGroupTeamAdmin: string,
+  groupOtomiAdmin: string,
+  realm: string,
+): Array<RoleRepresentation> {
   const teams =
     idpGroupMappings ??
     (teamIds as string[]).reduce((memo: any, name) => {
