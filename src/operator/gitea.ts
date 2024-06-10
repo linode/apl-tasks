@@ -327,11 +327,12 @@ async function createReposAndAddToTeam(
 
 async function setupGitea() {
   const { giteaPassword, giteaUrl: inputGiteaUrl, teamConfig, hasArgocd } = giteaOperator
-  if (!giteaPassword || !inputGiteaUrl || !teamConfig || !hasArgocd) {
+  if (!giteaPassword || !inputGiteaUrl || !teamConfig) {
     console.info('Missing required variables for Gitea setup/reconfiguration')
     return
   }
   console.info('Starting Gitea setup/reconfiguration')
+
   const teamIds = Object.keys(teamConfig)
   await waitTillAvailable(inputGiteaUrl)
   const giteaUrl: string = inputGiteaUrl.endsWith('/') ? inputGiteaUrl.slice(0, -1) : inputGiteaUrl
