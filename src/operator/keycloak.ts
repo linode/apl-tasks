@@ -37,6 +37,7 @@ import {
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
 import { doApiCall, waitTillAvailable } from '../utils'
+import { cleanEnv, KEYCLOAK_TOKEN_TTL } from '../validators'
 
 const errors: string[] = []
 
@@ -61,6 +62,9 @@ interface KeycloakApi {
 interface RealmRole {
   name: string
 }
+
+const localEnv = cleanEnv({KEYCLOAK_TOKEN_TTL})
+
 const env = {
   FEAT_EXTERNAL_IDP: 'false',
   IDP_ALIAS: '',
@@ -78,7 +82,7 @@ const env = {
   KEYCLOAK_CLIENT_SECRET: '',
   KEYCLOAK_HOSTNAME_URL: [] as string[],
   KEYCLOAK_REALM: '',
-  KEYCLOAK_TOKEN_TTL: 0,
+  KEYCLOAK_TOKEN_TTL: localEnv.KEYCLOAK_TOKEN_TTL,
   REDIRECT_URIS: [] as string[],
   TEAM_IDS: [] as string[],
   WAIT_OPTIONS: {},
@@ -164,14 +168,19 @@ export default class MyOperator extends Operator {
         async (e) => {
           const { object }: { object: k8s.V1Secret } = e
           const { metadata, data } = object
-          if (metadata && metadata.name !== 'otomi-keycloak-operator-secret') return
+          // console.log('object: ', object)
+          if (metadata && metadata.name !== 'keycloak-admin') return
           switch (e.type) {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
               try {
-                env.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(data!.password, 'base64').toString()
-                env.KEYCLOAK_ADMIN = Buffer.from(data!.username, 'base64').toString()
+                env.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(data!.KEYCLOAK_ADMIN_PASSWORD, 'base64').toString()
+                env.KEYCLOAK_ADMIN = Buffer.from(data!.KEYCLOAK_ADMIN, 'base64').toString()
+                env.KEYCLOAK_CLIENT_SECRET = Buffer.from(data!.KEYCLOAK_CLIENT_SECRET, 'base64').toString()
+                if (data!.IDP_CLIENT_ID) env.IDP_CLIENT_ID = Buffer.from(data!.IDP_CLIENT_ID, 'base64').toString()
+                if (data!.IDP_CLIENT_SECRET) env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
                 console.log('KEYCLOAK_ADMIN_PASSWORD', env.KEYCLOAK_ADMIN_PASSWORD)
+                console.log('After Secrets - env: ', env)
                 await runKeycloakUpdater('updateConfig')
               } catch (error) {
                 console.debug(error)
@@ -198,19 +207,29 @@ export default class MyOperator extends Operator {
         async (e) => {
           const { object }: { object: k8s.V1ConfigMap } = e
           const { metadata, data } = object
-          if (metadata && metadata.name !== 'otomi-keycloak-operator-cm') return
+          // console.log('object: ', object)
+          if (metadata && metadata.name !== 'keycloak-cm') return
           switch (e.type) {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
               try {
                 env.FEAT_EXTERNAL_IDP = data!.FEAT_EXTERNAL_IDP
-                env.IDP_ALIAS = data!.IDP_ALIAS
-                env.IDP_OIDC_URL = data!.IDP_OIDC_URL
-                env.KEYCLOAK_HOSTNAME_URL[0] = (data!.KEYCLOAK_HOSTNAME_URL!)
+                env.KEYCLOAK_HOSTNAME_URL[0] = (data!.KEYCLOAK_HOSTNAME_URL)
                 env.KEYCLOAK_ADDRESS_INTERNAL = data!.KEYCLOAK_ADDRESS_INTERNAL
                 env.KEYCLOAK_REALM = data!.KEYCLOAK_REALM
-                env.KEYCLOAK_TOKEN_TTL = data!.KEYCLOAK_TOKEN_TTL as unknown as number
+                env.TEAM_IDS = data!.TEAM_IDS as unknown as string[]
+                env.REDIRECT_URIS = data!.REDIRECT_URIS as unknown as string[]
                 env.WAIT_OPTIONS = data!.WAIT_OPTIONS
+                if (env.FEAT_EXTERNAL_IDP) {
+                  env.IDP_ALIAS = data!.IDP_ALIAS
+                  env.IDP_OIDC_URL = data!.IDP_OIDC_URL
+                  env.IDP_GROUP_OTOMI_ADMIN = data!.IDP_GROUP_OTOMI_ADMIN
+                  env.IDP_GROUP_TEAM_ADMIN = data!.IDP_GROUP_TEAM_ADMIN
+                  env.IDP_GROUP_MAPPINGS_TEAMS = data!.IDP_GROUP_MAPPINGS_TEAMS as unknown as string[]
+                  env.IDP_SUB_CLAIM_MAPPER = data!.IDP_SUB_CLAIM_MAPPER
+                  env.IDP_USERNAME_CLAIM_MAPPER = data!.IDP_USERNAME_CLAIM_MAPPER
+                }
+                console.log('After ConfigMap - env: ', env)
                 await runKeycloakUpdater('updateConfig')
               } catch (error) {
                 console.debug(error)

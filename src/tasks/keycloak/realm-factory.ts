@@ -13,24 +13,6 @@ import {
 import { defaultsDeep } from 'lodash'
 import * as utils from '../../utils'
 import {
-  FEAT_EXTERNAL_IDP,
-  IDP_ALIAS,
-  IDP_CLIENT_ID,
-  IDP_CLIENT_SECRET,
-  IDP_GROUP_MAPPINGS_TEAMS,
-  IDP_GROUP_OTOMI_ADMIN,
-  IDP_GROUP_TEAM_ADMIN,
-  IDP_OIDC_URL,
-  IDP_SUB_CLAIM_MAPPER,
-  IDP_USERNAME_CLAIM_MAPPER,
-  KC_HOSTNAME_URL,
-  KEYCLOAK_CLIENT_SECRET,
-  KEYCLOAK_REALM,
-  REDIRECT_URIS,
-  TEAM_IDS,
-  cleanEnv,
-} from '../../validators'
-import {
   TeamMapping,
   adminUserCfgTpl,
   clientEmailClaimMapper,
@@ -43,24 +25,6 @@ import {
   realmCfgTpl,
   roleTpl,
 } from './config'
-
-const env = cleanEnv({
-  FEAT_EXTERNAL_IDP,
-  IDP_CLIENT_ID,
-  IDP_CLIENT_SECRET,
-  IDP_ALIAS,
-  KC_HOSTNAME_URL,
-  KEYCLOAK_CLIENT_SECRET,
-  KEYCLOAK_REALM,
-  REDIRECT_URIS,
-  IDP_GROUP_OTOMI_ADMIN,
-  IDP_GROUP_TEAM_ADMIN,
-  IDP_GROUP_MAPPINGS_TEAMS,
-  IDP_OIDC_URL,
-  IDP_SUB_CLAIM_MAPPER,
-  IDP_USERNAME_CLAIM_MAPPER,
-  TEAM_IDS,
-})
 
 export function createClient(redirectUris: string[], webOrigins: string[], secret: string): ClientRepresentation {
   const otomiClientRepresentation = defaultsDeep(
