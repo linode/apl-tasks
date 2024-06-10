@@ -122,7 +122,7 @@ export function mapTeamsToRoles(
 ): Array<RoleRepresentation> {
   const teams =
     idpGroupMappings ??
-    (teamIds).reduce((memo: any, name) => {
+    teamIds.reduce((memo: any, name) => {
       // eslint-disable-next-line no-param-reassign
       memo[`team-${name}`] = undefined
       return memo
