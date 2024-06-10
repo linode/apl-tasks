@@ -40,7 +40,14 @@ export function createGroups(teamIds: string[]): Array<GroupRepresentation> {
   return groups
 }
 
-export function createIdpMappers(idpAlias: string, teams: string[], adminGroupMapping: string, teamAdminGroupMapping: string, userClaimMapper: string, idpSubClaimMapper: string): Array<IdentityProviderMapperRepresentation> {
+export function createIdpMappers(
+  idpAlias: string,
+  teams: string[],
+  adminGroupMapping: string,
+  teamAdminGroupMapping: string,
+  userClaimMapper: string,
+  idpSubClaimMapper: string
+): Array<IdentityProviderMapperRepresentation> {
   // admin idp mapper case
   const admin = idpMapperTpl('otomi-admin group to role', idpAlias, 'admin', adminGroupMapping)
   const adminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), admin)
@@ -63,7 +70,12 @@ export function createIdpMappers(idpAlias: string, teams: string[], adminGroupMa
   return teamMappers.concat(defaultMapper).concat(adminMapper).concat(teamAdminMapper)
 }
 
-export async function createIdProvider(clientId: string, alias: string, clientSecret: string, oidcUrl: string): Promise<IdentityProviderRepresentation> {
+export async function createIdProvider(
+  clientId: string,
+  alias: string,
+  clientSecret: string,
+  oidcUrl: string
+): Promise<IdentityProviderRepresentation> {
   const otomiClientIdp = defaultsDeep(
     new IdentityProviderRepresentation(),
     await idpProviderCfgTpl(alias, clientId, clientSecret, oidcUrl),

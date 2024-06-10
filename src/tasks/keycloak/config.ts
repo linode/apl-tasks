@@ -5,7 +5,11 @@ import axios from 'axios'
 
 export const keycloakRealm = 'otomi'
 
-export const defaultsIdpMapperTpl = (idpAlias: string, idpUsernameClaimMapper: string, idpSubClaimMapper: string): Array<Record<string, unknown>> => [
+export const defaultsIdpMapperTpl = (
+  idpAlias: string,
+  idpUsernameClaimMapper: string,
+  idpSubClaimMapper: string
+): Array<Record<string, unknown>> => [
   {
     name: 'upn to email',
     identityProviderAlias: idpAlias,
