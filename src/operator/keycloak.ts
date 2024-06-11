@@ -100,19 +100,21 @@ const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 async function runKeycloakUpdater(key: string) {
   console.log('before checking variables')
-  if (
-    !env.IDP_ALIAS ||
-    !env.IDP_OIDC_URL ||
-    !env.IDP_CLIENT_ID ||
-    !env.IDP_CLIENT_SECRET ||
-    !env.IDP_GROUP_OTOMI_ADMIN ||
-    !env.IDP_GROUP_TEAM_ADMIN ||
-    !env.IDP_GROUP_MAPPINGS_TEAMS ||
-    !env.IDP_SUB_CLAIM_MAPPER ||
-    !env.IDP_USERNAME_CLAIM_MAPPER
-  ) {
-    console.info('Missing required external IDP variables for Keycloak setup/reconfiguration')
-    return
+  if (JSON.parse(env.FEAT_EXTERNAL_IDP)) {
+    if (
+      !env.IDP_ALIAS ||
+      !env.IDP_OIDC_URL ||
+      !env.IDP_CLIENT_ID ||
+      !env.IDP_CLIENT_SECRET ||
+      !env.IDP_GROUP_OTOMI_ADMIN ||
+      !env.IDP_GROUP_TEAM_ADMIN ||
+      !env.IDP_GROUP_MAPPINGS_TEAMS ||
+      !env.IDP_SUB_CLAIM_MAPPER ||
+      !env.IDP_USERNAME_CLAIM_MAPPER
+    ) {
+      console.info('Missing required external IDP variables for Keycloak setup/reconfiguration')
+      return
+    }
   }
 
   if (
