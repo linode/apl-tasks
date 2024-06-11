@@ -26,10 +26,10 @@ import {
   roleTpl,
 } from './config'
 
-export function createClient(redirectUris: string[], webOrigins: string[], secret: string): ClientRepresentation {
+export function createClient(redirectUris: string[], webOrigins: string, secret: string): ClientRepresentation {
   const otomiClientRepresentation = defaultsDeep(
     new ClientRepresentation(),
-    otomiClientCfgTpl(secret, redirectUris, webOrigins),
+    otomiClientCfgTpl(secret, redirectUris, [webOrigins]),
   )
   return otomiClientRepresentation
 }

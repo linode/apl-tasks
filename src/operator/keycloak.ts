@@ -80,7 +80,7 @@ const env = {
   KEYCLOAK_ADMIN: '',
   KEYCLOAK_ADMIN_PASSWORD: '',
   KEYCLOAK_CLIENT_SECRET: '',
-  KEYCLOAK_HOSTNAME_URL: [] as string[],
+  KEYCLOAK_HOSTNAME_URL: '',
   KEYCLOAK_REALM: '',
   KEYCLOAK_TOKEN_TTL: localEnv.KEYCLOAK_TOKEN_TTL,
   REDIRECT_URIS: [] as string[],
@@ -99,7 +99,6 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 async function runKeycloakUpdater(key: string) {
-  console.log('before checking variables')
   if (JSON.parse(env.FEAT_EXTERNAL_IDP)) {
     if (
       !env.IDP_ALIAS ||
@@ -182,7 +181,6 @@ export default class MyOperator extends Operator {
         async (e) => {
           const { object }: { object: k8s.V1Secret } = e
           const { metadata, data } = object
-          // console.log('object: ', object)
           if (metadata && metadata.name !== 'keycloak-admin') return
           switch (e.type) {
             case ResourceEventType.Added:
@@ -194,8 +192,6 @@ export default class MyOperator extends Operator {
                 if (data!.IDP_CLIENT_ID) env.IDP_CLIENT_ID = Buffer.from(data!.IDP_CLIENT_ID, 'base64').toString()
                 if (data!.IDP_CLIENT_SECRET)
                   env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
-                console.log('KEYCLOAK_ADMIN_PASSWORD', env.KEYCLOAK_ADMIN_PASSWORD)
-                console.log('After Secrets - env: ', env)
                 await runKeycloakUpdater('updateConfig')
               } catch (error) {
                 console.debug(error)
@@ -222,14 +218,13 @@ export default class MyOperator extends Operator {
         async (e) => {
           const { object }: { object: k8s.V1ConfigMap } = e
           const { metadata, data } = object
-          // console.log('object: ', object)
           if (metadata && metadata.name !== 'keycloak-cm') return
           switch (e.type) {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
               try {
                 env.FEAT_EXTERNAL_IDP = data!.FEAT_EXTERNAL_IDP
-                env.KEYCLOAK_HOSTNAME_URL[0] = data!.KEYCLOAK_HOSTNAME_URL
+                env.KEYCLOAK_HOSTNAME_URL = data!.KEYCLOAK_HOSTNAME_URL
                 env.KEYCLOAK_ADDRESS_INTERNAL = data!.KEYCLOAK_ADDRESS_INTERNAL
                 env.KEYCLOAK_REALM = data!.KEYCLOAK_REALM
                 env.TEAM_IDS = data!.TEAM_IDS as unknown as string[]
@@ -244,7 +239,6 @@ export default class MyOperator extends Operator {
                   env.IDP_SUB_CLAIM_MAPPER = data!.IDP_SUB_CLAIM_MAPPER
                   env.IDP_USERNAME_CLAIM_MAPPER = data!.IDP_USERNAME_CLAIM_MAPPER
                 }
-                console.log('After ConfigMap - env: ', env)
                 await runKeycloakUpdater('updateConfig')
               } catch (error) {
                 console.debug(error)
@@ -313,14 +307,13 @@ async function keycloakTeamDeleted() {
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
-  await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL[0], undefined, env.WAIT_OPTIONS)
+  await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
   const keycloakAddress = env.KEYCLOAK_HOSTNAME_URL
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
   try {
-    custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_HOSTNAME_URL[0].replace('https://', '') } })
+    custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_HOSTNAME_URL.replace('https://', '') } })
     const keycloakIssuer = await Issuer.discover(`${keycloakAddress}/realms/${env.KEYCLOAK_REALM}/`)
-    // console.log(keycloakIssuer)
     const clientOptions: any = {
       client_id: 'admin-cli',
       client_secret: 'unused',
