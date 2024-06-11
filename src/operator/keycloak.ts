@@ -101,9 +101,21 @@ const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 async function runKeycloakUpdater(key: string) {
   console.log('before checking variables')
   if (
-    !env.FEAT_EXTERNAL_IDP ||
     !env.IDP_ALIAS ||
     !env.IDP_OIDC_URL ||
+    !env.IDP_CLIENT_ID ||
+    !env.IDP_CLIENT_SECRET ||
+    !env.IDP_GROUP_OTOMI_ADMIN ||
+    !env.IDP_GROUP_TEAM_ADMIN ||
+    !env.IDP_GROUP_MAPPINGS_TEAMS ||
+    !env.IDP_SUB_CLAIM_MAPPER ||
+    !env.IDP_USERNAME_CLAIM_MAPPER
+  ) {
+    console.info('Missing required external IDP variables for Keycloak setup/reconfiguration')
+    return
+  }
+
+  if (
     !env.KEYCLOAK_HOSTNAME_URL ||
     !env.KEYCLOAK_ADDRESS_INTERNAL ||
     !env.KEYCLOAK_ADMIN ||
@@ -112,7 +124,7 @@ async function runKeycloakUpdater(key: string) {
     !env.KEYCLOAK_TOKEN_TTL ||
     !env.WAIT_OPTIONS
   ) {
-    console.info('Missing required variables for Keycloak setup/reconfiguration')
+    console.info('Missing required keycloak variables for Keycloak setup/reconfiguration')
     return
   }
 
@@ -257,19 +269,6 @@ export default class MyOperator extends Operator {
         if (metadata && metadata.name === 'team-admin') return
         if (object.kind === 'add') await runKeycloakUpdater('addTeam')
         if (object.kind === 'remove') await runKeycloakUpdater('removeTeam')
-      })
-    } catch (error) {
-      console.debug(error)
-    }
-    // Watch configmaps to check if keycloak need to be updated
-    try {
-      await this.watchResource('', 'v1', 'configmaps', async (e) => {
-        const { object }: { object: k8s.V1Pod } = e
-        const { metadata } = object
-        // Check if namespace starts with prefix 'team-'
-        if (metadata && !metadata.name?.startsWith('team-')) return
-        if (metadata && metadata.name === 'team-admin') return
-        await runKeycloakUpdater('updateConfig')
       })
     } catch (error) {
       console.debug(error)
