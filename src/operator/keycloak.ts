@@ -307,7 +307,7 @@ async function keycloakTeamDeleted() {
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
-  await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
+  await waitTillAvailable(env.KEYCLOAK_ADDRESS_INTERNAL, undefined, env.WAIT_OPTIONS)
   const keycloakAddress = env.KEYCLOAK_HOSTNAME_URL
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
