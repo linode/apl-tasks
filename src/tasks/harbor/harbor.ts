@@ -111,6 +111,7 @@ const projectPushSecretName = 'harbor-pushsecret'
 const projectBuildPushSecretName = 'harbor-pushsecret-builds'
 const harborBaseUrl = `${env.HARBOR_BASE_URL}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
+console.log('harborHealthUrl', harborHealthUrl)
 const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const configureApi = new ConfigureApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 const projectsApi = new ProjectApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
@@ -122,6 +123,7 @@ const memberApi = new MemberApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBase
  */
 async function createSystemRobotSecret(): Promise<RobotSecret> {
   const { body: robotList } = await robotApi.listRobot()
+  console.log('robotApi', robotApi)
   const existing = robotList.find((i) => i.name === `${robotPrefix}${systemRobot.name}`)
   if (existing?.id) {
     const existingId = existing.id
@@ -134,6 +136,8 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
     `Create robot account ${systemRobot.name} with system level perms`,
     () => robotApi.createRobot(systemRobot),
   )) as RobotCreated
+  console.log('errors', errors)
+  console.log('robotAccount', robotAccount)
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
   await createSecret(systemSecretName, systemNamespace, robotSecret)
   return robotSecret
