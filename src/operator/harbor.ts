@@ -503,7 +503,7 @@ async function setupHarbor() {
   const harborUrl = `${harborOperator.harborBaseUrl}/api/v2.0`
   const robotApi = new RobotApi(harborOperator.harborUser, harborOperator.harborPassword, harborUrl)
   console.log('robotApi', robotApi)
-  const harborHealthUrl = `https://${harborOperator.harborBaseRepoUrl}/api/v2.0/systeminfo`
+  const harborHealthUrl = `${harborUrl}/systeminfo`
   // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
   const bearerAuth = await getBearerToken(robotApi)
