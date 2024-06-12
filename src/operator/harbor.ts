@@ -508,7 +508,7 @@ async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectN
 async function setupHarbor() {
   console.log('harborOperator', harborOperator)
   if (!harborOperator.harborBaseUrl) return
-  const harborHealthUrl = `${harborOperator.harborBaseUrl}/systeminfo`
+  const harborHealthUrl = `${harborOperator.harborBaseUrl}/api/v2.0/systeminfo`
   // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
   const bearerAuth = await getBearerToken()
