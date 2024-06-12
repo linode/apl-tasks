@@ -18,25 +18,98 @@ import {
 } from '@redkubes/harbor-client-node'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret } from '../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../utils'
-import {
-  HARBOR_BASE_REPO_URL,
-  HARBOR_BASE_URL,
-  HARBOR_PASSWORD,
-  HARBOR_USER,
-  OIDC_AUTO_ONBOARD,
-  OIDC_CLIENT_SECRET,
-  OIDC_ENDPOINT,
-  OIDC_USER_CLAIM,
-  OIDC_VERIFY_CERT,
-  TEAM_IDS,
-  cleanEnv,
-} from '../validators'
 
 interface groupMapping {
   [key: string]: {
     otomi: string[]
   }
 }
+
+const HarborRole = {
+  admin: 1,
+  developer: 2,
+  guest: 3,
+  master: 4,
+}
+
+const HarborGroupType = {
+  ldap: 1,
+  http: 2,
+}
+
+const errors: string[] = []
+
+export interface RobotSecret {
+  id: number
+  name: string
+  secret: string
+}
+
+const systemRobot: any = {
+  name: 'harbor',
+  duration: -1,
+  description: 'Used by Otomi Harbor task runner',
+  disable: false,
+  level: 'system',
+  permissions: [
+    {
+      kind: 'system',
+      namespace: '/',
+      access: [
+        {
+          resource: '*',
+          action: '*',
+        },
+      ],
+    },
+  ],
+}
+
+const robotPrefix = 'otomi-'
+const harborOperator = {
+  harborBaseUrl: '',
+  harborBaseRepoUrl: '',
+  harborUser: '',
+  harborPassword: '',
+  teamIds: [],
+  oidcClientId: '',
+  oidcClientSecret: '',
+  oidcEndpoint: '',
+  oidcVerifyCert: true,
+  oidcUserClaim: 'email',
+  oidcAutoOnboard: true,
+  oidcGroupsClaim: 'groups',
+  oidcName: 'keycloak',
+  oidcScope: 'openid',
+}
+const config: any = {
+  auth_mode: 'oidc_auth',
+  oidc_admin_group: 'admin',
+  oidc_client_id: 'otomi',
+  oidc_client_secret: harborOperator.oidcClientSecret,
+  oidc_endpoint: harborOperator.oidcEndpoint,
+  oidc_groups_claim: 'groups',
+  oidc_name: 'otomi',
+  oidc_scope: 'openid',
+  oidc_verify_cert: harborOperator.oidcVerifyCert,
+  oidc_user_claim: harborOperator.oidcUserClaim,
+  oidc_auto_onboard: harborOperator.oidcAutoOnboard,
+  project_creation_restriction: 'adminonly',
+  robot_name_prefix: robotPrefix,
+  self_registration: false,
+}
+
+const systemNamespace = 'harbor'
+const systemSecretName = 'harbor-robot-admin'
+const projectPullSecretName = 'harbor-pullsecret'
+const projectPushSecretName = 'harbor-pushsecret'
+const projectBuildPushSecretName = 'harbor-pushsecret-builds'
+const harborBaseUrl = `${harborOperator.harborBaseUrl}/api/v2.0`
+const harborHealthUrl = `${harborBaseUrl}/systeminfo`
+const robotApi = new RobotApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
+const configureApi = new ConfigureApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
+const projectsApi = new ProjectApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
+const memberApi = new MemberApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
 
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
@@ -56,9 +129,23 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   if (object.kind === 'Secret' && metadata.name === 'harbor-admin') {
     console.log('Secret:', metadata.name)
     console.log('Data:', data)
+    harborOperator.harborPassword = Buffer.from(data.harborPassword, 'base64').toString()
+    harborOperator.harborUser = Buffer.from(data.harborUser, 'base64').toString()
+    harborOperator.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
+    harborOperator.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
+    harborOperator.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
   } else if (object.kind === 'ConfigMap' && metadata.name === 'harbor-operator-cm') {
     console.log('ConfigMap:', metadata.name)
     console.log('Data:', data)
+    harborOperator.harborBaseUrl = data.harborBaseUrl
+    harborOperator.harborBaseRepoUrl = data.harborBaseRepoUrl
+    harborOperator.teamIds = JSON.parse(data.teamIds)
+    harborOperator.oidcAutoOnboard = data.oidcAutoOnboard
+    harborOperator.oidcUserClaim = data.oidcUserClaim
+    harborOperator.oidcGroupsClaim = data.oidcGroupsClaim
+    harborOperator.oidcName = data.oidcName
+    harborOperator.oidcScope = data.oidcScope
+    harborOperator.oidcVerifyCert = data.oidcVerifyCert
   } else return
 
   switch (e.type) {
@@ -141,89 +228,6 @@ async function runSetupHarbor() {
 }
 
 // Setup Harbor
-
-const env = cleanEnv({
-  HARBOR_BASE_URL,
-  HARBOR_BASE_REPO_URL,
-  HARBOR_PASSWORD,
-  HARBOR_USER,
-  OIDC_USER_CLAIM,
-  OIDC_AUTO_ONBOARD,
-  OIDC_CLIENT_SECRET,
-  OIDC_ENDPOINT,
-  OIDC_VERIFY_CERT,
-  TEAM_IDS,
-})
-
-const HarborRole = {
-  admin: 1,
-  developer: 2,
-  guest: 3,
-  master: 4,
-}
-
-const HarborGroupType = {
-  ldap: 1,
-  http: 2,
-}
-
-const errors: string[] = []
-
-export interface RobotSecret {
-  id: number
-  name: string
-  secret: string
-}
-
-const systemRobot: any = {
-  name: 'harbor',
-  duration: -1,
-  description: 'Used by Otomi Harbor task runner',
-  disable: false,
-  level: 'system',
-  permissions: [
-    {
-      kind: 'system',
-      namespace: '/',
-      access: [
-        {
-          resource: '*',
-          action: '*',
-        },
-      ],
-    },
-  ],
-}
-
-const robotPrefix = 'otomi-'
-const config: any = {
-  auth_mode: 'oidc_auth',
-  oidc_admin_group: 'admin',
-  oidc_client_id: 'otomi',
-  oidc_client_secret: env.OIDC_CLIENT_SECRET,
-  oidc_endpoint: env.OIDC_ENDPOINT,
-  oidc_groups_claim: 'groups',
-  oidc_name: 'otomi',
-  oidc_scope: 'openid',
-  oidc_verify_cert: env.OIDC_VERIFY_CERT,
-  oidc_user_claim: env.OIDC_USER_CLAIM,
-  oidc_auto_onboard: env.OIDC_AUTO_ONBOARD,
-  project_creation_restriction: 'adminonly',
-  robot_name_prefix: robotPrefix,
-  self_registration: false,
-}
-
-const systemNamespace = 'harbor'
-const systemSecretName = 'harbor-robot-admin'
-const projectPullSecretName = 'harbor-pullsecret'
-const projectPushSecretName = 'harbor-pushsecret'
-const projectBuildPushSecretName = 'harbor-pushsecret-builds'
-const harborBaseUrl = `${env.HARBOR_BASE_URL}/api/v2.0`
-const harborHealthUrl = `${harborBaseUrl}/systeminfo`
-const robotApi = new RobotApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
-const configureApi = new ConfigureApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
-const projectsApi = new ProjectApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
-const memberApi = new MemberApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 
 /**
  * Create Harbor robot account that is used by Otomi tasks
@@ -446,7 +450,7 @@ async function ensureTeamPullRobotAccountSecret(namespace: string, projectName):
   await createK8sSecret({
     namespace,
     name: projectPullSecretName,
-    server: `${env.HARBOR_BASE_REPO_URL}`,
+    server: `${harborOperator.harborBaseRepoUrl}`,
     username: robotPullAccount.name!,
     password: robotPullAccount.secret!,
   })
@@ -465,7 +469,7 @@ async function ensureTeamPushRobotAccountSecret(namespace: string, projectName):
     await createK8sSecret({
       namespace,
       name: projectPushSecretName,
-      server: `${env.HARBOR_BASE_REPO_URL}`,
+      server: `${harborOperator.harborBaseRepoUrl}`,
       username: robotPushAccount.name!,
       password: robotPushAccount.secret!,
     })
@@ -485,7 +489,7 @@ async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectN
     await createBuildsK8sSecret({
       namespace,
       name: projectBuildPushSecretName,
-      server: `${env.HARBOR_BASE_REPO_URL}`,
+      server: `${harborOperator.harborBaseRepoUrl}`,
       username: robotBuildsPushAccount.name!,
       password: robotBuildsPushAccount.secret!,
     })
@@ -503,7 +507,7 @@ async function setupHarbor() {
 
   await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
   await Promise.all(
-    env.TEAM_IDS.map(async (teamId: string) => {
+    harborOperator.teamIds.map(async (teamId: string) => {
       const projectName = `team-${teamId}`
       const teamNamespce = projectName
       const projectReq: ProjectReq = {
