@@ -82,6 +82,7 @@ const harborOperator = {
   oidcName: 'keycloak',
   oidcScope: 'openid',
 }
+console.log('harborOperator', harborOperator)
 const config: any = {
   auth_mode: 'oidc_auth',
   oidc_admin_group: 'admin',
@@ -99,13 +100,12 @@ const config: any = {
   self_registration: false,
 }
 
-const systemNamespace = 'harbor'
+const systemNamespace = 'harbor-operator'
 const systemSecretName = 'harbor-robot-admin'
 const projectPullSecretName = 'harbor-pullsecret'
 const projectPushSecretName = 'harbor-pushsecret'
 const projectBuildPushSecretName = 'harbor-pushsecret-builds'
 const harborBaseUrl = `${harborOperator.harborBaseUrl}/api/v2.0`
-const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const robotApi = new RobotApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
 const configureApi = new ConfigureApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
 const projectsApi = new ProjectApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
@@ -128,7 +128,6 @@ const secretsAndConfigmapsCallback = async (e: any) => {
 
   if (object.kind === 'Secret' && metadata.name === 'harbor-admin') {
     console.log('Secret:', metadata.name)
-    console.log('Data:', data)
     harborOperator.harborPassword = Buffer.from(data.harborPassword, 'base64').toString()
     harborOperator.harborUser = Buffer.from(data.harborUser, 'base64').toString()
     harborOperator.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
@@ -136,7 +135,6 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     harborOperator.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
   } else if (object.kind === 'ConfigMap' && metadata.name === 'harbor-operator-cm') {
     console.log('ConfigMap:', metadata.name)
-    console.log('Data:', data)
     harborOperator.harborBaseUrl = data.harborBaseUrl
     harborOperator.harborBaseRepoUrl = data.harborBaseRepoUrl
     harborOperator.teamIds = JSON.parse(data.teamIds)
@@ -497,6 +495,11 @@ async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectN
 }
 
 async function setupHarbor() {
+  console.log('setupHarbor')
+  if (!harborOperator.harborBaseUrl) return
+  console.log('harborOperator', harborOperator)
+  const harborHealthUrl = `${harborOperator.harborBaseUrl}/api/v2.0/systeminfo`
+  console.log('harborHealthUrl', harborHealthUrl)
   // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
   const bearerAuth = await getBearerToken()
