@@ -367,7 +367,7 @@ async function processNamespace(namespace: string) {
     return null
   } catch (error) {
     console.error(`Error processing namespace ${namespace}:`, error)
-    return null
+    throw error
   }
 }
 
