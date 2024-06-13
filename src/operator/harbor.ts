@@ -67,7 +67,7 @@ const systemRobot: any = {
 
 const robotPrefix = 'otomi-'
 const harborOperator = {
-  harborBaseUrl: 'http://harbor-core.harbor:8083/api/v2.0',
+  harborBaseUrl: 'http://harbor-core.harbor:80/api/v2.0',
   harborBaseRepoUrl: '',
   harborUser: 'admin',
   harborPassword: 'welcomeotomi',
