@@ -68,7 +68,7 @@ const systemRobot: any = {
 const robotPrefix = 'otomi-'
 const harborOperator = {
   harborBaseUrl: 'http://harbor-core.harbor',
-  harborBaseRepoUrl: 'harbor.172.233.37.26.nip.io',
+  harborBaseRepoUrl: '',
   harborUser: 'admin',
   harborPassword: 'welcomeotomi',
   teamIds: [],
@@ -143,7 +143,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     harborOperator.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
   } else if (object.kind === 'ConfigMap' && metadata.name === 'harbor-operator-cm') {
     console.log('ConfigMap:', metadata.name)
-    harborOperator.harborBaseUrl = data.harborBaseUrl
+    // harborOperator.harborBaseUrl = data.harborBaseUrl
     harborOperator.harborBaseRepoUrl = data.harborBaseRepoUrl
     harborOperator.teamIds = JSON.parse(data.teamIds)
     harborOperator.oidcAutoOnboard = data.oidcAutoOnboard
