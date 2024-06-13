@@ -172,11 +172,10 @@ const secretsAndConfigmapsCallback = async (e: any) => {
 const namespacesCallback = async (e: any) => {
   const { object }: { object: k8s.V1Pod } = e
   const { metadata } = object
-  // Check if namespace starts with prefix 'team-'
-  if (metadata && !metadata.name?.startsWith('team-')) return
-  if (metadata && metadata.name === 'team-admin') return
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-  console.info(`Namespace:`, metadata?.name)
+  if (metadata && metadata.name?.startsWith('team-')) {
+    console.info(`Processing Namespace:`, metadata.name)
+    await runProcessNamespace(metadata.name)
+  }
 }
 
 // Operator
@@ -233,7 +232,66 @@ async function runSetupHarbor() {
   }
 }
 
+async function runProcessNamespace(namespace: string) {
+  try {
+    await processNamespace(namespace)
+  } catch (error) {
+    console.debug('Error could not process namespace', error)
+    console.debug('Retrying in 30 seconds')
+    await new Promise((resolve) => setTimeout(resolve, 30000))
+    console.debug('Retrying to process namespace')
+    await runProcessNamespace(namespace)
+  }
+}
+
 // Setup Harbor
+async function setupHarbor() {
+  console.log('harborOperator', harborOperator)
+  if (!harborOperator.harborBaseUrl) return
+  const harborHealthUrl = `${harborOperator.harborBaseUrl}/systeminfo`
+  // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
+  await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
+  const bearerAuth = await getBearerToken()
+  robotApi.setDefaultAuthentication(bearerAuth)
+  configureApi.setDefaultAuthentication(bearerAuth)
+  projectsApi.setDefaultAuthentication(bearerAuth)
+  memberApi.setDefaultAuthentication(bearerAuth)
+
+  await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
+  handleErrors(errors)
+}
+
+/**
+ * Get token by reading access token from kubernetes secret.
+ * If the secret does not exists then create Harbor robot account and populate credentials to kubernetes secret.
+ */
+async function getBearerToken(): Promise<HttpBearerAuth> {
+  const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
+
+  let robotSecret = (await getSecret(systemSecretName, systemNamespace)) as RobotSecret
+  if (!robotSecret) {
+    // not existing yet, create robot account and keep creds in secret
+    robotSecret = await createSystemRobotSecret()
+  } else {
+    // test if secret still works
+    try {
+      bearerAuth.accessToken = robotSecret.secret
+      robotApi.setDefaultAuthentication(bearerAuth)
+      await robotApi.listRobot()
+    } catch (e) {
+      // throw everything except 401, which is what we test for
+      if (e.status !== 401) throw e
+      // unauthenticated, so remove and recreate secret
+      await k8sApi.deleteNamespacedSecret(systemSecretName, systemNamespace)
+      // now, the next call might throw IF:
+      // - authMode oidc was already turned on and an otomi admin accidentally removed the secret
+      // but that is very unlikely, an unresolvable problem and needs a manual db fix
+      robotSecret = await createSystemRobotSecret()
+    }
+  }
+  bearerAuth.accessToken = robotSecret.secret
+  return bearerAuth
+}
 
 /**
  * Create Harbor robot account that is used by Otomi tasks
@@ -259,6 +317,81 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
   await createSecret(systemSecretName, systemNamespace, robotSecret)
   return robotSecret
+}
+
+// Process Namespace
+async function processNamespace(namespace: string) {
+  try {
+    const projectName = namespace
+    const projectReq: ProjectReq = {
+      projectName,
+    }
+    await doApiCall(errors, `Creating project for team ${namespace}`, () => projectsApi.createProject(projectReq))
+
+    const project = await doApiCall(errors, `Get project for team ${namespace}`, () =>
+      projectsApi.getProject(projectName),
+    )
+    if (!project) return ''
+    const projectId = `${project.projectId}`
+
+    const projMember: ProjectMember = {
+      roleId: HarborRole.developer,
+      memberGroup: {
+        groupName: projectName,
+        groupType: HarborGroupType.http,
+      },
+    }
+    const projAdminMember: ProjectMember = {
+      roleId: HarborRole.admin,
+      memberGroup: {
+        groupName: 'team-admin',
+        groupType: HarborGroupType.http,
+      },
+    }
+    await doApiCall(
+      errors,
+      `Associating "developer" role for team "${namespace}" with harbor project "${projectName}"`,
+      () => memberApi.createProjectMember(projectId, undefined, undefined, projMember),
+    )
+    await doApiCall(
+      errors,
+      `Associating "project-admin" role for "team-admin" with harbor project "${projectName}"`,
+      () => memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
+    )
+
+    await ensureTeamPullRobotAccountSecret(namespace, projectName)
+    await ensureTeamPushRobotAccountSecret(namespace, projectName)
+    await ensureTeamBuildPushRobotAccountSecret(namespace, projectName)
+
+    console.info(`Successfully processed namespace: ${namespace}`)
+    return null
+  } catch (error) {
+    console.error(`Error processing namespace ${namespace}:`, error)
+    return null
+  }
+}
+
+/**
+ * Ensure that Harbor robot account and corresponding Kubernetes pull secret exist
+ * @param namespace Kubernetes namespace where pull secret is created
+ * @param projectName Harbor project name
+ */
+async function ensureTeamPullRobotAccountSecret(namespace: string, projectName): Promise<void> {
+  const k8sSecret = await getSecret(projectPullSecretName, namespace)
+  if (k8sSecret) {
+    console.debug(`Deleting pull secret/${projectPullSecretName} from ${namespace} namespace`)
+    await k8sApi.deleteNamespacedSecret(projectPullSecretName, namespace)
+  }
+
+  const robotPullAccount = await createTeamPullRobotAccount(projectName)
+  console.debug(`Creating pull secret/${projectPullSecretName} at ${namespace} namespace`)
+  await createK8sSecret({
+    namespace,
+    name: projectPullSecretName,
+    server: `${harborOperator.harborBaseRepoUrl}`,
+    username: robotPullAccount.name!,
+    password: robotPullAccount.secret!,
+  })
 }
 
 /**
@@ -306,6 +439,26 @@ async function createTeamPullRobotAccount(projectName: string): Promise<RobotCre
     )
   }
   return robotPullAccount
+}
+
+/**
+ * Ensure that Harbor robot account and corresponding Kubernetes push secret exist
+ * @param namespace Kubernetes namespace where push secret is created
+ * @param projectName Harbor project name
+ */
+async function ensureTeamPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
+  const k8sSecret = await getSecret(projectPushSecretName, namespace)
+  if (!k8sSecret) {
+    const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
+    console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
+    await createK8sSecret({
+      namespace,
+      name: projectPushSecretName,
+      server: `${harborOperator.harborBaseRepoUrl}`,
+      username: robotPushAccount.name!,
+      password: robotPushAccount.secret!,
+    })
+  }
 }
 
 /**
@@ -360,6 +513,26 @@ async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
 }
 
 /**
+ * Ensure that Harbor robot account and corresponding Kubernetes push secret for builds exist
+ * @param namespace Kubernetes namespace where push secret is created
+ * @param projectName Harbor project name
+ */
+async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
+  const k8sSecret = await getSecret(projectBuildPushSecretName, namespace)
+  if (!k8sSecret) {
+    const robotBuildsPushAccount = await ensureTeamBuildsPushRobotAccount(projectName)
+    console.debug(`Creating push secret/${projectBuildPushSecretName} at ${namespace} namespace`)
+    await createBuildsK8sSecret({
+      namespace,
+      name: projectBuildPushSecretName,
+      server: `${harborOperator.harborBaseRepoUrl}`,
+      username: robotBuildsPushAccount.name!,
+      password: robotBuildsPushAccount.secret!,
+    })
+  }
+}
+
+/**
  * Create Harbor system robot account that is scoped to a given Harbor project with push access
  * for Kaniko (used for builds) task to push images.
  * @param projectName Harbor project name
@@ -408,163 +581,4 @@ async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<an
     )
   }
   return robotBuildsPushAccount
-}
-
-/**
- * Get token by reading access token from kubernetes secret.
- * If the secret does not exists then create Harbor robot account and populate credentials to kubernetes secret.
- */
-async function getBearerToken(): Promise<HttpBearerAuth> {
-  const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
-
-  let robotSecret = (await getSecret(systemSecretName, systemNamespace)) as RobotSecret
-  if (!robotSecret) {
-    // not existing yet, create robot account and keep creds in secret
-    robotSecret = await createSystemRobotSecret()
-  } else {
-    // test if secret still works
-    try {
-      bearerAuth.accessToken = robotSecret.secret
-      robotApi.setDefaultAuthentication(bearerAuth)
-      await robotApi.listRobot()
-    } catch (e) {
-      // throw everything except 401, which is what we test for
-      if (e.status !== 401) throw e
-      // unauthenticated, so remove and recreate secret
-      await k8sApi.deleteNamespacedSecret(systemSecretName, systemNamespace)
-      // now, the next call might throw IF:
-      // - authMode oidc was already turned on and an otomi admin accidentally removed the secret
-      // but that is very unlikely, an unresolvable problem and needs a manual db fix
-      robotSecret = await createSystemRobotSecret()
-    }
-  }
-  bearerAuth.accessToken = robotSecret.secret
-  return bearerAuth
-}
-
-/**
- * Ensure that Harbor robot account and corresponding Kubernetes pull secret exist
- * @param namespace Kubernetes namespace where pull secret is created
- * @param projectName Harbor project name
- */
-async function ensureTeamPullRobotAccountSecret(namespace: string, projectName): Promise<void> {
-  const k8sSecret = await getSecret(projectPullSecretName, namespace)
-  if (k8sSecret) {
-    console.debug(`Deleting pull secret/${projectPullSecretName} from ${namespace} namespace`)
-    await k8sApi.deleteNamespacedSecret(projectPullSecretName, namespace)
-  }
-
-  const robotPullAccount = await createTeamPullRobotAccount(projectName)
-  console.debug(`Creating pull secret/${projectPullSecretName} at ${namespace} namespace`)
-  await createK8sSecret({
-    namespace,
-    name: projectPullSecretName,
-    server: `${harborOperator.harborBaseRepoUrl}`,
-    username: robotPullAccount.name!,
-    password: robotPullAccount.secret!,
-  })
-}
-
-/**
- * Ensure that Harbor robot account and corresponding Kubernetes push secret exist
- * @param namespace Kubernetes namespace where push secret is created
- * @param projectName Harbor project name
- */
-async function ensureTeamPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
-  const k8sSecret = await getSecret(projectPushSecretName, namespace)
-  if (!k8sSecret) {
-    const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
-    console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
-    await createK8sSecret({
-      namespace,
-      name: projectPushSecretName,
-      server: `${harborOperator.harborBaseRepoUrl}`,
-      username: robotPushAccount.name!,
-      password: robotPushAccount.secret!,
-    })
-  }
-}
-
-/**
- * Ensure that Harbor robot account and corresponding Kubernetes push secret for builds exist
- * @param namespace Kubernetes namespace where push secret is created
- * @param projectName Harbor project name
- */
-async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
-  const k8sSecret = await getSecret(projectBuildPushSecretName, namespace)
-  if (!k8sSecret) {
-    const robotBuildsPushAccount = await ensureTeamBuildsPushRobotAccount(projectName)
-    console.debug(`Creating push secret/${projectBuildPushSecretName} at ${namespace} namespace`)
-    await createBuildsK8sSecret({
-      namespace,
-      name: projectBuildPushSecretName,
-      server: `${harborOperator.harborBaseRepoUrl}`,
-      username: robotBuildsPushAccount.name!,
-      password: robotBuildsPushAccount.secret!,
-    })
-  }
-}
-
-async function setupHarbor() {
-  console.log('harborOperator', harborOperator)
-  if (!harborOperator.harborBaseUrl) return
-  const harborHealthUrl = `${harborOperator.harborBaseUrl}/systeminfo`
-  // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
-  await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
-  const bearerAuth = await getBearerToken()
-  robotApi.setDefaultAuthentication(bearerAuth)
-  configureApi.setDefaultAuthentication(bearerAuth)
-  projectsApi.setDefaultAuthentication(bearerAuth)
-  memberApi.setDefaultAuthentication(bearerAuth)
-
-  await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
-  await Promise.all(
-    harborOperator.teamIds.map(async (teamId: string) => {
-      const projectName = `team-${teamId}`
-      const teamNamespce = projectName
-      const projectReq: ProjectReq = {
-        projectName,
-      }
-      await doApiCall(errors, `Creating project for team ${teamId}`, () => projectsApi.createProject(projectReq))
-
-      const project = await doApiCall(errors, `Get project for team ${teamId}`, () =>
-        projectsApi.getProject(projectName),
-      )
-      if (!project) return ''
-      const projectId = `${project.projectId}`
-
-      const projMember: ProjectMember = {
-        roleId: HarborRole.developer,
-        memberGroup: {
-          groupName: projectName,
-          groupType: HarborGroupType.http,
-        },
-      }
-      const projAdminMember: ProjectMember = {
-        roleId: HarborRole.admin,
-        memberGroup: {
-          groupName: 'team-admin',
-          groupType: HarborGroupType.http,
-        },
-      }
-      await doApiCall(
-        errors,
-        `Associating "developer" role for team "${teamId}" with harbor project "${projectName}"`,
-        () => memberApi.createProjectMember(projectId, undefined, undefined, projMember),
-      )
-      await doApiCall(
-        errors,
-        `Associating "project-admin" role for "team-admin" with harbor project "${projectName}"`,
-        () => memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
-      )
-
-      await ensureTeamPullRobotAccountSecret(teamNamespce, projectName)
-      await ensureTeamPushRobotAccountSecret(teamNamespce, projectName)
-      await ensureTeamBuildPushRobotAccountSecret(teamNamespce, projectName)
-
-      return null
-    }),
-  )
-
-  handleErrors(errors)
 }
