@@ -98,7 +98,7 @@
         "KUBECONFIG": "/path/to/your/kubeconfig.yaml",
         "HARBOR_BASE_URL" : "http://localhost",
         "HARBOR_BASE_URL_PORT" : "8083",
-        "HARBOR_OPERATOR_NAMESPACE" : "harbor-app-operator",
+        "HARBOR_OPERATOR_NAMESPACE" : "harbor-app",
         "HARBOR_SYSTEM_NAMESPACE" : "harbor",
       },
       "preLaunchTask": "port-forward-harbor"

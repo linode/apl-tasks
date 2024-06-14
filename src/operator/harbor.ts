@@ -299,7 +299,6 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
  */
 async function createSystemRobotSecret(): Promise<RobotSecret> {
   const { body: robotList } = await robotApi.listRobot()
-  console.log('robotApi', robotApi)
   const existing = robotList.find((i) => i.name === `${robotPrefix}${systemRobot.name}`)
   if (existing?.id) {
     const existingId = existing.id
@@ -312,8 +311,6 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
     `Create robot account ${systemRobot.name} with system level perms`,
     () => robotApi.createRobot(systemRobot),
   )) as RobotCreated
-  console.log('robotAccount', robotAccount)
-  console.log('errors', errors)
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
   await createSecret(systemSecretName, systemNamespace, robotSecret)
   return robotSecret
