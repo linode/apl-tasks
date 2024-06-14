@@ -88,6 +88,24 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug harbor operator",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "operator:harbor-dev"],
+      "cwd": "${workspaceRoot}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "env" : {
+        "KUBECONFIG": "/path/to/your/kubeconfig.yaml",
+        "HARBOR_BASE_URL" : "http://localhost",
+        "HARBOR_BASE_URL_PORT" : "8083",
+        "HARBOR_OPERATOR_NAMESPACE" : "harbor-app-operator",
+        "HARBOR_SYSTEM_NAMESPACE" : "harbor",
+      },
+      "preLaunchTask": "port-forward-harbor"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Debug copy-certs task",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:copy-certs-dev"],
@@ -123,19 +141,6 @@
       "env": {
         "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
       }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Harbor task",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:harbor-dev"],
-      "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env"
-      // "env": {
-      //   "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      // }
     },
     {
       "type": "node",

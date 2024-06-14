@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "port-forward-harbor",
+            "type": "shell",
+            "command": "export KUBECONFIG=/path/to/your/kubeconfig.yaml && kubectl -n harbor port-forward svc/harbor-core 8083:80",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        }
+    ]
+}

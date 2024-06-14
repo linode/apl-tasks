@@ -129,8 +129,6 @@
     "tasks:gitea-drone-auth-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/gitea/gitea-drone-oauth.ts",
     "tasks:gitea-drone-auth": "node dist/tasks/gitea/gitea-drone-oauth.js",
     "tasks:gitea": "node dist/tasks/gitea/gitea.js && node dist/tasks/gitea/gitea-drone-oauth.js",
-    "tasks:harbor-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/harbor/harbor.ts",
-    "tasks:harbor": "node dist/tasks/harbor/harbor.js",
     "tasks:keycloak-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/keycloak/keycloak.ts",
     "tasks:keycloak": "node dist/tasks/keycloak/keycloak.js",
     "tasks:otomi-chart-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/otomi/otomi-chart.ts",

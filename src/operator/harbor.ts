@@ -118,13 +118,13 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   const { object } = e
   const { metadata, data } = object
 
-  if (object.kind === 'Secret' && metadata.name === 'harbor-admin') {
+  if (object.kind === 'Secret' && metadata.name === 'harbor-app-operator-secret') {
     harborOperator.harborPassword = Buffer.from(data.harborPassword, 'base64').toString()
     harborOperator.harborUser = Buffer.from(data.harborUser, 'base64').toString()
     harborOperator.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
     harborOperator.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
     harborOperator.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
-  } else if (object.kind === 'ConfigMap' && metadata.name === 'harbor-operator-cm') {
+  } else if (object.kind === 'ConfigMap' && metadata.name === 'harbor-app-operator-cm') {
     harborOperator.harborBaseRepoUrl = data.harborBaseRepoUrl
     harborOperator.oidcAutoOnboard = data.oidcAutoOnboard === 'true'
     harborOperator.oidcUserClaim = data.oidcUserClaim
@@ -162,13 +162,13 @@ const namespacesCallback = async (e: any) => {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
-    // Watch harbor-operator-secrets
+    // Watch harbor-app-operator-secret
     try {
       await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, harborOperatorNamespace)
     } catch (error) {
       console.debug(error)
     }
-    // Watch harbor-operator-cm
+    // Watch harbor-app-operator-cm
     try {
       await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, harborOperatorNamespace)
     } catch (error) {
