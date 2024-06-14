@@ -89,22 +89,6 @@ const harborOperator = {
   oidcName: 'keycloak',
   oidcScope: 'openid',
 }
-const config: any = {
-  auth_mode: 'oidc_auth',
-  oidc_admin_group: 'admin',
-  oidc_client_id: 'otomi',
-  oidc_client_secret: harborOperator.oidcClientSecret,
-  oidc_endpoint: harborOperator.oidcEndpoint,
-  oidc_groups_claim: 'groups',
-  oidc_name: 'otomi',
-  oidc_scope: 'openid',
-  oidc_verify_cert: harborOperator.oidcVerifyCert,
-  oidc_user_claim: harborOperator.oidcUserClaim,
-  oidc_auto_onboard: harborOperator.oidcAutoOnboard,
-  project_creation_restriction: 'adminonly',
-  robot_name_prefix: robotPrefix,
-  self_registration: false,
-}
 
 const systemNamespace = env.HARBOR_SYSTEM_NAMESPACE
 const systemSecretName = 'harbor-robot-admin'
@@ -142,12 +126,12 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     harborOperator.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
   } else if (object.kind === 'ConfigMap' && metadata.name === 'harbor-operator-cm') {
     harborOperator.harborBaseRepoUrl = data.harborBaseRepoUrl
-    harborOperator.oidcAutoOnboard = data.oidcAutoOnboard
+    harborOperator.oidcAutoOnboard = data.oidcAutoOnboard === 'true'
     harborOperator.oidcUserClaim = data.oidcUserClaim
     harborOperator.oidcGroupsClaim = data.oidcGroupsClaim
     harborOperator.oidcName = data.oidcName
     harborOperator.oidcScope = data.oidcScope
-    harborOperator.oidcVerifyCert = data.oidcVerifyCert
+    harborOperator.oidcVerifyCert = data.oidcVerifyCert === 'true'
   } else return
 
   switch (e.type) {
@@ -244,10 +228,29 @@ async function runProcessNamespace(namespace: string) {
 async function setupHarbor() {
   // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
+
   robotApi = new RobotApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
   configureApi = new ConfigureApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
   projectsApi = new ProjectApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
   memberApi = new MemberApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
+
+  const config: any = {
+    auth_mode: 'oidc_auth',
+    oidc_admin_group: 'admin',
+    oidc_client_id: 'otomi',
+    oidc_client_secret: harborOperator.oidcClientSecret,
+    oidc_endpoint: harborOperator.oidcEndpoint,
+    oidc_groups_claim: 'groups',
+    oidc_name: 'otomi',
+    oidc_scope: 'openid',
+    oidc_verify_cert: harborOperator.oidcVerifyCert,
+    oidc_user_claim: harborOperator.oidcUserClaim,
+    oidc_auto_onboard: harborOperator.oidcAutoOnboard,
+    project_creation_restriction: 'adminonly',
+    robot_name_prefix: robotPrefix,
+    self_registration: false,
+  }
+
   const bearerAuth = await getBearerToken()
   robotApi.setDefaultAuthentication(bearerAuth)
   configureApi.setDefaultAuthentication(bearerAuth)
