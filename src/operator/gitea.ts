@@ -14,6 +14,7 @@ import {
   Team,
 } from '@redkubes/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../utils'
+import { GITEA_OPERATOR_NAMESPACE, GITEA_URL, GITEA_URL_PORT, cleanEnv } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
 
 // Interfaces
@@ -29,9 +30,16 @@ interface groupMapping {
 }
 
 // Constants
+const env = cleanEnv({
+  GITEA_URL,
+  GITEA_URL_PORT,
+  GITEA_OPERATOR_NAMESPACE,
+})
+
+const giteaUrl = `${env.GITEA_URL}:${env.GITEA_URL_PORT}`
+const giteaOperatorNamespace = env.GITEA_OPERATOR_NAMESPACE
 const giteaOperator = {
   giteaPassword: '',
-  giteaUrl: '',
   hasArgocd: false,
   teamConfig: {},
   domainSuffix: '',
@@ -71,11 +79,10 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   const { object } = e
   const { metadata, data } = object
 
-  if (object.kind === 'Secret' && metadata.name === 'gitea-admin') {
+  if (object.kind === 'Secret' && metadata.name === 'gitea-app-operator-secret') {
     giteaOperator.giteaPassword = Buffer.from(data.giteaPassword, 'base64').toString()
     giteaOperator.oidcConfig = JSON.parse(Buffer.from(data.oidcConfig, 'base64').toString())
-  } else if (object.kind === 'ConfigMap' && metadata.name === 'gitea-operator-cm') {
-    giteaOperator.giteaUrl = data.giteaUrl
+  } else if (object.kind === 'ConfigMap' && metadata.name === 'gitea-app-operator-cm') {
     giteaOperator.hasArgocd = data.hasArgocd === 'true'
     giteaOperator.teamConfig = JSON.parse(data.teamConfig)
     giteaOperator.domainSuffix = data.domainSuffix
@@ -109,15 +116,15 @@ const namespacesCallback = async (e: any) => {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
-    // Watch gitea-operator-secrets
+    // Watch gitea-app-operator-secrets
     try {
-      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, 'gitea-operator')
+      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, giteaOperatorNamespace)
     } catch (error) {
       console.debug(error)
     }
-    // Watch gitea-operator-cm
+    // Watch gitea-app-operator-cm
     try {
-      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, 'gitea-operator')
+      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, giteaOperatorNamespace)
     } catch (error) {
       console.debug(error)
     }
@@ -326,20 +333,20 @@ async function createReposAndAddToTeam(
 }
 
 async function setupGitea() {
-  const { giteaPassword, giteaUrl: inputGiteaUrl, teamConfig, hasArgocd } = giteaOperator
-  if (!giteaPassword || !inputGiteaUrl || !teamConfig) {
+  const { giteaPassword, teamConfig, hasArgocd } = giteaOperator
+  if (!giteaPassword || !teamConfig) {
     console.info('Missing required variables for Gitea setup/reconfiguration')
     return
   }
   console.info('Starting Gitea setup/reconfiguration')
 
   const teamIds = Object.keys(teamConfig)
-  await waitTillAvailable(inputGiteaUrl)
-  const giteaUrl: string = inputGiteaUrl.endsWith('/') ? inputGiteaUrl.slice(0, -1) : inputGiteaUrl
+  await waitTillAvailable(giteaUrl)
+  const formattedGiteaUrl: string = giteaUrl.endsWith('/') ? giteaUrl.slice(0, -1) : giteaUrl
 
   // create the org
-  const orgApi = new OrganizationApi(username, giteaPassword, `${giteaUrl}/api/v1`)
-  const repoApi = new RepositoryApi(username, giteaPassword, `${giteaUrl}/api/v1`)
+  const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
 
   const existingTeams = await doApiCall(errors, `Getting all teams in org "${orgName}"`, () =>
     orgApi.orgListTeams(orgName),
@@ -403,7 +410,7 @@ async function execGiteaCLICommand(podNamespace: string, podName: string) {
     try {
       teamNamespaces = namespaces.items.map((namespace) => namespace.metadata?.name)
     } catch (error) {
-      console.debug('Teamnamespaces exited with error:', error)
+      console.debug('Team namespaces exited with error:', error)
       throw error
     }
     if (teamNamespaces.length > 0) {
