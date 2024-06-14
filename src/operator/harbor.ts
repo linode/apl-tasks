@@ -18,12 +18,28 @@ import {
 } from '@redkubes/harbor-client-node'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret } from '../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../utils'
+import {
+  HARBOR_BASE_URL,
+  HARBOR_BASE_URL_PORT,
+  HARBOR_OPERATOR_NAMESPACE,
+  HARBOR_SYSTEM_NAMESPACE,
+  cleanEnv,
+} from '../validators'
 
-interface groupMapping {
-  [key: string]: {
-    otomi: string[]
-  }
+// Interfaces
+interface RobotSecret {
+  id: number
+  name: string
+  secret: string
 }
+
+// Constants
+const env = cleanEnv({
+  HARBOR_BASE_URL,
+  HARBOR_BASE_URL_PORT,
+  HARBOR_OPERATOR_NAMESPACE,
+  HARBOR_SYSTEM_NAMESPACE,
+})
 
 const HarborRole = {
   admin: 1,
@@ -38,13 +54,6 @@ const HarborGroupType = {
 }
 
 const errors: string[] = []
-
-export interface RobotSecret {
-  id: number
-  name: string
-  secret: string
-}
-
 const systemRobot: any = {
   name: 'harbor',
   duration: -1,
@@ -67,11 +76,9 @@ const systemRobot: any = {
 
 const robotPrefix = 'otomi-'
 const harborOperator = {
-  harborBaseUrl: 'http://harbor-core.harbor:80/api/v2.0',
   harborBaseRepoUrl: '',
-  harborUser: 'admin',
-  harborPassword: 'welcomeotomi',
-  teamIds: [],
+  harborUser: '',
+  harborPassword: '',
   oidcClientId: '',
   oidcClientSecret: '',
   oidcEndpoint: '',
@@ -99,25 +106,18 @@ const config: any = {
   self_registration: false,
 }
 
-const systemNamespace = 'harbor'
+const systemNamespace = env.HARBOR_SYSTEM_NAMESPACE
 const systemSecretName = 'harbor-robot-admin'
 const projectPullSecretName = 'harbor-pullsecret'
 const projectPushSecretName = 'harbor-pushsecret'
 const projectBuildPushSecretName = 'harbor-pushsecret-builds'
-// const harborBaseUrl = `https://harbor.172.233.37.26.nip.io/api/v2.0`
-// const harborHealthUrl = `${harborBaseUrl}/systeminfo`
-const robotApi = new RobotApi(harborOperator.harborUser, harborOperator.harborPassword, harborOperator.harborBaseUrl)
-const configureApi = new ConfigureApi(
-  harborOperator.harborUser,
-  harborOperator.harborPassword,
-  harborOperator.harborBaseUrl,
-)
-const projectsApi = new ProjectApi(
-  harborOperator.harborUser,
-  harborOperator.harborPassword,
-  harborOperator.harborBaseUrl,
-)
-const memberApi = new MemberApi(harborOperator.harborUser, harborOperator.harborPassword, harborOperator.harborBaseUrl)
+const harborBaseUrl = `${env.HARBOR_BASE_URL}:${env.HARBOR_BASE_URL_PORT}/api/v2.0`
+const harborHealthUrl = `${harborBaseUrl}/systeminfo`
+const harborOperatorNamespace = env.HARBOR_OPERATOR_NAMESPACE
+let robotApi
+let configureApi
+let projectsApi
+let memberApi
 
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
@@ -135,17 +135,13 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   const { metadata, data } = object
 
   if (object.kind === 'Secret' && metadata.name === 'harbor-admin') {
-    console.log('Secret:', metadata.name)
     harborOperator.harborPassword = Buffer.from(data.harborPassword, 'base64').toString()
     harborOperator.harborUser = Buffer.from(data.harborUser, 'base64').toString()
     harborOperator.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
     harborOperator.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
     harborOperator.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
   } else if (object.kind === 'ConfigMap' && metadata.name === 'harbor-operator-cm') {
-    console.log('ConfigMap:', metadata.name)
-    // harborOperator.harborBaseUrl = data.harborBaseUrl
     harborOperator.harborBaseRepoUrl = data.harborBaseRepoUrl
-    harborOperator.teamIds = JSON.parse(data.teamIds)
     harborOperator.oidcAutoOnboard = data.oidcAutoOnboard
     harborOperator.oidcUserClaim = data.oidcUserClaim
     harborOperator.oidcGroupsClaim = data.oidcGroupsClaim
@@ -184,13 +180,13 @@ export default class MyOperator extends Operator {
   protected async init() {
     // Watch harbor-operator-secrets
     try {
-      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, 'harbor-operator')
+      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, harborOperatorNamespace)
     } catch (error) {
       console.debug(error)
     }
     // Watch harbor-operator-cm
     try {
-      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, 'harbor-operator')
+      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, harborOperatorNamespace)
     } catch (error) {
       console.debug(error)
     }
@@ -246,11 +242,12 @@ async function runProcessNamespace(namespace: string) {
 
 // Setup Harbor
 async function setupHarbor() {
-  console.log('harborOperator', harborOperator)
-  if (!harborOperator.harborBaseUrl) return
-  const harborHealthUrl = `${harborOperator.harborBaseUrl}/systeminfo`
   // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
+  robotApi = new RobotApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
+  configureApi = new ConfigureApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
+  projectsApi = new ProjectApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
+  memberApi = new MemberApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
   const bearerAuth = await getBearerToken()
   robotApi.setDefaultAuthentication(bearerAuth)
   configureApi.setDefaultAuthentication(bearerAuth)
@@ -367,7 +364,7 @@ async function processNamespace(namespace: string) {
     return null
   } catch (error) {
     console.error(`Error processing namespace ${namespace}:`, error)
-    throw error
+    return null
   }
 }
 
