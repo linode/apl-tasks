@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-return-assign */
-import { bool, cleanEnv as clean, json, num, str, StrictCleanOptions, url, ValidatorSpec } from 'envalid'
+import { bool, cleanEnv as clean, json, num, str, StrictCleanOptions, ValidatorSpec } from 'envalid'
 
 const { env } = process
 
@@ -43,8 +43,8 @@ export const IDP_SUB_CLAIM_MAPPER = str({
 })
 
 export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
-export const GITEA_URL = url({ desc: 'The gitea core service url' })
-export const GITEA_URL_PORT = url({ desc: 'The gitea core service url port' })
+export const GITEA_URL = str({ desc: 'The gitea core service url' })
+export const GITEA_URL_PORT = str({ desc: 'The gitea core service url port' })
 export const GITEA_OPERATOR_NAMESPACE = str({ desc: 'The gitea operator namespace' })
 export const KC_HOSTNAME_URL = str({ desc: 'The Keycloak Server address' })
 export const KEYCLOAK_ADDRESS_INTERNAL = str({ desc: 'The internal Keycloak kubernetes svc address' })
