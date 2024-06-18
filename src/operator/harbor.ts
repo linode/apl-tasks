@@ -214,6 +214,7 @@ async function runSetupHarbor() {
 
 async function runProcessNamespace(namespace: string) {
   try {
+    if (!harborOperator.harborBaseRepoUrl) throw new Error('Harbor base repo url is not set')
     await processNamespace(namespace)
   } catch (error) {
     console.debug('Error could not process namespace', error)
@@ -356,7 +357,6 @@ async function processNamespace(namespace: string) {
       () => memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
     )
 
-    if (!harborOperator.harborBaseRepoUrl) throw new Error('Harbor base repo url is not set')
     await ensureTeamPullRobotAccountSecret(namespace, projectName)
     await ensureTeamPushRobotAccountSecret(namespace, projectName)
     await ensureTeamBuildPushRobotAccountSecret(namespace, projectName)
