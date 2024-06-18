@@ -128,7 +128,7 @@ async function runKeycloakUpdater(key: string) {
     console.info('Missing required keycloak variables for Keycloak setup/reconfiguration')
     return
   }
-
+  console.log('env:', env)
   switch (key) {
     case 'addTeam':
       try {
