@@ -356,6 +356,7 @@ async function processNamespace(namespace: string) {
       () => memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
     )
 
+    if (!harborOperator.harborBaseRepoUrl) throw new Error('Harbor base repo url is not set')
     await ensureTeamPullRobotAccountSecret(namespace, projectName)
     await ensureTeamPushRobotAccountSecret(namespace, projectName)
     await ensureTeamBuildPushRobotAccountSecret(namespace, projectName)
