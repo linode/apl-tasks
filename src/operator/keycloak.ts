@@ -293,7 +293,7 @@ async function keycloakConfigMapChanges() {
   const connection = await createKeycloakConnection()
   const api = setupKeycloakApi(connection)
   keycloakRealmProviderConfigurer(api)
-  if (env.FEAT_EXTERNAL_IDP) externalIDP(api)
+  if (env.FEAT_EXTERNAL_IDP === 'true') externalIDP(api)
   else internalIdp(api, connection)
 }
 
