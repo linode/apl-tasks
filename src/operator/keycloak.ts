@@ -67,6 +67,7 @@ interface RealmRole {
 const localEnv = cleanEnv({ KEYCLOAK_TOKEN_TTL })
 
 const env = {
+  FIRST_RUN: false,
   FEAT_EXTERNAL_IDP: 'false',
   IDP_ALIAS: '',
   IDP_OIDC_URL: '',
@@ -162,6 +163,10 @@ async function runKeycloakUpdater(key: string) {
         await new Promise((resolve) => setTimeout(resolve, 30000))
         console.log('Retrying to update configMap')
         await runKeycloakUpdater('updateConfig')
+        if (!env.FIRST_RUN) {
+          await runKeycloakUpdater('addTeam')
+          env.FIRST_RUN = true
+        }
       }
       break
     default:
