@@ -153,6 +153,19 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug Keycloak operator",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run-script", "operator:keycloak-dev"],
+      "cwd": "${workspaceRoot}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Debug wait-for task",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "tasks:wait-for-dev"],

@@ -14,6 +14,7 @@ import {
   IdentityProvidersApi,
   ProtocolMapperRepresentation,
   ProtocolMappersApi,
+  RealmRepresentation,
   RealmsAdminApi,
   RoleMapperApi,
   RoleRepresentation,
@@ -360,7 +361,9 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   realmConf.accessTokenLifespanForImplicitFlow = env.KEYCLOAK_TOKEN_TTL
   // the api does not offer a list method, and trying to get by id throws an error
   // which we wan to discard, so we run the next command with an empty errors array
-  const existingRealm = await doApiCall([], `Getting realm ${keycloakRealm}`, () => api.realms.realmGet(keycloakRealm))
+  console.log('api: ', api)
+  console.log('api realms: ', api.realms.authentications)
+  const existingRealm = await doApiCall([], `Getting realm ${keycloakRealm}`, () => api.realms.realmGet(keycloakRealm)) as RealmRepresentation
   if (existingRealm) {
     await doApiCall(errors, `Updating realm ${keycloakRealm}`, async () =>
       api.realms.realmPut(keycloakRealm, realmConf),
