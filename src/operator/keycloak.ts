@@ -228,15 +228,15 @@ export default class MyOperator extends Operator {
                 env.KEYCLOAK_HOSTNAME_URL = data!.KEYCLOAK_HOSTNAME_URL
                 env.KEYCLOAK_ADDRESS_INTERNAL = data!.KEYCLOAK_ADDRESS_INTERNAL
                 env.KEYCLOAK_REALM = data!.KEYCLOAK_REALM
-                env.TEAM_IDS = data!.TEAM_IDS as unknown as string[]
-                env.REDIRECT_URIS = data!.REDIRECT_URIS as unknown as string[]
+                env.TEAM_IDS = JSON.parse(data!.TEAM_IDS)
+                env.REDIRECT_URIS = JSON.parse(data!.REDIRECT_URIS)
                 env.WAIT_OPTIONS = data!.WAIT_OPTIONS
                 if (env.FEAT_EXTERNAL_IDP) {
                   env.IDP_ALIAS = data!.IDP_ALIAS
                   env.IDP_OIDC_URL = data!.IDP_OIDC_URL
                   env.IDP_GROUP_OTOMI_ADMIN = data!.IDP_GROUP_OTOMI_ADMIN
                   env.IDP_GROUP_TEAM_ADMIN = data!.IDP_GROUP_TEAM_ADMIN
-                  env.IDP_GROUP_MAPPINGS_TEAMS = data!.IDP_GROUP_MAPPINGS_TEAMS as unknown as string[]
+                  env.IDP_GROUP_MAPPINGS_TEAMS = JSON.parse(data!.IDP_GROUP_MAPPINGS_TEAMS)
                   env.IDP_SUB_CLAIM_MAPPER = data!.IDP_SUB_CLAIM_MAPPER
                   env.IDP_USERNAME_CLAIM_MAPPER = data!.IDP_USERNAME_CLAIM_MAPPER
                 }
