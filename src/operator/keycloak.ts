@@ -231,7 +231,7 @@ export default class MyOperator extends Operator {
                 env.TEAM_IDS = JSON.parse(data!.TEAM_IDS)
                 env.REDIRECT_URIS = JSON.parse(data!.REDIRECT_URIS)
                 env.WAIT_OPTIONS = data!.WAIT_OPTIONS
-                if (env.FEAT_EXTERNAL_IDP) {
+                if (env.FEAT_EXTERNAL_IDP === 'true') {
                   env.IDP_ALIAS = data!.IDP_ALIAS
                   env.IDP_OIDC_URL = data!.IDP_OIDC_URL
                   env.IDP_GROUP_OTOMI_ADMIN = data!.IDP_GROUP_OTOMI_ADMIN
