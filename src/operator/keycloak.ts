@@ -449,6 +449,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
 
 async function externalIDP(api: KeycloakApi) {
   // Keycloak acts as broker
+  console.log('EXTERNAL IDP')
   // Create Identity Provider
   const idp = await createIdProvider(env.IDP_CLIENT_ID, env.IDP_ALIAS, env.IDP_CLIENT_SECRET, env.IDP_OIDC_URL)
 
@@ -507,7 +508,7 @@ async function externalIDP(api: KeycloakApi) {
 
 async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
   // IDP instead of broker
-
+  console.log('INTERNAL IDP')
   // create groups
   const { basePath, token } = connection
   const groups = new GroupsApi(basePath)
