@@ -480,29 +480,34 @@ async function externalIDP(api: KeycloakApi) {
     api.providers.realmIdentityProviderInstancesAliasMappersGet(keycloakRealm, env.IDP_ALIAS),
   )) || []) as IdentityProviderMapperRepresentation[]
 
-  await Promise.all(
-    idpMappers.map((idpMapper) => {
-      const existingMapper: IdentityProviderMapperRepresentation | undefined = existingMappers.find(
-        (m) => m.name === idpMapper.name,
-      )
-      if (existingMapper) {
-        return doApiCall(errors, `Updating mapper ${idpMapper.name!}`, () =>
-          api.providers.realmIdentityProviderInstancesAliasMappersIdPut(
-            keycloakRealm,
-            env.IDP_ALIAS,
-            existingMapper.id!,
-            {
-              ...existingMapper,
-              ...idpMapper,
-            },
-          ),
+  try {
+    await Promise.all(
+      idpMappers.map((idpMapper) => {
+        const existingMapper: IdentityProviderMapperRepresentation | undefined = existingMappers.find(
+          (m) => m.name === idpMapper.name,
         )
-      }
-      return doApiCall(errors, `Creating mapper ${idpMapper.name!}`, () =>
-        api.providers.realmIdentityProviderInstancesAliasMappersPost(keycloakRealm, env.IDP_ALIAS, idpMapper),
-      )
-    }),
-  )
+        if (existingMapper) {
+          return doApiCall(errors, `Updating mapper ${idpMapper.name!}`, () =>
+            api.providers.realmIdentityProviderInstancesAliasMappersIdPut(
+              keycloakRealm,
+              env.IDP_ALIAS,
+              existingMapper.id!,
+              {
+                ...existingMapper,
+                ...idpMapper,
+              },
+            ),
+          )
+        }
+        return doApiCall(errors, `Creating mapper ${idpMapper.name!}`, () =>
+          api.providers.realmIdentityProviderInstancesAliasMappersPost(keycloakRealm, env.IDP_ALIAS, idpMapper),
+        )
+      }),
+    )
+    console.error('Finished external IDP: ')
+  } catch (error) {
+    console.error('Error in external IDP: ', error)
+  }
 }
 
 async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
@@ -605,18 +610,23 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
     api.users.realmUsersGet(keycloakRealm, false, userConf.email),
   )) as UserRepresentation[]
   const existingUser: UserRepresentation = existingUsersByAdminEmail?.[0]
-  if (existingUser) {
-    await doApiCall(errors, `Updating user ${env.KEYCLOAK_ADMIN}`, async () =>
-      api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
-    ).then((result) => {
-      console.log('Result: ', result)
-    })
-  } else {
-    await doApiCall(errors, `Creating user ${env.KEYCLOAK_ADMIN}`, () =>
-      api.users.realmUsersPost(keycloakRealm, userConf),
-    ).then((result) => {
-      console.log('Result: ', result)
-    })
+  try {
+    if (existingUser) {
+      await doApiCall(errors, `Updating user ${env.KEYCLOAK_ADMIN}`, async () =>
+        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
+      ).then((result) => {
+        console.log('Result: ', result)
+      })
+    } else {
+      await doApiCall(errors, `Creating user ${env.KEYCLOAK_ADMIN}`, () =>
+        api.users.realmUsersPost(keycloakRealm, userConf),
+      ).then((result) => {
+        console.log('Result: ', result)
+      })
+    }
+    console.log('Finished Interal IDP')
+  } catch (error) {
+    console.error('Error in internalIDP: ', error)
   }
 }
 
@@ -629,30 +639,34 @@ async function manageGroups(connection: KeycloakConnection) {
   const existingGroups = ((await doApiCall(errors, 'Getting realm groups', () =>
     groups.realmGroupsGet(keycloakRealm),
   )) || []) as Array<GroupRepresentation>
-
-  await Promise.all(
-    teamGroups.map((group) => {
-      const groupName = group.name!
-      const existingGroup = existingGroups.find((el) => el.name === groupName)
-      if (existingGroup) {
-        return doApiCall(errors, `Updating groups ${groupName}`, async () =>
-          groups.realmGroupsIdPut(keycloakRealm, existingGroup.id!, group),
+  try {
+    await Promise.all(
+      teamGroups.map((group) => {
+        const groupName = group.name!
+        const existingGroup = existingGroups.find((el) => el.name === groupName)
+        if (existingGroup) {
+          return doApiCall(errors, `Updating groups ${groupName}`, async () =>
+            groups.realmGroupsIdPut(keycloakRealm, existingGroup.id!, group),
+          ).then((result) => {
+            console.log('Result: ', result)
+          })
+        }
+        return doApiCall(errors, `Creating group ${groupName}`, async () =>
+          groups.realmGroupsPost(keycloakRealm, group),
         ).then((result) => {
           console.log('Result: ', result)
         })
-      }
-      return doApiCall(errors, `Creating group ${groupName}`, async () =>
-        groups.realmGroupsPost(keycloakRealm, group),
-      ).then((result) => {
-        console.log('Result: ', result)
-      })
-    }),
-  ).then(
-    (onfulfilled) => {
-      console.log('Fulfilled: ', onfulfilled)
-    },
-    (rejected) => {
-      console.log('Rejected: ', rejected)
-    },
-  )
+      }),
+    ).then(
+      (onfulfilled) => {
+        console.log('Fulfilled: ', onfulfilled)
+      },
+      (rejected) => {
+        console.log('Rejected: ', rejected)
+      },
+    )
+    console.log('Finished managing groups')
+  } catch (error) {
+    console.error('Error in manageGroups: ', error)
+  }
 }
