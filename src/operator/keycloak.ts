@@ -619,9 +619,10 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
 }
 
 async function manageGroups(connection: KeycloakConnection) {
-  const { basePath } = connection
+  const { token, basePath } = connection
   const groups = new GroupsApi(basePath)
   const teamGroups = createGroups(env.TEAM_IDS)
+  groups.accessToken = String(token.access_token)
 
   const existingGroups = ((await doApiCall(errors, 'Getting realm groups', () =>
     groups.realmGroupsGet(keycloakRealm),
