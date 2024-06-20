@@ -156,12 +156,13 @@ async function runKeycloakUpdater(key: string) {
       break
     case 'updateConfig':
       try {
-        await keycloakConfigMapChanges()
-        if (!env.FIRST_RUN) {
-          console.log('FIRST RUN')
-          await runKeycloakUpdater('addTeam')
-          env.FIRST_RUN = true
-        }
+        await keycloakConfigMapChanges().then(async () => {
+          if (!env.FIRST_RUN) {
+            console.log('FIRST RUN')
+            await runKeycloakUpdater('addTeam')
+            env.FIRST_RUN = true
+          }
+        })
       } catch (error) {
         console.debug('Error could not update configMap', error)
         console.debug('Retrying in 30 seconds')
@@ -316,7 +317,7 @@ async function keycloakTeamDeleted() {
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
   await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
   const keycloakAddress = env.KEYCLOAK_HOSTNAME_URL
-  const basePath = `${keycloakAddress}/admin/realms`
+  const basePath = `${keycloakAddress}/realms`
   let token: TokenSet
   try {
     custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_HOSTNAME_URL.replace('https://', '') } })
