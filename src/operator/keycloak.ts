@@ -276,7 +276,8 @@ export default class MyOperator extends Operator {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
         const { object }: { object: k8s.V1Pod } = e
         const { metadata } = object
-        console.log('namespace: ', object.metadata)
+        console.log('namespace object: ', object)
+        console.log('namespace metadata: ', object.metadata)
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
         if (metadata && metadata.name === 'team-admin') return
