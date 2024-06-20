@@ -277,6 +277,7 @@ export default class MyOperator extends Operator {
         if (object.kind === 'add') await runKeycloakUpdater('addTeam')
         if (object.kind === 'remove') await runKeycloakUpdater('removeTeam')
       })
+      console.log('Watching team namespaces done!')
     } catch (error) {
       console.debug(error)
     }
