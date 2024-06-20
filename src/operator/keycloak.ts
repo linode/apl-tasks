@@ -157,16 +157,17 @@ async function runKeycloakUpdater(key: string) {
     case 'updateConfig':
       try {
         await keycloakConfigMapChanges()
+        if (!env.FIRST_RUN) {
+          console.log('FIRST RUN')
+          await runKeycloakUpdater('addTeam')
+          env.FIRST_RUN = true
+        }
       } catch (error) {
         console.debug('Error could not update configMap', error)
         console.debug('Retrying in 30 seconds')
         await new Promise((resolve) => setTimeout(resolve, 30000))
         console.log('Retrying to update configMap')
         await runKeycloakUpdater('updateConfig')
-        if (!env.FIRST_RUN) {
-          await runKeycloakUpdater('addTeam')
-          env.FIRST_RUN = true
-        }
       }
       break
     default:
