@@ -199,7 +199,9 @@ export default class MyOperator extends Operator {
                 if (data!.IDP_CLIENT_ID) env.IDP_CLIENT_ID = Buffer.from(data!.IDP_CLIENT_ID, 'base64').toString()
                 if (data!.IDP_CLIENT_SECRET)
                   env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
-                await runKeycloakUpdater('updateConfig')
+                await runKeycloakUpdater('updateConfig').then(() => {
+                  console.log('Updated Config')
+                })
               } catch (error) {
                 console.debug(error)
               }
@@ -246,7 +248,9 @@ export default class MyOperator extends Operator {
                   env.IDP_SUB_CLAIM_MAPPER = data!.IDP_SUB_CLAIM_MAPPER
                   env.IDP_USERNAME_CLAIM_MAPPER = data!.IDP_USERNAME_CLAIM_MAPPER
                 }
-                await runKeycloakUpdater('updateConfig')
+                await runKeycloakUpdater('updateConfig').then(() => {
+                  console.log('Updated Config')
+                })
               } catch (error) {
                 console.debug(error)
               }
@@ -305,12 +309,24 @@ async function keycloakConfigMapChanges() {
 
 async function keycloakTeamAdded() {
   const connection = await createKeycloakConnection()
-  await manageGroups(connection)
+  try {
+    await manageGroups(connection).then(() => {
+      console.log('Completed adding team:')
+    })
+  } catch (error) {
+    console.log('Error adding team: ', error)
+  }
 }
 
 async function keycloakTeamDeleted() {
   const connection = await createKeycloakConnection()
-  await manageGroups(connection)
+  try {
+    await manageGroups(connection).then(() => {
+      console.log('Completed deleting team:')
+    })
+  } catch (error) {
+    console.log('Error deleting team: ', error)
+  }
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
