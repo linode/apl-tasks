@@ -134,6 +134,7 @@ async function runKeycloakUpdater(key: string) {
     case 'addTeam':
       try {
         await keycloakTeamAdded()
+        break
       } catch (error) {
         console.debug('Error could not add team', error)
         console.debug('Retrying in 30 seconds')
@@ -145,6 +146,7 @@ async function runKeycloakUpdater(key: string) {
     case 'removeTeam':
       try {
         await keycloakTeamDeleted()
+        break
       } catch (error) {
         console.debug('Error could not delete team', error)
         console.debug('Retrying in 30 seconds')
@@ -162,6 +164,7 @@ async function runKeycloakUpdater(key: string) {
             env.FIRST_RUN = true
           }
         })
+        break
       } catch (error) {
         console.debug('Error could not update configMap', error)
         console.debug('Retrying in 30 seconds')
@@ -202,10 +205,11 @@ export default class MyOperator extends Operator {
                 await runKeycloakUpdater('updateConfig').then(() => {
                   console.log('Updated Config')
                 })
+                break
               } catch (error) {
                 console.debug(error)
+                break
               }
-              break
             }
             default:
               break
@@ -251,10 +255,11 @@ export default class MyOperator extends Operator {
                 await runKeycloakUpdater('updateConfig').then(() => {
                   console.log('Updated Config')
                 })
+                break
               } catch (error) {
                 console.debug(error)
+                break
               }
-              break
             }
             default:
               break
