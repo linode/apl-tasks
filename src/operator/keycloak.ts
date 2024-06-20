@@ -130,7 +130,6 @@ async function runKeycloakUpdater(key: string) {
     console.info('Missing required keycloak variables for Keycloak setup/reconfiguration')
     return
   }
-  console.log('env:', env)
   switch (key) {
     case 'addTeam':
       try {
@@ -368,7 +367,6 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   realmConf.accessTokenLifespanForImplicitFlow = env.KEYCLOAK_TOKEN_TTL
   // the api does not offer a list method, and trying to get by id throws an error
   // which we wan to discard, so we run the next command with an empty errors array
-  console.log('api: ', api)
   const existingRealm = (await doApiCall([], `Getting realm ${keycloakRealm}`, () =>
     api.realms.realmGet(keycloakRealm),
   )) as RealmRepresentation
@@ -610,11 +608,15 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
   if (existingUser) {
     await doApiCall(errors, `Updating user ${env.KEYCLOAK_ADMIN}`, async () =>
       api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
-    )
+    ).then((result) => {
+      console.log('Result: ', result)
+    })
   } else {
     await doApiCall(errors, `Creating user ${env.KEYCLOAK_ADMIN}`, () =>
       api.users.realmUsersPost(keycloakRealm, userConf),
-    )
+    ).then((result) => {
+      console.log('Result: ', result)
+    })
   }
 }
 
@@ -635,9 +637,22 @@ async function manageGroups(connection: KeycloakConnection) {
       if (existingGroup) {
         return doApiCall(errors, `Updating groups ${groupName}`, async () =>
           groups.realmGroupsIdPut(keycloakRealm, existingGroup.id!, group),
-        )
+        ).then((result) => {
+          console.log('Result: ', result)
+        })
       }
-      return doApiCall(errors, `Creating group ${groupName}`, async () => groups.realmGroupsPost(keycloakRealm, group))
+      return doApiCall(errors, `Creating group ${groupName}`, async () =>
+        groups.realmGroupsPost(keycloakRealm, group),
+      ).then((result) => {
+        console.log('Result: ', result)
+      })
     }),
+  ).then(
+    (onfulfilled) => {
+      console.log('Fulfilled: ', onfulfilled)
+    },
+    (rejected) => {
+      console.log('Rejected: ', rejected)
+    },
   )
 }
