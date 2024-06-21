@@ -165,11 +165,7 @@ async function runKeycloakUpdater(key: string) {
     case 'updateConfig':
       try {
         await keycloakConfigMapChanges().then(async () => {
-          if (!env.FIRST_RUN) {
-            console.log('FIRST RUN')
-            await runKeycloakUpdater('addTeam')
-            env.FIRST_RUN = true
-          }
+          await runKeycloakUpdater('addTeam')
         })
         break
       } catch (error) {
