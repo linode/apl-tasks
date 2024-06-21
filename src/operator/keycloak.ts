@@ -1,4 +1,5 @@
 import Operator, { ResourceEventType } from '@dot-i/k8s-operator'
+import { KubernetesObject } from '@dot-i/k8s-operator/node_modules/@kubernetes/client-node/dist'
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import {
@@ -39,6 +40,11 @@ import {
 } from '../tasks/keycloak/realm-factory'
 import { doApiCall, waitTillAvailable } from '../utils'
 import { cleanEnv, KEYCLOAK_TOKEN_TTL } from '../validators'
+
+// added the type property which was missing in the original KubernetesObject
+interface CustomKubernetesObject extends KubernetesObject {
+  type: string
+}
 
 const errors: string[] = []
 
@@ -274,15 +280,24 @@ export default class MyOperator extends Operator {
     // Watch team namespaces to see if teams get added or removed
     try {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
-        const { object }: { object: k8s.V1Pod } = e
-        const { metadata } = object
+        const { object }: { object: k8s.V1Namespace } = e
+        const { metadata, type } = object as CustomKubernetesObject
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
         if (metadata && metadata.name === 'team-admin') return
         console.log('namespace object: ', object)
         console.log('namespace metadata: ', object.metadata)
-        if (object.kind === 'add') await runKeycloakUpdater('addTeam')
-        if (object.kind === 'remove') await runKeycloakUpdater('removeTeam')
+        console.log('Type namespace: ', type)
+        switch (e.type) {
+          case ResourceEventType.Deleted:
+            await runKeycloakUpdater('removeTeam')
+            break
+          case ResourceEventType.Added:
+            await runKeycloakUpdater('addTeam')
+            break
+          default:
+            break
+        }
       })
       console.log('Watching team namespaces done!')
     } catch (error) {
