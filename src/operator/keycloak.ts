@@ -285,6 +285,8 @@ export default class MyOperator extends Operator {
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
         if (metadata && metadata.name === 'team-admin') return
+        const operatorConfig = await k8sApi.readNamespacedConfigMap('keycloak-cm', 'otomi-keycloak-operator')
+        env.TEAM_IDS = JSON.parse(operatorConfig.body.data!.TEAM_IDS)
         console.log('namespace object: ', object)
         console.log('namespace metadata: ', object.metadata)
         console.log('Type namespace: ', type)
