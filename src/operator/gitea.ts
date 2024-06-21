@@ -93,7 +93,6 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 } else {
   kc.loadFromDefault()
 }
-const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 // Callbacks
 const secretsAndConfigmapsCallback = async (e: any) => {
@@ -200,9 +199,9 @@ async function checkAndExecute() {
     await setGiteaOIDCConfig()
   }
 
-  // Check and execute execGiteaCLICommand if dependencies changed
+  // Check and execute setGiteaGroupMapping if dependencies changed
   if (!currentState.teamNames || currentState.teamNames !== lastState.teamNames) {
-    await execGiteaCLICommand('gitea', 'gitea-0')
+    await setGiteaGroupMapping('gitea', 'gitea-0')
   }
 
   // Update last known state
@@ -211,9 +210,6 @@ async function checkAndExecute() {
 
 async function runSetupGitea() {
   try {
-    // await setupGitea() // deps: !env.giteaPassword || !env.teamConfig
-    // await setGiteaOIDCConfig() // deps: !env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint
-    // await execGiteaCLICommand('gitea', 'gitea-0') // deps: !env.teamNames
     await checkAndExecute()
   } catch (error) {
     console.debug('Error could not run setup gitea', error)
@@ -247,7 +243,6 @@ async function upsertTeam(
 }
 
 async function upsertRepo(
-  existingTeams: Team[] = [],
   existingRepos: Repository[] = [],
   orgApi: OrganizationApi,
   repoApi: RepositoryApi,
@@ -352,14 +347,13 @@ async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[],
 async function createReposAndAddToTeam(
   orgApi: OrganizationApi,
   repoApi: RepositoryApi,
-  existingTeams: Team[],
   existingRepos: Repository[],
   repoOption: CreateRepoOption,
 ) {
   // create main org repo: otomi/values
-  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, repoOption)
+  await upsertRepo(existingRepos, orgApi, repoApi, repoOption)
   // create otomi/charts repo for auto image updates
-  await upsertRepo(existingTeams, existingRepos, orgApi, repoApi, { ...repoOption, name: otomiChartsRepoName })
+  await upsertRepo(existingRepos, orgApi, repoApi, { ...repoOption, name: otomiChartsRepoName })
 
   // add repo: otomi/values to the team: otomi-viewer
   await doApiCall(
@@ -402,7 +396,7 @@ async function setupGitea() {
     name: otomiValuesRepoName,
     _private: true,
   }
-  await createReposAndAddToTeam(orgApi, repoApi, existingTeams, existingRepos, repoOption)
+  await createReposAndAddToTeam(orgApi, repoApi, existingRepos, repoOption)
 
   // check for specific hooks
   await addTektonHook(repoApi)
@@ -414,7 +408,7 @@ async function setupGitea() {
     teamIds.map(async (teamId) => {
       const name = `team-${teamId}-argocd`
       const option = { ...repoOption, autoInit: true, name }
-      return upsertRepo(existingTeams, existingRepos, orgApi, repoApi, option, `team-${teamId}`)
+      return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
     }),
   )
   if (errors.length) {
@@ -425,7 +419,7 @@ async function setupGitea() {
   }
 }
 
-// Exec Gitea CLI Functions
+// Set Gitea Functions
 export function buildTeamString(teamNames: any[]): string {
   if (teamNames === undefined) return '{}'
   const teamObject: groupMapping = {}
@@ -435,7 +429,7 @@ export function buildTeamString(teamNames: any[]): string {
   return JSON.stringify(teamObject)
 }
 
-async function execGiteaCLICommand(podNamespace: string, podName: string) {
+async function setGiteaGroupMapping(podNamespace: string, podName: string) {
   if (!env.teamNames) {
     console.debug('No team namespaces found with type=team configuration')
     return

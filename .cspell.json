@@ -5,9 +5,23 @@
   // language - current active spelling language
   "language": "en",
   // words - list of words to be always considered correct
-  "words": ["camelcase", "creds", "kubernetes", "openid", "otomi", "redkubes", "robotv"],
+  "words": [
+    "argocd",
+    "camelcase",
+    "creds",
+    "gitea",
+    "kubernetes",
+    "oidc",
+    "openid",
+    "otomi",
+    "redkubes",
+    "robotv",
+    "tekton"
+  ],
   // flagWords - list of words to be always considered incorrect
   // This is useful for offensive words and common spelling errors.
   // For example "hte" should be "the"
-  "flagWords": ["hte"]
+  "flagWords": [
+    "hte"
+  ]
 }
