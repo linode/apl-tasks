@@ -13,7 +13,8 @@ import {
   RepositoryApi,
   Team,
 } from '@redkubes/gitea-client-node'
-import { doApiCall, waitTillAvailable } from '../utils'
+import { keys } from 'lodash'
+import { doApiCall } from '../utils'
 import { GITEA_OPERATOR_NAMESPACE, GITEA_URL, GITEA_URL_PORT, cleanEnv } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
 
@@ -29,21 +30,41 @@ interface groupMapping {
   }
 }
 
+interface DependencyState {
+  giteaPassword: string | null
+  teamConfig: any
+  oidcClientId: string | null
+  oidcClientSecret: string | null
+  oidcEndpoint: string | null
+  teamNames: string[] | null
+}
+
 // Constants
-const env = cleanEnv({
+const localEnv = cleanEnv({
   GITEA_URL,
   GITEA_URL_PORT,
   GITEA_OPERATOR_NAMESPACE,
 })
 
-const giteaUrl = `${env.GITEA_URL}:${env.GITEA_URL_PORT}`
-const giteaOperatorNamespace = env.GITEA_OPERATOR_NAMESPACE
-const giteaOperator = {
+const giteaUrl = `${localEnv.GITEA_URL}:${localEnv.GITEA_URL_PORT}`
+const giteaOperatorNamespace = localEnv.GITEA_OPERATOR_NAMESPACE
+const env = {
   giteaPassword: '',
   hasArgocd: false,
   teamConfig: {},
+  teamNames: [] as string[],
   domainSuffix: '',
-  oidcConfig: {},
+  oidcClientId: '',
+  oidcClientSecret: '',
+  oidcEndpoint: '',
+}
+let lastState: DependencyState = {
+  giteaPassword: null,
+  teamConfig: null,
+  oidcClientId: null,
+  oidcClientSecret: null,
+  oidcEndpoint: null,
+  teamNames: null,
 }
 const errors: string[] = []
 
@@ -80,13 +101,21 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   const { metadata, data } = object
 
   if (object.kind === 'Secret' && metadata.name === 'gitea-app-operator-secret') {
-    giteaOperator.giteaPassword = Buffer.from(data.giteaPassword, 'base64').toString()
-    giteaOperator.oidcConfig = JSON.parse(Buffer.from(data.oidcConfig, 'base64').toString())
+    env.giteaPassword = Buffer.from(data.giteaPassword, 'base64').toString()
+    env.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
+    env.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
+    env.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
   } else if (object.kind === 'ConfigMap' && metadata.name === 'gitea-app-operator-cm') {
-    giteaOperator.hasArgocd = data.hasArgocd === 'true'
-    giteaOperator.teamConfig = JSON.parse(data.teamConfig)
-    giteaOperator.domainSuffix = data.domainSuffix
+    env.hasArgocd = data.hasArgocd === 'true'
+    env.teamConfig = JSON.parse(data.teamConfig)
+    env.teamNames = keys(env.teamConfig).filter((teamName) => teamName !== 'admin')
+    env.domainSuffix = data.domainSuffix
   } else return
+
+  if (!env.giteaPassword || !env.teamConfig || !env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) {
+    console.info('Missing required variables for Gitea setup/reconfiguration')
+    return
+  }
 
   switch (e.type) {
     case ResourceEventType.Added:
@@ -103,15 +132,6 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   }
 }
 
-const namespacesCallback = async (e: any) => {
-  const { object }: { object: k8s.V1Pod } = e
-  const { metadata } = object
-  // Check if namespace starts with prefix 'team-'
-  if (metadata && !metadata.name?.startsWith('team-')) return
-  if (metadata && metadata.name === 'team-admin') return
-  await runExecCommand()
-}
-
 // Operator
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -125,12 +145,6 @@ export default class MyOperator extends Operator {
     // Watch gitea-app-operator-cm
     try {
       await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, giteaOperatorNamespace)
-    } catch (error) {
-      console.debug(error)
-    }
-    // Watch all namespaces
-    try {
-      await this.watchResource('', 'v1', 'namespaces', namespacesCallback)
     } catch (error) {
       console.debug(error)
     }
@@ -154,27 +168,59 @@ if (typeof require !== 'undefined' && require.main === module) {
 }
 
 // Runners
+async function checkAndExecute() {
+  const currentState: DependencyState = {
+    giteaPassword: env.giteaPassword,
+    teamConfig: env.teamConfig,
+    oidcClientId: env.oidcClientId,
+    oidcClientSecret: env.oidcClientSecret,
+    oidcEndpoint: env.oidcEndpoint,
+    teamNames: env.teamNames,
+  }
+
+  // Check and execute setupGitea if dependencies changed
+  if (
+    !currentState.giteaPassword ||
+    !currentState.teamConfig ||
+    currentState.giteaPassword !== lastState.giteaPassword ||
+    currentState.teamConfig !== lastState.teamConfig
+  ) {
+    await setupGitea()
+  }
+
+  // Check and execute setGiteaOIDCConfig if dependencies changed
+  if (
+    !currentState.oidcClientId ||
+    !currentState.oidcClientSecret ||
+    !currentState.oidcEndpoint ||
+    currentState.oidcClientId !== lastState.oidcClientId ||
+    currentState.oidcClientSecret !== lastState.oidcClientSecret ||
+    currentState.oidcEndpoint !== lastState.oidcEndpoint
+  ) {
+    await setGiteaOIDCConfig()
+  }
+
+  // Check and execute execGiteaCLICommand if dependencies changed
+  if (!currentState.teamNames || currentState.teamNames !== lastState.teamNames) {
+    await execGiteaCLICommand('gitea', 'gitea-0')
+  }
+
+  // Update last known state
+  lastState = currentState
+}
+
 async function runSetupGitea() {
   try {
-    await setupGitea()
+    // await setupGitea() // deps: !env.giteaPassword || !env.teamConfig
+    // await setGiteaOIDCConfig() // deps: !env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint
+    // await execGiteaCLICommand('gitea', 'gitea-0') // deps: !env.teamNames
+    await checkAndExecute()
   } catch (error) {
     console.debug('Error could not run setup gitea', error)
     console.debug('Retrying in 30 seconds')
     await new Promise((resolve) => setTimeout(resolve, 30000))
     console.debug('Retrying to setup gitea')
     await runSetupGitea()
-  }
-}
-
-async function runExecCommand() {
-  try {
-    await execGiteaCLICommand('gitea', 'gitea-0')
-  } catch (error) {
-    console.debug('Error could not run exec command', error)
-    console.debug('Retrying in 30 seconds')
-    await new Promise((resolve) => setTimeout(resolve, 30000))
-    console.debug('Retrying to run exec command')
-    await runExecCommand()
   }
 }
 
@@ -333,15 +379,9 @@ async function createReposAndAddToTeam(
 }
 
 async function setupGitea() {
-  const { giteaPassword, teamConfig, hasArgocd } = giteaOperator
-  if (!giteaPassword || !teamConfig) {
-    console.info('Missing required variables for Gitea setup/reconfiguration')
-    return
-  }
+  const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-
   const teamIds = Object.keys(teamConfig)
-  await waitTillAvailable(giteaUrl)
   const formattedGiteaUrl: string = giteaUrl.endsWith('/') ? giteaUrl.slice(0, -1) : giteaUrl
 
   // create the org
@@ -390,65 +430,90 @@ export function buildTeamString(teamNames: any[]): string {
   if (teamNames === undefined) return '{}'
   const teamObject: groupMapping = {}
   teamNames.forEach((teamName: string) => {
-    teamObject[teamName] = { otomi: ['otomi-viewer', teamName] }
+    teamObject[`team-${teamName}`] = { otomi: ['otomi-viewer', `team-${teamName}`] }
   })
   return JSON.stringify(teamObject)
 }
 
 async function execGiteaCLICommand(podNamespace: string, podName: string) {
+  if (!env.teamNames) {
+    console.debug('No team namespaces found with type=team configuration')
+    return
+  }
   try {
-    console.debug('Finding namespaces')
-    let namespaces: any
-    try {
-      namespaces = (await k8sApi.listNamespace(undefined, undefined, undefined, undefined, 'type=team')).body
-    } catch (error) {
-      console.debug('No namespaces found, exited with error:', error)
-      throw error
-    }
-    console.debug('Filtering namespaces with "team-" prefix')
-    let teamNamespaces: any
-    try {
-      teamNamespaces = namespaces.items.map((namespace) => namespace.metadata?.name)
-    } catch (error) {
-      console.debug('Team namespaces exited with error:', error)
-      throw error
-    }
-    if (teamNamespaces.length > 0) {
-      const teamNamespaceString = buildTeamString(teamNamespaces)
-      const execCommand = [
-        'sh',
-        '-c',
-        `AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\n') && gitea admin auth update-oauth --id "$AUTH_ID" --group-team-map '${teamNamespaceString}'`,
-      ]
-      if (podNamespace && podName) {
-        const exec = new k8s.Exec(kc)
-        // Run gitea CLI command to update the gitea oauth group mapping
-        await exec
-          .exec(
-            podNamespace,
-            podName,
-            'gitea',
-            execCommand,
-            null,
-            process.stderr as stream.Writable,
-            process.stdin as stream.Readable,
-            false,
-            (status: k8s.V1Status) => {
-              console.log('Exited with status:')
-              console.log(JSON.stringify(status, null, 2))
-              console.debug('Changed group mapping to: ', teamNamespaceString)
-            },
-          )
-          .catch((error) => {
-            console.debug('Error occurred during exec:', error)
-            throw error
-          })
-      }
-    } else {
-      console.debug('No team namespaces found')
+    const teamNamespaceString = buildTeamString(env.teamNames)
+    const execCommand = [
+      'sh',
+      '-c',
+      `AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\n') && gitea admin auth update-oauth --id "$AUTH_ID" --group-team-map '${teamNamespaceString}'`,
+    ]
+    if (podNamespace && podName) {
+      const exec = new k8s.Exec(kc)
+      // Run gitea CLI command to update the gitea oauth group mapping
+      await exec
+        .exec(
+          podNamespace,
+          podName,
+          'gitea',
+          execCommand,
+          null,
+          process.stderr as stream.Writable,
+          process.stdin as stream.Readable,
+          false,
+          (status: k8s.V1Status) => {
+            console.info('Gitea group mapping update status:', status.status)
+            console.info('New group mapping:', teamNamespaceString)
+          },
+        )
+        .catch((error) => {
+          console.debug('Error occurred during exec:', error)
+          throw error
+        })
     }
   } catch (error) {
     console.debug(`Error updating IDP group mapping: ${error.message}`)
+    throw error
+  }
+}
+
+async function setGiteaOIDCConfig() {
+  if (!env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) return
+  const podNamespace = 'gitea'
+  const podName = 'gitea-0'
+  const clientID = env.oidcClientId
+  const clientSecret = env.oidcClientSecret
+  const discoveryURL = `${env.oidcEndpoint}/.well-known/openid-configuration`
+
+  try {
+    const execCommand = [
+      'sh',
+      '-c',
+      `AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\\n') && gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}"`,
+    ]
+    if (podNamespace && podName) {
+      const exec = new k8s.Exec(kc)
+      // Run gitea CLI command to update the gitea oauth group mapping
+      await exec
+        .exec(
+          podNamespace,
+          podName,
+          'gitea',
+          execCommand,
+          null,
+          process.stderr as stream.Writable,
+          process.stdin as stream.Readable,
+          false,
+          (status: k8s.V1Status) => {
+            console.info('Gitea OIDC configuration update status:', status.status)
+          },
+        )
+        .catch((error) => {
+          console.debug('Error occurred during exec:', error)
+          throw error
+        })
+    }
+  } catch (error) {
+    console.debug(`Error updating Gitea OIDC configuration: ${error.message}`)
     throw error
   }
 }
