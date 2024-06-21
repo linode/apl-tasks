@@ -285,25 +285,29 @@ export default class MyOperator extends Operator {
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
         if (metadata && metadata.name === 'team-admin') return
-        const operatorConfig = await k8sApi.readNamespacedConfigMap('keycloak-cm', 'otomi-keycloak-operator')
-        env.TEAM_IDS = JSON.parse(operatorConfig.body.data!.TEAM_IDS)
-        console.log('namespace object: ', object)
-        console.log('namespace metadata: ', object.metadata)
-        console.log('Type namespace: ', type)
-        console.log('event: ', e)
-        switch (e.type) {
-          case ResourceEventType.Deleted:
-            console.log('EVENT DELETED NAMESPACE')
-            await runKeycloakUpdater('removeTeam')
-            break
-          case ResourceEventType.Added:
-            console.log('EVENT ADDED NAMESPACE')
-            await runKeycloakUpdater('addTeam')
-            break
-          default:
-            break
-        }
+        await k8sApi.readNamespacedConfigMap('keycloak-cm', 'otomi-keycloak-operator').then(async (result) => {
+          env.TEAM_IDS = JSON.parse(result.body.data!.TEAM_IDS)
+          console.log('namespace object: ', object)
+          console.log('namespace metadata: ', object.metadata)
+          console.log('Type namespace: ', type)
+          console.log('event: ', e)
+          switch (e.type) {
+            case ResourceEventType.Deleted:
+              console.log('EVENT DELETED NAMESPACE')
+              console.log('TEAM IDS: ', env.TEAM_IDS)
+              await runKeycloakUpdater('removeTeam')
+              break
+            case ResourceEventType.Added:
+              console.log('EVENT ADDED NAMESPACE')
+              console.log('TEAM IDS: ', env.TEAM_IDS)
+              await runKeycloakUpdater('addTeam')
+              break
+            default:
+              break
+          }
+        })
       })
+
       console.log('Watching team namespaces done!')
     } catch (error) {
       console.debug(error)
