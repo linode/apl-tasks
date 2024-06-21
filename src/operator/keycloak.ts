@@ -1,5 +1,4 @@
 import Operator, { ResourceEventType } from '@dot-i/k8s-operator'
-import { KubernetesObject } from '@dot-i/k8s-operator/node_modules/@kubernetes/client-node/dist'
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import {
@@ -40,12 +39,6 @@ import {
 } from '../tasks/keycloak/realm-factory'
 import { doApiCall, waitTillAvailable } from '../utils'
 import { cleanEnv, KEYCLOAK_TOKEN_TTL } from '../validators'
-
-// added the type property which was missing in the original KubernetesObject
-interface CustomKubernetesObject extends KubernetesObject {
-  type: string
-  data: k8s.V1ConfigMap
-}
 
 const errors: string[] = []
 
@@ -274,41 +267,6 @@ export default class MyOperator extends Operator {
     } catch (error) {
       console.debug(error)
     }
-    // // Watch team namespaces to see if teams get added or removed
-    // try {
-    //   await this.watchResource('', 'v1', 'namespaces', async (e) => {
-    //     const { object } = e
-    //     const { metadata, type } = object as CustomKubernetesObject
-    //     // Check if namespace starts with prefix 'team-'
-    //     if (metadata && !metadata.name?.startsWith('team-')) return
-    //     if (metadata && metadata.name === 'team-admin') return
-    //     await k8sApi.readNamespacedConfigMap('keycloak-cm', 'otomi-keycloak-operator').then(async (result) => {
-    //       env.TEAM_IDS = JSON.parse(result.body.data!.TEAM_IDS)
-    //       console.log('namespace object: ', object)
-    //       console.log('namespace metadata: ', object.metadata)
-    //       console.log('Type namespace: ', type)
-    //       console.log('event: ', e)
-    //       switch (e.type) {
-    //         case ResourceEventType.Deleted:
-    //           console.log('EVENT DELETED NAMESPACE')
-    //           console.log('TEAM IDS: ', env.TEAM_IDS)
-    //           await runKeycloakUpdater('removeTeam')
-    //           break
-    //         case ResourceEventType.Added:
-    //           console.log('EVENT ADDED NAMESPACE')
-    //           console.log('TEAM IDS: ', env.TEAM_IDS)
-    //           await runKeycloakUpdater('addTeam')
-    //           break
-    //         default:
-    //           break
-    //       }
-    //     })
-    //   })
-
-    //   console.log('Watching team namespaces done!')
-    // } catch (error) {
-    //   console.debug(error)
-    // }
   }
 }
 
@@ -340,7 +298,7 @@ async function keycloakTeamAdded() {
   const connection = await createKeycloakConnection()
   try {
     await manageGroups(connection).then(() => {
-      console.log('Completed adding team:')
+      console.log('Completed adding team')
     })
   } catch (error) {
     console.log('Error adding team: ', error)
@@ -351,7 +309,7 @@ async function keycloakTeamDeleted() {
   const connection = await createKeycloakConnection()
   try {
     await manageGroups(connection).then(() => {
-      console.log('Completed deleting team:')
+      console.log('Completed deleting team')
     })
   } catch (error) {
     console.log('Error deleting team: ', error)
@@ -493,7 +451,6 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
 
 async function externalIDP(api: KeycloakApi) {
   // Keycloak acts as broker
-  console.log('EXTERNAL IDP')
   // Create Identity Provider
   const idp = await createIdProvider(env.IDP_CLIENT_ID, env.IDP_ALIAS, env.IDP_CLIENT_SECRET, env.IDP_OIDC_URL)
 
@@ -557,7 +514,6 @@ async function externalIDP(api: KeycloakApi) {
 
 async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
   // IDP instead of broker
-  console.log('INTERNAL IDP')
   // create groups
   const { basePath, token } = connection
   const groups = new GroupsApi(basePath)
@@ -659,17 +615,12 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
     if (existingUser) {
       await doApiCall(errors, `Updating user ${env.KEYCLOAK_ADMIN}`, async () =>
         api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
-      ).then((result) => {
-        console.log('Result: ', result)
-      })
+      )
     } else {
       await doApiCall(errors, `Creating user ${env.KEYCLOAK_ADMIN}`, () =>
         api.users.realmUsersPost(keycloakRealm, userConf),
-      ).then((result) => {
-        console.log('Result: ', result)
-      })
+      )
     }
-    console.log('Finished Interal IDP')
   } catch (error) {
     console.error('Error in internalIDP: ', error)
   }
@@ -692,23 +643,12 @@ async function manageGroups(connection: KeycloakConnection) {
         if (existingGroup) {
           return doApiCall(errors, `Updating groups ${groupName}`, async () =>
             groups.realmGroupsIdPut(keycloakRealm, existingGroup.id!, group),
-          ).then((result) => {
-            console.log('Result: ', result)
-          })
+          )
         }
         return doApiCall(errors, `Creating group ${groupName}`, async () =>
           groups.realmGroupsPost(keycloakRealm, group),
-        ).then((result) => {
-          console.log('Result: ', result)
-        })
+        )
       }),
-    ).then(
-      (onfulfilled) => {
-        console.log('Fulfilled: ', onfulfilled)
-      },
-      (rejected) => {
-        console.log('Rejected: ', rejected)
-      },
     )
     console.log('Finished managing groups')
   } catch (error) {
