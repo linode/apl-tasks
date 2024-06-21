@@ -280,7 +280,7 @@ export default class MyOperator extends Operator {
     // Watch team namespaces to see if teams get added or removed
     try {
       await this.watchResource('', 'v1', 'namespaces', async (e) => {
-        const { object }: { object: k8s.V1Namespace } = e
+        const { object } = e
         const { metadata, type } = object as CustomKubernetesObject
         // Check if namespace starts with prefix 'team-'
         if (metadata && !metadata.name?.startsWith('team-')) return
@@ -288,11 +288,14 @@ export default class MyOperator extends Operator {
         console.log('namespace object: ', object)
         console.log('namespace metadata: ', object.metadata)
         console.log('Type namespace: ', type)
+        console.log('event: ', e)
         switch (e.type) {
           case ResourceEventType.Deleted:
+            console.log('EVENT DELETED NAMESPACE')
             await runKeycloakUpdater('removeTeam')
             break
           case ResourceEventType.Added:
+            console.log('EVENT ADDED NAMESPACE')
             await runKeycloakUpdater('addTeam')
             break
           default:
