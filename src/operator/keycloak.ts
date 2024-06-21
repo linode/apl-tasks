@@ -44,6 +44,7 @@ import { cleanEnv, KEYCLOAK_TOKEN_TTL } from '../validators'
 // added the type property which was missing in the original KubernetesObject
 interface CustomKubernetesObject extends KubernetesObject {
   type: string
+  data: k8s.V1ConfigMap
 }
 
 const errors: string[] = []
@@ -195,8 +196,8 @@ export default class MyOperator extends Operator {
         'v1',
         'secrets',
         async (e) => {
-          const { object }: { object: k8s.V1Secret } = e
-          const { metadata, data } = object
+          const { object } = e
+          const { metadata, data } = object as k8s.V1Secret
           if (metadata && metadata.name !== 'keycloak-admin') return
           switch (e.type) {
             case ResourceEventType.Added:
@@ -235,8 +236,8 @@ export default class MyOperator extends Operator {
         'v1',
         'configmaps',
         async (e) => {
-          const { object }: { object: k8s.V1ConfigMap } = e
-          const { metadata, data } = object
+          const { object } = e
+          const { metadata, data } = object as k8s.V1ConfigMap
           if (metadata && metadata.name !== 'keycloak-cm') return
           switch (e.type) {
             case ResourceEventType.Added:
@@ -277,41 +278,41 @@ export default class MyOperator extends Operator {
     } catch (error) {
       console.debug(error)
     }
-    // Watch team namespaces to see if teams get added or removed
-    try {
-      await this.watchResource('', 'v1', 'namespaces', async (e) => {
-        const { object } = e
-        const { metadata, type } = object as CustomKubernetesObject
-        // Check if namespace starts with prefix 'team-'
-        if (metadata && !metadata.name?.startsWith('team-')) return
-        if (metadata && metadata.name === 'team-admin') return
-        await k8sApi.readNamespacedConfigMap('keycloak-cm', 'otomi-keycloak-operator').then(async (result) => {
-          env.TEAM_IDS = JSON.parse(result.body.data!.TEAM_IDS)
-          console.log('namespace object: ', object)
-          console.log('namespace metadata: ', object.metadata)
-          console.log('Type namespace: ', type)
-          console.log('event: ', e)
-          switch (e.type) {
-            case ResourceEventType.Deleted:
-              console.log('EVENT DELETED NAMESPACE')
-              console.log('TEAM IDS: ', env.TEAM_IDS)
-              await runKeycloakUpdater('removeTeam')
-              break
-            case ResourceEventType.Added:
-              console.log('EVENT ADDED NAMESPACE')
-              console.log('TEAM IDS: ', env.TEAM_IDS)
-              await runKeycloakUpdater('addTeam')
-              break
-            default:
-              break
-          }
-        })
-      })
+    // // Watch team namespaces to see if teams get added or removed
+    // try {
+    //   await this.watchResource('', 'v1', 'namespaces', async (e) => {
+    //     const { object } = e
+    //     const { metadata, type } = object as CustomKubernetesObject
+    //     // Check if namespace starts with prefix 'team-'
+    //     if (metadata && !metadata.name?.startsWith('team-')) return
+    //     if (metadata && metadata.name === 'team-admin') return
+    //     await k8sApi.readNamespacedConfigMap('keycloak-cm', 'otomi-keycloak-operator').then(async (result) => {
+    //       env.TEAM_IDS = JSON.parse(result.body.data!.TEAM_IDS)
+    //       console.log('namespace object: ', object)
+    //       console.log('namespace metadata: ', object.metadata)
+    //       console.log('Type namespace: ', type)
+    //       console.log('event: ', e)
+    //       switch (e.type) {
+    //         case ResourceEventType.Deleted:
+    //           console.log('EVENT DELETED NAMESPACE')
+    //           console.log('TEAM IDS: ', env.TEAM_IDS)
+    //           await runKeycloakUpdater('removeTeam')
+    //           break
+    //         case ResourceEventType.Added:
+    //           console.log('EVENT ADDED NAMESPACE')
+    //           console.log('TEAM IDS: ', env.TEAM_IDS)
+    //           await runKeycloakUpdater('addTeam')
+    //           break
+    //         default:
+    //           break
+    //       }
+    //     })
+    //   })
 
-      console.log('Watching team namespaces done!')
-    } catch (error) {
-      console.debug(error)
-    }
+    //   console.log('Watching team namespaces done!')
+    // } catch (error) {
+    //   console.debug(error)
+    // }
   }
 }
 
