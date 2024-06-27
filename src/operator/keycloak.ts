@@ -283,6 +283,7 @@ async function main(): Promise<void> {
   console.info('Setting up namespace prefix filter to "team-"')
   await operator.start()
   const exit = (reason: string) => {
+    console.log('REASON OF EXIT: ', reason)
     operator.stop()
     process.exit(0)
   }
