@@ -59,6 +59,14 @@ export const KEYCLOAK_TOKEN_TTL = num({
   desc: 'The Keycloak access token TTL in seconds, 28800 seconds = 8 hours',
   default: 28800,
 })
+export const KEYCLOAK_TOKEN_OFFLINE_TTL = num({
+  desc: 'The Keycloak offline access token TTL in seconds, 604800 seconds = 7 days',
+  default: 604800,
+})
+export const KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED = bool({
+  desc: 'Allows the Keycloak access token TTL to have max limit for offline use',
+  default: true,
+})
 export const NODE_EXTRA_CA_CERTS = str({ default: undefined })
 export const NODE_TLS_REJECT_UNAUTHORIZED = bool({ default: true })
 export const OIDC_CLIENT_SECRET = str({ desc: 'The OIDC client secret used by keycloak to access the IDP' })

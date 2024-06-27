@@ -38,7 +38,12 @@ import {
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
 import { doApiCall, waitTillAvailable } from '../utils'
-import { cleanEnv, KEYCLOAK_TOKEN_TTL } from '../validators'
+import {
+  cleanEnv,
+  KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
+  KEYCLOAK_TOKEN_OFFLINE_TTL,
+  KEYCLOAK_TOKEN_TTL,
+} from '../validators'
 
 const errors: string[] = []
 
@@ -64,7 +69,7 @@ interface RealmRole {
   name: string
 }
 
-const localEnv = cleanEnv({ KEYCLOAK_TOKEN_TTL })
+const localEnv = cleanEnv({ KEYCLOAK_TOKEN_TTL, KEYCLOAK_TOKEN_OFFLINE_TTL, KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED })
 
 const env = {
   FIRST_RUN: false,
@@ -85,6 +90,8 @@ const env = {
   KEYCLOAK_HOSTNAME_URL: '',
   KEYCLOAK_REALM: '',
   KEYCLOAK_TOKEN_TTL: localEnv.KEYCLOAK_TOKEN_TTL,
+  KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED: localEnv.KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
+  KEYCLOAK_TOKEN_OFFLINE_TTL: localEnv.KEYCLOAK_TOKEN_OFFLINE_TTL,
   REDIRECT_URIS: [] as string[],
   TEAM_IDS: [] as string[],
   WAIT_OPTIONS: {},
@@ -368,6 +375,9 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   realmConf.ssoSessionMaxLifespan = env.KEYCLOAK_TOKEN_TTL
   realmConf.accessTokenLifespan = env.KEYCLOAK_TOKEN_TTL
   realmConf.accessTokenLifespanForImplicitFlow = env.KEYCLOAK_TOKEN_TTL
+  realmConf.offlineSessionMaxLifespanEnabled = env.KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED
+  realmConf.offlineSessionIdleTimeout = env.KEYCLOAK_TOKEN_OFFLINE_TTL
+  realmConf.offlineSessionMaxLifespan = env.KEYCLOAK_TOKEN_OFFLINE_TTL
   // the api does not offer a list method, and trying to get by id throws an error
   // which we wan to discard, so we run the next command with an empty errors array
   const existingRealm = (await doApiCall([], `Getting realm ${keycloakRealm}`, () =>
