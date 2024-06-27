@@ -88,6 +88,7 @@ const harborOperator = {
   oidcGroupsClaim: 'groups',
   oidcName: 'keycloak',
   oidcScope: 'openid',
+  teamNamespaces: [],
 }
 
 const systemNamespace = env.HARBOR_SYSTEM_NAMESPACE
@@ -132,6 +133,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     harborOperator.oidcName = data.oidcName
     harborOperator.oidcScope = data.oidcScope
     harborOperator.oidcVerifyCert = data.oidcVerifyCert === 'true'
+    harborOperator.teamNamespaces = JSON.parse(data.teamNamespaces)
   } else return
 
   switch (e.type) {
@@ -174,12 +176,12 @@ export default class MyOperator extends Operator {
     } catch (error) {
       console.debug(error)
     }
-    // Watch all namespaces
-    try {
-      await this.watchResource('', 'v1', 'namespaces', namespacesCallback)
-    } catch (error) {
-      console.debug(error)
-    }
+    // // Watch all namespaces
+    // try {
+    //   await this.watchResource('', 'v1', 'namespaces', namespacesCallback)
+    // } catch (error) {
+    //   console.debug(error)
+    // }
   }
 }
 
@@ -203,6 +205,9 @@ if (typeof require !== 'undefined' && require.main === module) {
 async function runSetupHarbor() {
   try {
     await setupHarbor()
+    console.log('teamNamespaces', harborOperator.teamNamespaces)
+    if (harborOperator.teamNamespaces.length > 0)
+      await Promise.all(harborOperator.teamNamespaces.map((namespace) => processNamespace(`team-${namespace}`)))
   } catch (error) {
     console.debug('Error could not run setup harbor', error)
     console.debug('Retrying in 30 seconds')
@@ -214,6 +219,7 @@ async function runSetupHarbor() {
 
 async function runProcessNamespace(namespace: string) {
   try {
+    console.log('harborOperator', harborOperator)
     if (!harborOperator.harborBaseRepoUrl) throw new Error('Harbor base repo url is not set')
     await processNamespace(namespace)
   } catch (error) {
