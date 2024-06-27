@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.5.0](https://github.com/redkubes/otomi-tasks/compare/v2.4.0...v2.5.0) (2024-05-03)
+
+
+### Bug Fixes
+
+* set the offline session to seven days ([e7a7606](https://github.com/redkubes/otomi-tasks/commit/e7a76066972d94f06f3567e4c5f4f32c7c93e409))
+
 ## [2.4.0](https://github.com/redkubes/otomi-tasks/compare/v2.3.0...v2.4.0) (2024-02-09)
 
 
