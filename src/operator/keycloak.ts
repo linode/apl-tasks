@@ -287,7 +287,18 @@ async function main(): Promise<void> {
     operator.stop()
     process.exit(0)
   }
-
+  process.on('beforeExit', (error) => {
+    console.log('BEFORE EXIT ERROR: ', error)
+  })
+  process.on('exit', (error) => {
+    console.log('EXIT ERROR: ', error)
+  })
+  process.on('uncaughtException', (error) => {
+    console.log('uncaughtException ERROR: ', error)
+  })
+  process.on('unhandledRejection', (error) => {
+    console.log('unhandledRejection ERROR: ', error)
+  })
   process.on('SIGTERM', () => exit('SIGTERM')).on('SIGINT', () => exit('SIGINT'))
 }
 
