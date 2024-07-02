@@ -27,6 +27,10 @@ import {
 } from '../validators'
 
 // Interfaces
+interface DependencyState {
+  [key: string]: any
+}
+
 interface RobotSecret {
   id: number
   name: string
@@ -34,7 +38,7 @@ interface RobotSecret {
 }
 
 // Constants
-const env = cleanEnv({
+const localEnv = cleanEnv({
   HARBOR_BASE_URL,
   HARBOR_BASE_URL_PORT,
   HARBOR_OPERATOR_NAMESPACE,
@@ -53,6 +57,7 @@ const HarborGroupType = {
   http: 2,
 }
 
+let lastState: DependencyState = {}
 const errors: string[] = []
 const systemRobot: any = {
   name: 'harbor',
@@ -75,7 +80,7 @@ const systemRobot: any = {
 }
 
 const robotPrefix = 'otomi-'
-const harborOperator = {
+const env = {
   harborBaseRepoUrl: '',
   harborUser: '',
   harborPassword: '',
@@ -91,14 +96,14 @@ const harborOperator = {
   teamNamespaces: [],
 }
 
-const systemNamespace = env.HARBOR_SYSTEM_NAMESPACE
+const systemNamespace = localEnv.HARBOR_SYSTEM_NAMESPACE
 const systemSecretName = 'harbor-robot-admin'
 const projectPullSecretName = 'harbor-pullsecret'
 const projectPushSecretName = 'harbor-pushsecret'
 const projectBuildPushSecretName = 'harbor-pushsecret-builds'
-const harborBaseUrl = `${env.HARBOR_BASE_URL}:${env.HARBOR_BASE_URL_PORT}/api/v2.0`
+const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
-const harborOperatorNamespace = env.HARBOR_OPERATOR_NAMESPACE
+const harborOperatorNamespace = localEnv.HARBOR_OPERATOR_NAMESPACE
 let robotApi
 let configureApi
 let projectsApi
@@ -114,26 +119,31 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 }
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
+// Utility function to compare states
+function hasStateChanged(currentState: DependencyState, _lastState: DependencyState): boolean {
+  return Object.entries(currentState).some(([key, value]) => !value || value !== _lastState[key])
+}
+
 // Callbacks
 const secretsAndConfigmapsCallback = async (e: any) => {
   const { object } = e
   const { metadata, data } = object
 
   if (object.kind === 'Secret' && metadata.name === 'harbor-app-operator-secret') {
-    harborOperator.harborPassword = Buffer.from(data.harborPassword, 'base64').toString()
-    harborOperator.harborUser = Buffer.from(data.harborUser, 'base64').toString()
-    harborOperator.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
-    harborOperator.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
-    harborOperator.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
+    env.harborPassword = Buffer.from(data.harborPassword, 'base64').toString()
+    env.harborUser = Buffer.from(data.harborUser, 'base64').toString()
+    env.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
+    env.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
+    env.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
   } else if (object.kind === 'ConfigMap' && metadata.name === 'harbor-app-operator-cm') {
-    harborOperator.harborBaseRepoUrl = data.harborBaseRepoUrl
-    harborOperator.oidcAutoOnboard = data.oidcAutoOnboard === 'true'
-    harborOperator.oidcUserClaim = data.oidcUserClaim
-    harborOperator.oidcGroupsClaim = data.oidcGroupsClaim
-    harborOperator.oidcName = data.oidcName
-    harborOperator.oidcScope = data.oidcScope
-    harborOperator.oidcVerifyCert = data.oidcVerifyCert === 'true'
-    harborOperator.teamNamespaces = JSON.parse(data.teamNamespaces)
+    env.harborBaseRepoUrl = data.harborBaseRepoUrl
+    env.oidcAutoOnboard = data.oidcAutoOnboard === 'true'
+    env.oidcUserClaim = data.oidcUserClaim
+    env.oidcGroupsClaim = data.oidcGroupsClaim
+    env.oidcName = data.oidcName
+    env.oidcScope = data.oidcScope
+    env.oidcVerifyCert = data.oidcVerifyCert === 'true'
+    env.teamNamespaces = JSON.parse(data.teamNamespaces)
   } else return
 
   switch (e.type) {
@@ -148,15 +158,6 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     }
     default:
       break
-  }
-}
-
-const namespacesCallback = async (e: any) => {
-  const { object }: { object: k8s.V1Pod } = e
-  const { metadata } = object
-  if (metadata && metadata.name?.startsWith('team-')) {
-    console.info(`Processing Namespace:`, metadata.name)
-    await runProcessNamespace(metadata.name)
   }
 }
 
@@ -176,12 +177,6 @@ export default class MyOperator extends Operator {
     } catch (error) {
       console.debug(error)
     }
-    // // Watch all namespaces
-    // try {
-    //   await this.watchResource('', 'v1', 'namespaces', namespacesCallback)
-    // } catch (error) {
-    //   console.debug(error)
-    // }
   }
 }
 
@@ -202,12 +197,37 @@ if (typeof require !== 'undefined' && require.main === module) {
 }
 
 // Runners
+async function checkAndExecute() {
+  const currentState: DependencyState = {
+    harborBaseRepoUrl: env.harborBaseRepoUrl,
+    harborUser: env.harborUser,
+    harborPassword: env.harborPassword,
+    oidcClientId: env.oidcClientId,
+    oidcClientSecret: env.oidcClientSecret,
+    oidcEndpoint: env.oidcEndpoint,
+    oidcVerifyCert: env.oidcVerifyCert,
+    oidcUserClaim: env.oidcUserClaim,
+    oidcAutoOnboard: env.oidcAutoOnboard,
+    oidcGroupsClaim: env.oidcGroupsClaim,
+    oidcName: env.oidcName,
+    oidcScope: env.oidcScope,
+    teamNames: env.teamNamespaces,
+  }
+
+  if (hasStateChanged(currentState, lastState)) {
+    await setupHarbor()
+  }
+
+  if (currentState.teamNames && currentState.teamNames.length > 0 && currentState.teamNames !== lastState.teamNames) {
+    await Promise.all(currentState.teamNames.map((namespace) => processNamespace(`team-${namespace}`)))
+  }
+
+  lastState = { ...currentState }
+}
+
 async function runSetupHarbor() {
   try {
-    await setupHarbor()
-    console.log('teamNamespaces', harborOperator.teamNamespaces)
-    if (harborOperator.teamNamespaces.length > 0)
-      await Promise.all(harborOperator.teamNamespaces.map((namespace) => processNamespace(`team-${namespace}`)))
+    await checkAndExecute()
   } catch (error) {
     console.debug('Error could not run setup harbor', error)
     console.debug('Retrying in 30 seconds')
@@ -217,42 +237,29 @@ async function runSetupHarbor() {
   }
 }
 
-async function runProcessNamespace(namespace: string) {
-  try {
-    console.log('harborOperator', harborOperator)
-    if (!harborOperator.harborBaseRepoUrl) throw new Error('Harbor base repo url is not set')
-    await processNamespace(namespace)
-  } catch (error) {
-    console.debug('Error could not process namespace', error)
-    console.debug('Retrying in 30 seconds')
-    await new Promise((resolve) => setTimeout(resolve, 30000))
-    console.debug('Retrying to process namespace')
-    await runProcessNamespace(namespace)
-  }
-}
-
 // Setup Harbor
 async function setupHarbor() {
   // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
+  if (!env.harborUser) return
 
-  robotApi = new RobotApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
-  configureApi = new ConfigureApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
-  projectsApi = new ProjectApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
-  memberApi = new MemberApi(harborOperator.harborUser, harborOperator.harborPassword, harborBaseUrl)
+  robotApi = new RobotApi(env.harborUser, env.harborPassword, harborBaseUrl)
+  configureApi = new ConfigureApi(env.harborUser, env.harborPassword, harborBaseUrl)
+  projectsApi = new ProjectApi(env.harborUser, env.harborPassword, harborBaseUrl)
+  memberApi = new MemberApi(env.harborUser, env.harborPassword, harborBaseUrl)
 
   const config: any = {
     auth_mode: 'oidc_auth',
     oidc_admin_group: 'admin',
     oidc_client_id: 'otomi',
-    oidc_client_secret: harborOperator.oidcClientSecret,
-    oidc_endpoint: harborOperator.oidcEndpoint,
+    oidc_client_secret: env.oidcClientSecret,
+    oidc_endpoint: env.oidcEndpoint,
     oidc_groups_claim: 'groups',
     oidc_name: 'otomi',
     oidc_scope: 'openid',
-    oidc_verify_cert: harborOperator.oidcVerifyCert,
-    oidc_user_claim: harborOperator.oidcUserClaim,
-    oidc_auto_onboard: harborOperator.oidcAutoOnboard,
+    oidc_verify_cert: env.oidcVerifyCert,
+    oidc_user_claim: env.oidcUserClaim,
+    oidc_auto_onboard: env.oidcAutoOnboard,
     project_creation_restriction: 'adminonly',
     robot_name_prefix: robotPrefix,
     self_registration: false,
@@ -392,7 +399,7 @@ async function ensureTeamPullRobotAccountSecret(namespace: string, projectName):
   await createK8sSecret({
     namespace,
     name: projectPullSecretName,
-    server: `${harborOperator.harborBaseRepoUrl}`,
+    server: `${env.harborBaseRepoUrl}`,
     username: robotPullAccount.name!,
     password: robotPullAccount.secret!,
   })
@@ -452,17 +459,19 @@ async function createTeamPullRobotAccount(projectName: string): Promise<RobotCre
  */
 async function ensureTeamPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
   const k8sSecret = await getSecret(projectPushSecretName, namespace)
-  if (!k8sSecret) {
-    const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
-    console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
-    await createK8sSecret({
-      namespace,
-      name: projectPushSecretName,
-      server: `${harborOperator.harborBaseRepoUrl}`,
-      username: robotPushAccount.name!,
-      password: robotPushAccount.secret!,
-    })
+  if (k8sSecret) {
+    console.debug(`Deleting push secret/${projectPushSecretName} from ${namespace} namespace`)
+    await k8sApi.deleteNamespacedSecret(projectPushSecretName, namespace)
   }
+  const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
+  console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
+  await createK8sSecret({
+    namespace,
+    name: projectPushSecretName,
+    server: `${env.harborBaseRepoUrl}`,
+    username: robotPushAccount.name!,
+    password: robotPushAccount.secret!,
+  })
 }
 
 /**
@@ -500,7 +509,8 @@ async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
   const existing = robotList.find((i) => i.name === fullName)
 
   if (existing?.name) {
-    return existing
+    const existingId = existing.id
+    await doApiCall(errors, `Deleting previous push robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
   }
 
   const robotPushAccount = (await doApiCall(
@@ -523,17 +533,19 @@ async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
  */
 async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
   const k8sSecret = await getSecret(projectBuildPushSecretName, namespace)
-  if (!k8sSecret) {
-    const robotBuildsPushAccount = await ensureTeamBuildsPushRobotAccount(projectName)
-    console.debug(`Creating push secret/${projectBuildPushSecretName} at ${namespace} namespace`)
-    await createBuildsK8sSecret({
-      namespace,
-      name: projectBuildPushSecretName,
-      server: `${harborOperator.harborBaseRepoUrl}`,
-      username: robotBuildsPushAccount.name!,
-      password: robotBuildsPushAccount.secret!,
-    })
+  if (k8sSecret) {
+    console.debug(`Deleting build push secret/${projectBuildPushSecretName} from ${namespace} namespace`)
+    await k8sApi.deleteNamespacedSecret(projectBuildPushSecretName, namespace)
   }
+  const robotBuildsPushAccount = await ensureTeamBuildsPushRobotAccount(projectName)
+  console.debug(`Creating build push secret/${projectBuildPushSecretName} at ${namespace} namespace`)
+  await createBuildsK8sSecret({
+    namespace,
+    name: projectBuildPushSecretName,
+    server: `${env.harborBaseRepoUrl}`,
+    username: robotBuildsPushAccount.name!,
+    password: robotBuildsPushAccount.secret!,
+  })
 }
 
 /**
@@ -571,7 +583,10 @@ async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<an
   const existing = robotList.find((i) => i.name === fullName)
 
   if (existing?.name) {
-    return existing
+    const existingId = existing.id
+    await doApiCall(errors, `Deleting previous build push robot account ${fullName}`, () =>
+      robotApi.deleteRobot(existingId),
+    )
   }
 
   const robotBuildsPushAccount = (await doApiCall(
