@@ -1,9 +1,16 @@
 # --------------- Dev stage for developers to override sources
-FROM node:15-alpine as dev
+FROM node:15-buster-slim as dev
 ARG NPM_TOKEN
 RUN test -n "$NPM_TOKEN"
 
-RUN apk --no-cache add make gcc g++ python3 git jq
+RUN apt-get update && apt-get install -y \
+    make \
+    gcc \
+    g++ \
+    python3 \
+    git \
+    jq && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=development
 ENV BLUEBIRD_DEBUG=0
@@ -33,15 +40,15 @@ RUN npm run build
 FROM dev as clean
 # below command removes the packages specified in devDependencies and set NODE_ENV to production
 RUN npm prune --production
+
 # --------------- Production stage
-FROM node:15-alpine AS prod
+FROM node:15-buster-slim AS prod
 
 COPY --from=dev /usr/local/bin/node /usr/bin/
-COPY --from=dev /usr/lib/libgcc* /usr/lib/
-COPY --from=dev /usr/lib/libstdc* /usr/lib/
 
 # Install dependencies
-RUN apk add --no-cache git
+RUN apt-get update && apt-get install -y git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install app
 RUN mkdir /app
