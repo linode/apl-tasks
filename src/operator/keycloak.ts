@@ -218,7 +218,7 @@ export default class MyOperator extends Operator {
               break
           }
         },
-        'otomi-keycloak-operator',
+        'apl-keycloak-operator',
       )
       console.log('Watching secrets done!')
     } catch (error) {
@@ -268,7 +268,7 @@ export default class MyOperator extends Operator {
               break
           }
         },
-        'otomi-keycloak-operator',
+        'apl-keycloak-operator',
       )
       console.log('Watching configmap done!')
     } catch (error) {
