@@ -6,7 +6,12 @@ export default class MyOperator extends Operator {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000))
       console.info('Starting test operator')
-      this.logger.info('Test log')
+      await this.watchResource('', 'v1', 'namespaces', async (e) => {
+        const { object } = e
+        const { metadata } = object
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        console.log('metadata', metadata?.name)
+      })
       console.info('Listening test operator')
     } catch (error) {
       console.debug(error)
@@ -16,9 +21,10 @@ export default class MyOperator extends Operator {
 
 async function main(): Promise<void> {
   const operator = new MyOperator()
-  console.info(`Listening to secrets, configmaps and namespaces`)
+  console.info(`Listening namespaces`)
   await operator.start()
   const exit = (reason: string) => {
+    console.log('reason', reason)
     operator.stop()
     process.exit(0)
   }
