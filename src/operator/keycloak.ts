@@ -316,31 +316,6 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => exit('SIGINT'))
 }
 
-// async function main(): Promise<void> {
-//   const operator = new MyOperator()
-//   console.info(`Listening to team namespace changes in all namespaces`)
-//   console.info('Setting up namespace prefix filter to "team-"')
-//   await operator.start()
-//   const exit = (reason: string) => {
-//     console.log('REASON OF EXIT: ', reason)
-//     operator.stop()
-//     process.exit(0)
-//   }
-//   process.on('beforeExit', (error) => {
-//     console.log('BEFORE EXIT ERROR: ', error)
-//   })
-//   process.on('exit', (error) => {
-//     console.log('EXIT ERROR: ', error)
-//   })
-//   process.on('uncaughtException', (error) => {
-//     console.log('uncaughtException ERROR: ', error)
-//   })
-//   process.on('unhandledRejection', (error) => {
-//     console.log('unhandledRejection ERROR: ', error)
-//   })
-//   process.on('SIGTERM', () => exit('SIGTERM')).on('SIGINT', () => exit('SIGINT'))
-// }
-
 if (typeof require !== 'undefined' && require.main === module) {
   // Ensure main is called and log any errors during the initial startup
   main().catch((error) => {
