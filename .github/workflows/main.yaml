@@ -15,9 +15,9 @@ on:
 env:
   COMMIT_MSG: ${{ github.event.head_commit.message }}
   CACHE_REGISTRY: ghcr.io
-  CACHE_REPO: redkubes/otomi-tasks
+  CACHE_REPO: linode/apl-tasks
   REPO: otomi/tasks
-  GIT_USER: redkubesbot
+  GIT_USER: linode-gh-bot
   GIT_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
   DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_OTOMI_TOKEN }}
 jobs:
@@ -35,7 +35,7 @@ jobs:
       - name: CI tests, image build and push tag to cache for main or branch
         uses: whoan/docker-build-with-cache-action@v6
         with:
-          username: redkubesbot
+          username: linode-gh-bot
           password: '${{ secrets.GITHUB_TOKEN }}'
           registry: ${{ env.CACHE_REGISTRY }}
           image_name: ${{ env.CACHE_REPO }}
