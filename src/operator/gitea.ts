@@ -274,7 +274,6 @@ async function upsertRepo(
       () => repoApi.repoAddTeam(orgName, repoOption.name!, teamName),
       422,
     )
-  return undefined
 }
 
 async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Promise<hookInfo> {
