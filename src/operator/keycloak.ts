@@ -22,6 +22,7 @@ import {
   UserRepresentation,
   UsersApi,
 } from '@redkubes/keycloak-client-node'
+import * as fs from 'fs'
 import { forEach } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
 import { keycloakRealm } from '../tasks/keycloak/config'
@@ -278,6 +279,10 @@ export default class MyOperator extends Operator {
 }
 
 async function main(): Promise<void> {
+  // Write 'healthy' status to file every 5 seconds
+  setInterval(() => {
+    fs.writeFileSync('/tmp/healthy', 'healthy')
+  }, 5000)
   const operator = new MyOperator()
 
   console.info('Listening to team namespace changes in all namespaces')
