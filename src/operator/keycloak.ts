@@ -281,7 +281,7 @@ export default class MyOperator extends Operator {
 async function main(): Promise<void> {
   // Write 'healthy' status to file every 5 seconds
   setInterval(() => {
-    fs.writeFileSync('/tmp/healthy', 'healthy')
+    fs.writeFileSync('/writable-tmp/healthy', 'healthy')
   }, 5000)
   const operator = new MyOperator()
 
