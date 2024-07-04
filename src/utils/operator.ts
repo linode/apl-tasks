@@ -472,6 +472,7 @@ export default abstract class Operator {
   }
 
   private errorToJson(err: unknown): string {
+    console.log('error to JSON: ', err)
     if (typeof err === 'string') {
       return err
     }
