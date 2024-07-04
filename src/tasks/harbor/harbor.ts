@@ -16,7 +16,7 @@ import {
   RobotCreate,
   // eslint-disable-next-line no-unused-vars
   RobotCreated,
-} from '@redkubes/harbor-client-node'
+} from '@linodeharbor-client-node'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {

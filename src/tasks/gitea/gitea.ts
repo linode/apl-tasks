@@ -8,7 +8,7 @@ import {
   Repository,
   RepositoryApi,
   Team,
-} from '@redkubes/gitea-client-node'
+} from '@linodegitea-client-node'
 import { doApiCall, waitTillAvailable } from '../../utils'
 import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../../validators'
 import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../common'
