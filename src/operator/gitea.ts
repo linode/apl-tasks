@@ -46,8 +46,7 @@ const localEnv = cleanEnv({
   GITEA_OPERATOR_NAMESPACE,
 })
 
-const giteaUrl = `${localEnv.GITEA_URL}:${localEnv.GITEA_URL_PORT}`
-const giteaOperatorNamespace = localEnv.GITEA_OPERATOR_NAMESPACE
+const GITEA_ENDPOINT = `${localEnv.GITEA_URL}:${localEnv.GITEA_URL_PORT}`
 const env = {
   giteaPassword: '',
   hasArgocd: false,
@@ -137,13 +136,13 @@ export default class MyOperator extends Operator {
   protected async init() {
     // Watch gitea-app-operator-secrets
     try {
-      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, giteaOperatorNamespace)
+      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
       console.debug(error)
     }
     // Watch gitea-app-operator-cm
     try {
-      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, giteaOperatorNamespace)
+      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
       console.debug(error)
     }
@@ -376,7 +375,7 @@ async function setupGitea() {
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
   const teamIds = Object.keys(teamConfig)
-  const formattedGiteaUrl: string = giteaUrl.endsWith('/') ? giteaUrl.slice(0, -1) : giteaUrl
+  const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
 
   // create the org
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
