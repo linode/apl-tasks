@@ -70,7 +70,7 @@ export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
   id: realm,
   realm,
   displayName: realm,
-  displayNameHtml: '<div class="kc-logo-text"><span>Otomi</span></div>',
+  displayNameHtml: '<div class="kc-logo-text"><span>APL</span></div>',
   enabled: true,
   sslRequired: 'external',
   loginTheme: 'otomi',
@@ -166,7 +166,7 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
 
 export const roleTpl = (name: string, groupMapping: string, containerId: string): Record<string, unknown> => ({
   name,
-  description: `Created by Otomi${groupMapping ? ` - mapped for incoming IDP GROUP_ID: ${groupMapping}` : ''}`,
+  description: `Created by APL${groupMapping ? ` - mapped for incoming IDP GROUP_ID: ${groupMapping}` : ''}`,
   composite: false,
   clientRole: false,
   containerId,

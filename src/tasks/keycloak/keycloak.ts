@@ -167,7 +167,7 @@ async function main(): Promise<void> {
     }),
   )
 
-  // Create Otomi Client
+  // Create APL Client
   const client = createClient()
   const allClients = ((await doApiCall(errors, 'Getting otomi client', () =>
     api.clients.realmClientsGet(keycloakRealm),

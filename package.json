@@ -1,7 +1,7 @@
 {
   "author": "RedKubes",
   "bugs": {
-    "url": "https://github.com/redkubes/otomi-tasks/issues"
+    "url": "https://github.com/linode/apl-tasks/issues"
   },
   "config": {
     "commitizen": {
@@ -30,7 +30,7 @@
     "openid-client": "5.1.0",
     "ts-custom-error": "3.2.0"
   },
-  "description": "Tasks needed by the Otomi Container Platform to glue all the pieces together.",
+  "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
   "devDependencies": {
     "@commitlint/cli": "11.0.0",
     "@commitlint/config-conventional": "11.0.0",
@@ -85,7 +85,7 @@
     "node": ">=15.0.0",
     "npm": ">=6.0.0"
   },
-  "homepage": "https://github.com/redkubes/otomi-tasks#readme",
+  "homepage": "https://github.com/linode/apl-tasks#readme",
   "license": "Apache-2.0",
   "lint-staged": {
     "*.{json,md,yml,yaml}": [
@@ -100,7 +100,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/redkubes/otomi-tasks.git"
+    "url": "git+https://github.com/linode/apl-tasks.git"
   },
   "run-if-changed": {
     "package-lock.json": "npm install --prefer-offline --no-audit"

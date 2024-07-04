@@ -69,7 +69,7 @@ export interface RobotSecret {
 const systemRobot: any = {
   name: 'harbor',
   duration: -1,
-  description: 'Used by Otomi Harbor task runner',
+  description: 'Used by APL Harbor task runner',
   disable: false,
   level: 'system',
   permissions: [
@@ -117,7 +117,7 @@ const projectsApi = new ProjectApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborB
 const memberApi = new MemberApi(env.HARBOR_USER, env.HARBOR_PASSWORD, harborBaseUrl)
 
 /**
- * Create Harbor robot account that is used by Otomi tasks
+ * Create Harbor robot account that is used by APL tasks
  * @note assumes OIDC is not yet configured, otherwise this operation is NOT possible
  */
 async function createSystemRobotSecret(): Promise<RobotSecret> {
