@@ -18,7 +18,7 @@ import {
   RolesApi,
   UserRepresentation,
   UsersApi,
-} from '@linodekeycloak-client-node'
+} from '@linode/keycloak-client-node'
 import { forEach } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'

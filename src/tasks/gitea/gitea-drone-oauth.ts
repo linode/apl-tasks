@@ -1,4 +1,4 @@
-import { CreateOAuth2ApplicationOptions, OAuth2Application, UserApi } from '@linodegitea-client-node'
+import { CreateOAuth2ApplicationOptions, OAuth2Application, UserApi } from '@linode/gitea-client-node'
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import cookie from 'cookie'
 import { URLSearchParams } from 'url'

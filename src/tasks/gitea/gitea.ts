@@ -8,7 +8,7 @@ import {
   Repository,
   RepositoryApi,
   Team,
-} from '@linodegitea-client-node'
+} from '@linode/gitea-client-node'
 import { doApiCall, waitTillAvailable } from '../../utils'
 import { GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../../validators'
 import { orgName, otomiValuesRepoName, teamNameViewer, username } from '../common'

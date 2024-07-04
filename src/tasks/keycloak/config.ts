@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string */
 /* eslint-disable camelcase */
-import { ProtocolMapperRepresentation } from '@linodekeycloak-client-node'
+import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
 import axios from 'axios'
 
 export const keycloakRealm = 'otomi'
