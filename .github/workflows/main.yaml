@@ -36,11 +36,11 @@ jobs:
         uses: whoan/docker-build-with-cache-action@v6
         with:
           username: redkubesbot
-          password: '${{ secrets.NPM_TOKEN }}'
+          password: '${{ secrets.GITHUB_TOKEN }}'
           registry: ${{ env.CACHE_REGISTRY }}
           image_name: ${{ env.CACHE_REPO }}
           image_tag: ${{ env.TAG }}
-          build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.NPM_TOKEN }}'
+          build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.GITHUB_TOKEN }}'
       - name: Retag from cache and push
         run: |
           docker login -u otomi -p $DOCKER_PASSWORD
