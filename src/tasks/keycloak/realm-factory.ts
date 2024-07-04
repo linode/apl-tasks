@@ -9,11 +9,10 @@ import {
   RealmRepresentation,
   RoleRepresentation,
   UserRepresentation,
-} from '@redkubes/keycloak-client-node'
+} from '@linode/keycloak-client-node'
 import { defaultsDeep } from 'lodash'
 import * as utils from '../../utils'
 import {
-  cleanEnv,
   FEAT_EXTERNAL_IDP,
   IDP_ALIAS,
   IDP_CLIENT_ID,
@@ -29,8 +28,10 @@ import {
   KEYCLOAK_REALM,
   REDIRECT_URIS,
   TEAM_IDS,
+  cleanEnv,
 } from '../../validators'
 import {
+  TeamMapping,
   adminUserCfgTpl,
   clientEmailClaimMapper,
   clientScopeCfgTpl,
@@ -41,7 +42,6 @@ import {
   protocolMappersList,
   realmCfgTpl,
   roleTpl,
-  TeamMapping,
 } from './config'
 
 const env = cleanEnv({

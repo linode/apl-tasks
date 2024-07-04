@@ -18,7 +18,7 @@ import {
   RolesApi,
   UserRepresentation,
   UsersApi,
-} from '@redkubes/keycloak-client-node'
+} from '@linode/keycloak-client-node'
 import { forEach } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
@@ -167,7 +167,7 @@ async function main(): Promise<void> {
     }),
   )
 
-  // Create Otomi Client
+  // Create APL Client
   const client = createClient()
   const allClients = ((await doApiCall(errors, 'Getting otomi client', () =>
     api.clients.realmClientsGet(keycloakRealm),
