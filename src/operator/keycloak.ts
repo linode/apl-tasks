@@ -1,4 +1,3 @@
-import Operator, { ResourceEventType } from '@dot-i/k8s-operator'
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import {
@@ -22,7 +21,6 @@ import {
   UserRepresentation,
   UsersApi,
 } from '@redkubes/keycloak-client-node'
-import * as fs from 'fs'
 import { forEach } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
 import { keycloakRealm } from '../tasks/keycloak/config'
@@ -39,6 +37,7 @@ import {
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
 import { doApiCall, waitTillAvailable } from '../utils'
+import Operator, { ResourceEventType } from '../utils/operator'
 import {
   cleanEnv,
   KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
@@ -279,10 +278,10 @@ export default class MyOperator extends Operator {
 }
 
 async function main(): Promise<void> {
-  // Write 'healthy' status to file every 5 seconds
-  setInterval(() => {
-    fs.writeFileSync('/writable-tmp/healthy', 'healthy')
-  }, 5000)
+  // // Write 'healthy' status to file every 5 seconds
+  // setInterval(() => {
+  //   fs.writeFileSync('/writable-tmp/healthy', 'healthy')
+  // }, 5000)
   const operator = new MyOperator()
 
   console.info('Listening to team namespace changes in all namespaces')
