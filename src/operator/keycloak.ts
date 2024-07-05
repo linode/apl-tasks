@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 import Operator, { ResourceEventType } from '@dot-i/k8s-operator'
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
@@ -21,7 +22,7 @@ import {
   RolesApi,
   UserRepresentation,
   UsersApi,
-} from '@redkubes/keycloak-client-node'
+} from '@linode/keycloak-client-node'
 import { forEach } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
 import { keycloakRealm } from '../tasks/keycloak/config'
@@ -184,7 +185,7 @@ async function runKeycloakUpdater(key: string) {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
-    // Watch otomi-keycloak-operator-secret
+    // Watch apl-keycloak-operator-secret
     try {
       console.log('Watching secrets!')
       await this.watchResource(
@@ -224,7 +225,7 @@ export default class MyOperator extends Operator {
     } catch (error) {
       console.debug(error)
     }
-    // Watch otomi-keycloak-operator-cm
+    // Watch apl-keycloak-operator-cm
     try {
       console.log('Watching configmap!')
       await this.watchResource(

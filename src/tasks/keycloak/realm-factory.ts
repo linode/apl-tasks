@@ -9,7 +9,7 @@ import {
   RealmRepresentation,
   RoleRepresentation,
   UserRepresentation,
-} from '@redkubes/keycloak-client-node'
+} from '@linode/keycloak-client-node'
 import { defaultsDeep } from 'lodash'
 import * as utils from '../../utils'
 import {

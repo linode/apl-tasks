@@ -1,6 +1,6 @@
-# Otomi Tasks
+# APL Tasks
 
-Part of [Red Kubes](https://redkubes.com)' Otomi Container Platform.
+Part of APL - Application Platform for LKE (Linode Kubernetes Engine).
 
 The tasks repo contains autonomous jobs orchestrated by [redkubes/otomi-core](https://github.com/redkubes/otomi-core).
 
@@ -14,7 +14,7 @@ Make sure your expected environment variables exist in a mandatory `.env` file (
 #
 **Important**
 When using `npm i` and you get the errors `Unauthorized` and `Permission denied` on the installation regarding getting packages from redkubes
-> Example: `npm ERR! 403 403 Forbidden - GET https://npm.pkg.github.com/redkubes/@redkubes%2fgitea-client-node - Permission denied`
+> Example: `npm ERR! 403 403 Forbidden - GET https://npm.pkg.github.com/linode/@linode%2fgitea-client-node - Permission denied`
 
 This can be fixed by adding the following line to the `.npmrc` file. 
 `//npm.pkg.github.com/:_authToken=PERSONAL_ACCESS_TOKEN_HERE`

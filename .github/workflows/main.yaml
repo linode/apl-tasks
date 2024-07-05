@@ -15,9 +15,9 @@ on:
 env:
   COMMIT_MSG: ${{ github.event.head_commit.message }}
   CACHE_REGISTRY: ghcr.io
-  CACHE_REPO: redkubes/otomi-tasks
+  CACHE_REPO: linode/apl-tasks
   REPO: otomi/tasks
-  GIT_USER: redkubesbot
+  GIT_USER: linode-gh-bot
   GIT_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
   DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_OTOMI_TOKEN }}
 jobs:
@@ -35,12 +35,12 @@ jobs:
       - name: CI tests, image build and push tag to cache for main or branch
         uses: whoan/docker-build-with-cache-action@v6
         with:
-          username: redkubesbot
-          password: '${{ secrets.NPM_TOKEN }}'
+          username: linode-gh-bot
+          password: '${{ secrets.GITHUB_TOKEN }}'
           registry: ${{ env.CACHE_REGISTRY }}
           image_name: ${{ env.CACHE_REPO }}
           image_tag: ${{ env.TAG }}
-          build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.NPM_TOKEN }}'
+          build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.GITHUB_TOKEN }}'
       - name: Retag from cache and push
         run: |
           docker login -u otomi -p $DOCKER_PASSWORD

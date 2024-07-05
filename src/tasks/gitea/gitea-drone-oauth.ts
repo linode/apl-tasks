@@ -1,10 +1,10 @@
-import { CreateOAuth2ApplicationOptions, OAuth2Application, UserApi } from '@redkubes/gitea-client-node'
+import { CreateOAuth2ApplicationOptions, OAuth2Application, UserApi } from '@linode/gitea-client-node'
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import cookie from 'cookie'
 import { URLSearchParams } from 'url'
 import { createSecret, getSecret, k8s } from '../../k8s'
 import { doApiCall } from '../../utils'
-import { cleanEnv, DRONE_NAMESPACE, DRONE_URL, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES } from '../../validators'
+import { DRONE_NAMESPACE, DRONE_URL, GITEA_PASSWORD, GITEA_URL, OTOMI_VALUES, cleanEnv } from '../../validators'
 import { username } from '../common'
 import { GiteaDroneError } from './common'
 
