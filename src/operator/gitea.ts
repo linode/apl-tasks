@@ -12,7 +12,7 @@ import {
   Repository,
   RepositoryApi,
   Team,
-} from '@redkubes/gitea-client-node'
+} from '@linode/gitea-client-node'
 import { keys } from 'lodash'
 import { doApiCall } from '../utils'
 import { GITEA_OPERATOR_NAMESPACE, GITEA_URL, GITEA_URL_PORT, cleanEnv } from '../validators'
