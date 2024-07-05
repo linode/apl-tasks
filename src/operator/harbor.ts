@@ -1,4 +1,4 @@
-import Operator from '@dot-i/k8s-operator'
+import Operator from '../utils/operator'
 
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
