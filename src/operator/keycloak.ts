@@ -20,7 +20,7 @@ import {
   RolesApi,
   UserRepresentation,
   UsersApi,
-} from '@redkubes/keycloak-client-node'
+} from '@linode/keycloak-client-node'
 import * as fs from 'fs'
 import { forEach } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
