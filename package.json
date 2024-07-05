@@ -1,7 +1,7 @@
 {
   "author": "RedKubes",
   "bugs": {
-    "url": "https://github.com/redkubes/otomi-tasks/issues"
+    "url": "https://github.com/linode/apl-tasks/issues"
   },
   "config": {
     "commitizen": {
@@ -12,9 +12,9 @@
     "@apidevtools/json-schema-ref-parser": "9.0.6",
     "@dot-i/k8s-operator": "^1.3.8",
     "@kubernetes/client-node": "0.12.3",
-    "@redkubes/gitea-client-node": "1.19.1",
-    "@redkubes/harbor-client-node": "^2.2.1",
-    "@redkubes/keycloak-client-node": "^15.0.0",
+    "@linode/gitea-client-node": "1.19.1",
+    "@linode/harbor-client-node": "^2.2.1",
+    "@linode/keycloak-client-node": "^15.0.0",
     "async-retry": "1.3.1",
     "aws-sdk": "2.814.0",
     "axios": "0.21.2",
@@ -30,7 +30,7 @@
     "openid-client": "5.1.0",
     "ts-custom-error": "3.2.0"
   },
-  "description": "Tasks needed by the Otomi Container Platform to glue all the pieces together.",
+  "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
   "devDependencies": {
     "@commitlint/cli": "11.0.0",
     "@commitlint/config-conventional": "11.0.0",
@@ -85,7 +85,7 @@
     "node": ">=15.0.0",
     "npm": ">=6.0.0"
   },
-  "homepage": "https://github.com/redkubes/otomi-tasks#readme",
+  "homepage": "https://github.com/linode/apl-tasks#readme",
   "license": "Apache-2.0",
   "lint-staged": {
     "*.{json,md,yml,yaml}": [
@@ -100,7 +100,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/redkubes/otomi-tasks.git"
+    "url": "git+https://github.com/linode/apl-tasks.git"
   },
   "run-if-changed": {
     "package-lock.json": "npm install --prefer-offline --no-audit"
@@ -131,6 +131,7 @@
     "tasks:gitea": "node dist/tasks/gitea/gitea.js && node dist/tasks/gitea/gitea-drone-oauth.js",
     "tasks:keycloak-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/keycloak/keycloak.ts",
     "tasks:keycloak": "node dist/tasks/keycloak/keycloak.js",
+    "tasks:keycloak-users-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/keycloak/users.ts",
     "tasks:otomi-chart-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/otomi/otomi-chart.ts",
     "tasks:otomi-chart": "node dist/tasks/otomi/otomi-chart.js",
     "tasks:wait-for-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/otomi/wait-for.ts",

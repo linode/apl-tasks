@@ -15,7 +15,7 @@ import {
   RobotCreate,
   // eslint-disable-next-line no-unused-vars
   RobotCreated,
-} from '@redkubes/harbor-client-node'
+} from '@linode/harbor-client-node'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret } from '../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../utils'
 import {
@@ -62,7 +62,7 @@ const errors: string[] = []
 const systemRobot: any = {
   name: 'harbor',
   duration: -1,
-  description: 'Used by Otomi Harbor task runner',
+  description: 'Used by APL Harbor task runner',
   disable: false,
   level: 'system',
   permissions: [
@@ -308,7 +308,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
 }
 
 /**
- * Create Harbor robot account that is used by Otomi tasks
+ * Create Harbor robot account that is used by APL tasks
  * @note assumes OIDC is not yet configured, otherwise this operation is NOT possible
  */
 async function createSystemRobotSecret(): Promise<RobotSecret> {
