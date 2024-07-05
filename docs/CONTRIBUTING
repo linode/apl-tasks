@@ -29,6 +29,6 @@ Coming soon!
 
 ### 3. Runtime tests targeting a cluster
 
-After values are pushed the cluster's drone will do a deployment run. Helmfile diff is used targeting `$CLOUD` & `$CLUSTER` before the final deployment of the artifacts.
+After values are pushed, the cluster's Tekton pipeline will initiate a deployment run. Helmfile diff is used targeting `$CLOUD` & `$CLUSTER` before the final deployment of the artifacts.
 
 If you have any meaningful additions to this, please let us know!
