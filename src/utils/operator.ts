@@ -271,7 +271,6 @@ export default abstract class Operator {
           (err) => {
             if (err) {
               console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
-              process.exit(1)
             }
             console.log(`restarting watch on resource ${id}`)
             setTimeout(startWatch, 200)
@@ -279,7 +278,6 @@ export default abstract class Operator {
         )
         .catch((reason) => {
           console.log(`watch on resource ${id} failed: ${this.errorToJson(reason)}`)
-          process.exit(1)
         })
         .then((req) => (this.watchRequests[id] = req))
 
