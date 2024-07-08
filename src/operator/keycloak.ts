@@ -195,7 +195,7 @@ export default class MyOperator extends Operator {
         async (e) => {
           const { object } = e
           const { metadata, data } = object as k8s.V1Secret
-          if (metadata && metadata.name !== 'keycloak-admin') return
+          if (metadata && metadata.name !== 'apl-keycloak-operator-secret') return
           switch (e.type) {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
@@ -235,7 +235,7 @@ export default class MyOperator extends Operator {
         async (e) => {
           const { object } = e
           const { metadata, data } = object as k8s.V1ConfigMap
-          if (metadata && metadata.name !== 'keycloak-cm') return
+          if (metadata && metadata.name !== 'apl-keycloak-operator-cm') return
           switch (e.type) {
             case ResourceEventType.Added:
             case ResourceEventType.Modified: {
