@@ -695,6 +695,7 @@ async function manageGroups(connection: KeycloakConnection) {
       }),
     )
     console.log('Finished managing groups')
+    await keycloakConfigMapChanges()
   } catch (error) {
     console.error('Error in manageGroups: ', error)
   }
