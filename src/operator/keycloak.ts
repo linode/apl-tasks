@@ -75,13 +75,13 @@ const localEnv = cleanEnv({ KEYCLOAK_TOKEN_TTL, KEYCLOAK_TOKEN_OFFLINE_TTL, KEYC
 const env = {
   FIRST_RUN: false,
   FEAT_EXTERNAL_IDP: 'false',
-  IDP_ALIAS: '',
+  IDP_ALIAS: 'otomi-idp',
   IDP_OIDC_URL: '',
   IDP_CLIENT_ID: '',
   IDP_CLIENT_SECRET: '',
   IDP_GROUP_OTOMI_ADMIN: '',
   IDP_GROUP_TEAM_ADMIN: '',
-  IDP_GROUP_MAPPINGS_TEAMS: [] as string[],
+  IDP_GROUP_MAPPINGS_TEAMS: {} || undefined,
   IDP_SUB_CLAIM_MAPPER: '',
   IDP_USERNAME_CLAIM_MAPPER: '',
   KEYCLOAK_ADDRESS_INTERNAL: '',
@@ -252,7 +252,10 @@ export default class MyOperator extends Operator {
                   env.IDP_OIDC_URL = data!.IDP_OIDC_URL
                   env.IDP_GROUP_OTOMI_ADMIN = data!.IDP_GROUP_OTOMI_ADMIN
                   env.IDP_GROUP_TEAM_ADMIN = data!.IDP_GROUP_TEAM_ADMIN
-                  env.IDP_GROUP_MAPPINGS_TEAMS = JSON.parse(data!.IDP_GROUP_MAPPINGS_TEAMS)
+                  env.IDP_GROUP_MAPPINGS_TEAMS =
+                    Object.keys(data!.IDP_GROUP_MAPPINGS_TEAMS).length === 0
+                      ? JSON.parse(data!.IDP_GROUP_MAPPINGS_TEAMS)
+                      : undefined
                   env.IDP_SUB_CLAIM_MAPPER = data!.IDP_SUB_CLAIM_MAPPER
                   env.IDP_USERNAME_CLAIM_MAPPER = data!.IDP_USERNAME_CLAIM_MAPPER
                 }

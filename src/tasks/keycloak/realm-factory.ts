@@ -42,7 +42,7 @@ export function createGroups(teamIds: string[]): Array<GroupRepresentation> {
 
 export function createIdpMappers(
   idpAlias: string,
-  teams: string[],
+  teams: {} | undefined,
   adminGroupMapping: string,
   teamAdminGroupMapping: string,
   userClaimMapper: string,
@@ -115,11 +115,13 @@ export function createClientScopes(): ClientScopeRepresentation {
 
 export function mapTeamsToRoles(
   teamIds: string[],
-  idpGroupMappings: string[],
+  idpGroupMappings: {} | undefined,
   idpGroupTeamAdmin: string,
   groupOtomiAdmin: string,
   realm: string,
 ): Array<RoleRepresentation> {
+  // eslint-disable-next-line no-param-reassign
+  if (idpGroupMappings && Object.keys(idpGroupMappings).length === 0) idpGroupMappings = undefined
   const teams =
     idpGroupMappings ??
     teamIds.reduce((memo: any, name) => {
