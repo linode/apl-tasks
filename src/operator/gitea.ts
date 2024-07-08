@@ -98,12 +98,12 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   const { object } = e
   const { metadata, data } = object
 
-  if (object.kind === 'Secret' && metadata.name === 'gitea-app-operator-secret') {
+  if (object.kind === 'Secret' && metadata.name === 'apl-gitea-operator-secret') {
     env.giteaPassword = Buffer.from(data.giteaPassword, 'base64').toString()
     env.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
     env.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
     env.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
-  } else if (object.kind === 'ConfigMap' && metadata.name === 'gitea-app-operator-cm') {
+  } else if (object.kind === 'ConfigMap' && metadata.name === 'apl-gitea-operator-cm') {
     env.hasArgocd = data.hasArgocd === 'true'
     env.teamConfig = JSON.parse(data.teamConfig)
     env.teamNames = keys(env.teamConfig).filter((teamName) => teamName !== 'admin')
@@ -134,13 +134,13 @@ const secretsAndConfigmapsCallback = async (e: any) => {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
-    // Watch gitea-app-operator-secrets
+    // Watch apl-gitea-operator-secrets
     try {
       await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
       console.debug(error)
     }
-    // Watch gitea-app-operator-cm
+    // Watch apl-gitea-operator-cm
     try {
       await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
