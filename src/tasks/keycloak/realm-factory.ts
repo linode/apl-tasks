@@ -13,24 +13,6 @@ import {
 import { defaultsDeep } from 'lodash'
 import * as utils from '../../utils'
 import {
-  FEAT_EXTERNAL_IDP,
-  IDP_ALIAS,
-  IDP_CLIENT_ID,
-  IDP_CLIENT_SECRET,
-  IDP_GROUP_MAPPINGS_TEAMS,
-  IDP_GROUP_OTOMI_ADMIN,
-  IDP_GROUP_TEAM_ADMIN,
-  IDP_OIDC_URL,
-  IDP_SUB_CLAIM_MAPPER,
-  IDP_USERNAME_CLAIM_MAPPER,
-  KC_HOSTNAME_URL,
-  KEYCLOAK_CLIENT_SECRET,
-  KEYCLOAK_REALM,
-  REDIRECT_URIS,
-  TEAM_IDS,
-  cleanEnv,
-} from '../../validators'
-import {
   TeamMapping,
   adminUserCfgTpl,
   clientEmailClaimMapper,
@@ -44,46 +26,28 @@ import {
   roleTpl,
 } from './config'
 
-const env = cleanEnv({
-  FEAT_EXTERNAL_IDP,
-  IDP_CLIENT_ID,
-  IDP_CLIENT_SECRET,
-  IDP_ALIAS,
-  KC_HOSTNAME_URL,
-  KEYCLOAK_CLIENT_SECRET,
-  KEYCLOAK_REALM,
-  REDIRECT_URIS,
-  IDP_GROUP_OTOMI_ADMIN,
-  IDP_GROUP_TEAM_ADMIN,
-  IDP_GROUP_MAPPINGS_TEAMS,
-  IDP_OIDC_URL,
-  IDP_SUB_CLAIM_MAPPER,
-  IDP_USERNAME_CLAIM_MAPPER,
-  TEAM_IDS,
-})
-
-export function createClient(): ClientRepresentation {
-  const redirectUris: Array<string> = env.REDIRECT_URIS
-  const webOrigins = [env.KC_HOSTNAME_URL]
-  const secret = env.KEYCLOAK_CLIENT_SECRET
+export function createClient(redirectUris: string[], webOrigins: string, secret: string): ClientRepresentation {
   const otomiClientRepresentation = defaultsDeep(
     new ClientRepresentation(),
-    otomiClientCfgTpl(secret, redirectUris, webOrigins),
+    otomiClientCfgTpl(secret, redirectUris, [webOrigins]),
   )
   return otomiClientRepresentation
 }
 
-export function createGroups(): Array<GroupRepresentation> {
-  const groupNames: string[] = env.TEAM_IDS.map((id) => `team-${id}`).concat(['otomi-admin', 'team-admin'])
+export function createGroups(teamIds: string[]): Array<GroupRepresentation> {
+  const groupNames: string[] = teamIds.map((id) => `team-${id}`).concat(['otomi-admin', 'team-admin'])
   const groups = groupNames.map((name) => defaultsDeep(new GroupRepresentation(), { name }))
   return groups
 }
 
-export function createIdpMappers(): Array<IdentityProviderMapperRepresentation> {
-  const idpAlias = env.IDP_ALIAS
-  const teams = env.IDP_GROUP_MAPPINGS_TEAMS
-  const adminGroupMapping = env.IDP_GROUP_OTOMI_ADMIN
-  const teamAdminGroupMapping = env.IDP_GROUP_TEAM_ADMIN
+export function createIdpMappers(
+  idpAlias: string,
+  teams: {} | undefined,
+  adminGroupMapping: string,
+  teamAdminGroupMapping: string,
+  userClaimMapper: string,
+  idpSubClaimMapper: string,
+): Array<IdentityProviderMapperRepresentation> {
   // admin idp mapper case
   const admin = idpMapperTpl('otomi-admin group to role', idpAlias, 'admin', adminGroupMapping)
   const adminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), admin)
@@ -92,7 +56,7 @@ export function createIdpMappers(): Array<IdentityProviderMapperRepresentation> 
   const teamAdminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), teamAdmin)
 
   // default idp mappers case
-  const defaultIdps = defaultsIdpMapperTpl(env)
+  const defaultIdps = defaultsIdpMapperTpl(idpAlias, userClaimMapper, idpSubClaimMapper)
 
   const defaultMapper = defaultIdps.map((idpMapper) =>
     defaultsDeep(new IdentityProviderMapperRepresentation(), idpMapper),
@@ -106,11 +70,12 @@ export function createIdpMappers(): Array<IdentityProviderMapperRepresentation> 
   return teamMappers.concat(defaultMapper).concat(adminMapper).concat(teamAdminMapper)
 }
 
-export async function createIdProvider(): Promise<IdentityProviderRepresentation> {
-  const clientId = env.IDP_CLIENT_ID
-  const alias = env.IDP_ALIAS
-  const clientSecret = env.IDP_CLIENT_SECRET
-  const oidcUrl = env.IDP_OIDC_URL
+export async function createIdProvider(
+  clientId: string,
+  alias: string,
+  clientSecret: string,
+  oidcUrl: string,
+): Promise<IdentityProviderRepresentation> {
   const otomiClientIdp = defaultsDeep(
     new IdentityProviderRepresentation(),
     await idpProviderCfgTpl(alias, clientId, clientSecret, oidcUrl),
@@ -148,21 +113,28 @@ export function createClientScopes(): ClientScopeRepresentation {
   return clientScopeRepresentation
 }
 
-export function mapTeamsToRoles(): Array<RoleRepresentation> {
+export function mapTeamsToRoles(
+  teamIds: string[],
+  idpGroupMappings: {} | undefined,
+  idpGroupTeamAdmin: string,
+  groupOtomiAdmin: string,
+  realm: string,
+): Array<RoleRepresentation> {
+  // eslint-disable-next-line no-param-reassign
+  if (idpGroupMappings && Object.keys(idpGroupMappings).length === 0) idpGroupMappings = undefined
   const teams =
-    env.IDP_GROUP_MAPPINGS_TEAMS ??
-    (env.TEAM_IDS as string[]).reduce((memo: any, name) => {
+    idpGroupMappings ??
+    teamIds.reduce((memo: any, name) => {
       // eslint-disable-next-line no-param-reassign
       memo[`team-${name}`] = undefined
       return memo
     }, {})
-  const realm = env.KEYCLOAK_REALM
   // create static admin teams
-  const teamAdmin = Object.create({ name: 'team-admin', groupMapping: env.IDP_GROUP_TEAM_ADMIN }) as TeamMapping
+  const teamAdmin = Object.create({ name: 'team-admin', groupMapping: idpGroupTeamAdmin }) as TeamMapping
   const adminTeams = [teamAdmin]
   const otomiAdmin = Object.create({
     name: 'admin',
-    groupMapping: env.IDP_GROUP_OTOMI_ADMIN,
+    groupMapping: groupOtomiAdmin,
   }) as TeamMapping
   adminTeams.push(otomiAdmin)
   // iterate through all the teams and map groups
