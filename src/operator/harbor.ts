@@ -1,4 +1,3 @@
-import Operator, { ResourceEventType } from '@dot-i/k8s-operator'
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import {
@@ -18,6 +17,7 @@ import {
 } from '@linode/harbor-client-node'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret } from '../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../utils'
+import Operator, { ResourceEventType } from '../utils/operator'
 import {
   HARBOR_BASE_URL,
   HARBOR_BASE_URL_PORT,
