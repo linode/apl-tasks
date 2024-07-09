@@ -5,10 +5,14 @@ import axios from 'axios'
 
 export const keycloakRealm = 'otomi'
 
-export const defaultsIdpMapperTpl = (env: Record<string, unknown>): Array<Record<string, unknown>> => [
+export const defaultsIdpMapperTpl = (
+  idpAlias: string,
+  idpUsernameClaimMapper: string,
+  idpSubClaimMapper: string,
+): Array<Record<string, unknown>> => [
   {
     name: 'upn to email',
-    identityProviderAlias: env.IDP_ALIAS,
+    identityProviderAlias: idpAlias,
     identityProviderMapper: 'oidc-user-attribute-idp-mapper',
     config: {
       syncMode: 'INHERIT',
@@ -18,20 +22,20 @@ export const defaultsIdpMapperTpl = (env: Record<string, unknown>): Array<Record
   },
   {
     name: 'username mapping',
-    identityProviderAlias: env.IDP_ALIAS,
+    identityProviderAlias: idpAlias,
     identityProviderMapper: 'oidc-username-idp-mapper',
     config: {
-      template: env.IDP_USERNAME_CLAIM_MAPPER,
+      template: idpUsernameClaimMapper,
       syncMode: 'INHERIT',
     },
   },
   {
     name: 'sub',
-    identityProviderAlias: env.IDP_ALIAS,
+    identityProviderAlias: idpAlias,
     identityProviderMapper: 'oidc-user-attribute-idp-mapper',
     config: {
       syncMode: 'INHERIT',
-      claim: env.IDP_SUB_CLAIM_MAPPER,
+      claim: idpSubClaimMapper,
       'user.attribute': 'sub',
     },
   },
