@@ -44,7 +44,7 @@ jobs:
           registry: ${{ env.CACHE_REGISTRY }}
           image_name: ${{ env.CACHE_REPO }}
           image_tag: ${{ env.TAG }}
-          build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.BOT_TOKEN }}'
+          build_extra_args: '--build-arg=NPM_TOKEN=${{ env.BOT_TOKEN }}'
       - name: Retag from cache and push
         run: |
           set -u
