@@ -11,6 +11,7 @@
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.6",
     "@kubernetes/client-node": "0.12.3",
+    "@linode/apl-k8s-operator": "github:linode/apl-k8s-operator-node",
     "@linode/gitea-client-node": "1.19.1",
     "@linode/harbor-client-node": "^2.2.1",
     "@linode/keycloak-client-node": "^15.0.0",

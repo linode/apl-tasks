@@ -1,6 +1,7 @@
 import * as k8s from '@kubernetes/client-node'
 import stream from 'stream'
 
+import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   CreateHookOption,
   CreateOrgOption,
@@ -14,7 +15,6 @@ import {
 } from '@linode/gitea-client-node'
 import { keys } from 'lodash'
 import { doApiCall } from '../utils'
-import Operator, { ResourceEventType } from '../utils/operator'
 import { GITEA_OPERATOR_NAMESPACE, GITEA_URL, GITEA_URL_PORT, cleanEnv } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
 

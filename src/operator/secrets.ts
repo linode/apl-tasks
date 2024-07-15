@@ -1,7 +1,7 @@
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import { KubernetesObject } from '@kubernetes/client-node/dist'
-import Operator, { ResourceEventType } from '../utils/operator'
+import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 
 // added the type property which was missing in the original KubernetesObject
 interface CustomKubernetesObject extends KubernetesObject {

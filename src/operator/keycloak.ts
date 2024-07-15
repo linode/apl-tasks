@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/require-await */
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
+import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   ClientRepresentation,
   ClientRoleMappingsApi,
@@ -38,7 +39,6 @@ import {
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
 import { doApiCall, waitTillAvailable } from '../utils'
-import Operator, { ResourceEventType } from '../utils/operator'
 import {
   cleanEnv,
   KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
