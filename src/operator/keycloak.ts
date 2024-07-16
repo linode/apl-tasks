@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/require-await */
-import Operator, { ResourceEventType } from '@dot-i/k8s-operator'
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
+import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   ClientRepresentation,
   ClientRoleMappingsApi,

@@ -1,7 +1,7 @@
-import Operator, { ResourceEventType } from '@dot-i/k8s-operator'
 import * as k8s from '@kubernetes/client-node'
 import stream from 'stream'
 
+import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   CreateHookOption,
   CreateOrgOption,
