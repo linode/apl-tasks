@@ -38,7 +38,7 @@ import {
   createRealm,
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
-import { doApiCall, waitTillAvailable } from '../utils'
+import { doApiCall } from '../utils'
 import {
   cleanEnv,
   KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
@@ -358,7 +358,6 @@ async function keycloakTeamDeleted() {
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
-  await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
   const keycloakAddress = env.KEYCLOAK_HOSTNAME_URL
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet

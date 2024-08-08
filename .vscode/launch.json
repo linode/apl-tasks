@@ -100,45 +100,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug copy-certs task",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:copy-certs-dev"],
-      "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Harbor task",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:harbor-dev"],
-      "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env"
-      // "env": {
-      //   "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      // }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Keycloak task",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:keycloak-dev"],
-      "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Debug Keycloak operator",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run-script", "operator:keycloak-dev"],
@@ -146,21 +107,10 @@
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
       "env": {
-        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug wait-for task",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "tasks:wait-for-dev"],
-      "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      }
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca",
+        "KUBECONFIG": "/path/to/your/kubeconfig.yaml",
+      },
+      "preLaunchTask": "port-forward-keycloak"
     }
   ]
 }

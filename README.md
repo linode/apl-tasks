@@ -27,7 +27,7 @@ Then start a proxy to the api you wish to target:
 
 - gitea: `k -n gitea port-forward svc/gitea-http 8082:3000 &`
 - harbor: `k -n harbor port-forward svc/harbor-core 8083:80 &`
-- keycloak: `k -n keycloak port-forward svc/keycloak-http 8084:80 &`
+- keycloak: `k -n keycloak port-forward svc/keycloak-operator 8084:80 &`
 
 Or start them all with `bin/start-proxies.sh`
 
