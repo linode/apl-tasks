@@ -126,6 +126,8 @@ async function runKeycloakUpdater(key: string) {
     }
   }
 
+  console.log('env', env)
+
   if (
     !env.KEYCLOAK_HOSTNAME_URL ||
     !env.KEYCLOAK_ADDRESS_INTERNAL ||
