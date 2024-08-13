@@ -480,11 +480,18 @@ async function setGiteaOIDCConfig() {
     const execCommand = [
       'sh',
       '-c',
-      `AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\\n') && gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}"`,
+      `
+      AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\\n')
+      if [ -z "$AUTH_ID" ]; then
+        gitea admin auth add-oauth --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "team-admin" --group-claim-name "groups"
+      else
+        gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}"
+      fi
+      `,
     ]
     if (podNamespace && podName) {
       const exec = new k8s.Exec(kc)
-      // Run gitea CLI command to update the gitea oauth group mapping
+      // Run gitea CLI command to create/update the gitea oauth configuration
       await exec
         .exec(
           podNamespace,
@@ -496,7 +503,7 @@ async function setGiteaOIDCConfig() {
           process.stdin as stream.Readable,
           false,
           (status: k8s.V1Status) => {
-            console.info('Gitea OIDC configuration update status:', status.status)
+            console.info('Gitea OIDC configuration status:', status.status)
           },
         )
         .catch((error) => {
@@ -505,7 +512,7 @@ async function setGiteaOIDCConfig() {
         })
     }
   } catch (error) {
-    console.debug(`Error updating Gitea OIDC configuration: ${error.message}`)
+    console.debug(`Error Gitea OIDC configuration: ${error.message}`)
     throw error
   }
 }
