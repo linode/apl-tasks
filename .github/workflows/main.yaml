@@ -1,4 +1,4 @@
-# RedKubes default Workflow
+# Linode APL default Workflow
 #
 # Given facts:
 # * We don't allow manual tagging, but let the workflow create them after tests have passed.
@@ -16,9 +16,9 @@ env:
   COMMIT_MSG: ${{ github.event.head_commit.message }}
   CACHE_REGISTRY: ghcr.io
   CACHE_REPO: linode/apl-tasks
-  REPO: otomi/tasks
-  DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_OTOMI_TOKEN }}
-  DOCKER_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+  REPO: linode/apl-tasks
+  DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_LINODEBOT_TOKEN }}
+  DOCKER_USERNAME: ${{ vars.DOCKERHUB_LINODEBOT_USERNAME }}
   BOT_EMAIL: ${{ vars.BOT_EMAIL }}
   BOT_USERNAME: ${{ vars.BOT_USERNAME }}
   BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
