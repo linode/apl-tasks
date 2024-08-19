@@ -142,7 +142,6 @@ const createSetGiteaOIDCConfig = (() => {
             console.error('Error occurred during setGiteaOIDCConfig execution:', error)
           })
           .finally(() => {
-            clearInterval(intervalId)
             intervalId = null
           })
       }, 30 * 1000)
