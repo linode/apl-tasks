@@ -130,10 +130,30 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   }
 }
 
+const createSetGiteaOIDCConfig = (() => {
+  let intervalId: any = null
+  return function runSetGiteaOIDCConfig() {
+    if (intervalId === null) {
+      intervalId = setInterval(() => {
+        setGiteaOIDCConfig()
+          .catch((error) => {
+            console.error('Error occurred during setGiteaOIDCConfig execution:', error)
+          })
+          .finally(() => {
+            clearInterval(intervalId)
+            intervalId = null
+          })
+      }, 30 * 1000)
+    }
+  }
+})()
+
 // Operator
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
+    // Run setGiteaOIDCConfig every 30 seconds
+    createSetGiteaOIDCConfig()
     // Watch apl-gitea-operator-secrets
     try {
       await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
@@ -166,23 +186,6 @@ if (typeof require !== 'undefined' && require.main === module) {
 }
 
 // Runners
-const createSetGiteaOIDCConfigRunner = (() => {
-  let intervalId: any = null
-  return function runSetGiteaOIDCConfig() {
-    if (intervalId === null) {
-      intervalId = setInterval(() => {
-        setGiteaOIDCConfig()
-          .catch((error) => {
-            console.error('Error occurred during setGiteaOIDCConfig execution:', error)
-          })
-          .finally(() => {
-            intervalId = null
-          })
-      }, 30 * 1000)
-    }
-  }
-})()
-
 async function checkAndExecute() {
   const currentState: DependencyState = {
     giteaPassword: env.giteaPassword,
@@ -204,7 +207,16 @@ async function checkAndExecute() {
   }
 
   // Interval to check and update the Gitea OIDC config
-  createSetGiteaOIDCConfigRunner()
+  if (
+    !currentState.oidcClientId ||
+    !currentState.oidcClientSecret ||
+    !currentState.oidcEndpoint ||
+    currentState.oidcClientId !== lastState.oidcClientId ||
+    currentState.oidcClientSecret !== lastState.oidcClientSecret ||
+    currentState.oidcEndpoint !== lastState.oidcEndpoint
+  ) {
+    await setGiteaOIDCConfig(true)
+  }
 
   // Check and execute setGiteaGroupMapping if dependencies changed
   if (!currentState.teamNames || currentState.teamNames !== lastState.teamNames) {
@@ -476,7 +488,68 @@ async function setGiteaGroupMapping(podNamespace: string, podName: string) {
   }
 }
 
-async function setGiteaOIDCConfig() {
+// async function setGiteaOIDCConfig() {
+//   console.log('setGiteaOIDCConfig')
+//   if (!env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) return
+//   const podNamespace = 'gitea'
+//   const podName = 'gitea-0'
+//   const clientID = env.oidcClientId
+//   const clientSecret = env.oidcClientSecret
+//   const discoveryURL = `${env.oidcEndpoint}/.well-known/openid-configuration`
+
+//   const isConfigDifferent =
+//     lastState.oidcClientId !== env.oidcClientId || lastState.oidcClientSecret !== env.oidcClientSecret
+
+//   try {
+//     const execCommand = [
+//       'sh',
+//       '-c',
+//       `
+//       AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\\n')
+//       if [ -z "$AUTH_ID" ]; then
+//         echo "Gitea OIDC config not found. Adding OIDC config for otomi-idp."
+//         gitea admin auth add-oauth --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "team-admin" --group-claim-name "groups"
+//       elif [ "${isConfigDifferent}" = "true" ]; then
+//         echo "Gitea OIDC config is different. Updating OIDC config for otomi-idp."
+//         gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}"
+//       else
+//         echo "Gitea OIDC config is up to date."
+//       fi
+//       `,
+//     ]
+//     const exec = new k8s.Exec(kc)
+//     const outputStream = new stream.PassThrough()
+//     let output = ''
+//     outputStream.on('data', (chunk) => {
+//       output += chunk.toString()
+//     })
+//     // Run gitea CLI command to create/update the gitea oauth configuration
+//     await exec
+//       .exec(
+//         podNamespace,
+//         podName,
+//         'gitea',
+//         execCommand,
+//         outputStream,
+//         process.stderr as stream.Writable,
+//         process.stdin as stream.Readable,
+//         false,
+//         (status: k8s.V1Status) => {
+//           console.info(output.trim())
+//           console.info('Gitea OIDC config status:', status.status)
+//         },
+//       )
+//       .catch((error) => {
+//         console.debug('Error occurred during exec:', error)
+//         throw error
+//       })
+//   } catch (error) {
+//     console.debug(`Error Gitea OIDC config: ${error.message}`)
+//     throw error
+//   }
+// }
+
+async function setGiteaOIDCConfig(update = false) {
   if (!env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) return
   const podNamespace = 'gitea'
   const podName = 'gitea-0'
@@ -484,8 +557,10 @@ async function setGiteaOIDCConfig() {
   const clientSecret = env.oidcClientSecret
   const discoveryURL = `${env.oidcEndpoint}/.well-known/openid-configuration`
 
-  const isConfigDifferent =
-    lastState.oidcClientId !== env.oidcClientId || lastState.oidcClientSecret !== env.oidcClientSecret
+  if (update) {
+    console.info('Forcing update of Gitea OIDC config')
+    console.info({ clientID, clientSecret, discoveryURL })
+  }
 
   try {
     const execCommand = [
@@ -493,10 +568,11 @@ async function setGiteaOIDCConfig() {
       '-c',
       `
       AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\\n')
+      echo "AUTH_ID: $AUTH_ID"
       if [ -z "$AUTH_ID" ]; then
         echo "Gitea OIDC config not found. Adding OIDC config for otomi-idp."
         gitea admin auth add-oauth --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "team-admin" --group-claim-name "groups"
-      elif [ "${isConfigDifferent}" = "true" ]; then
+      elif ${update}; then
         echo "Gitea OIDC config is different. Updating OIDC config for otomi-idp."
         gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}"
       else
