@@ -131,10 +131,12 @@ const secretsAndConfigmapsCallback = async (e: any) => {
 }
 
 const createSetGiteaOIDCConfig = (() => {
+  console.info('Starting setGiteaOIDCConfig interval')
   let intervalId: any = null
   return function runSetGiteaOIDCConfig() {
     if (intervalId === null) {
       intervalId = setInterval(() => {
+        console.info('Running setGiteaOIDCConfig interval')
         setGiteaOIDCConfig()
           .catch((error) => {
             console.error('Error occurred during setGiteaOIDCConfig execution:', error)
@@ -153,7 +155,17 @@ export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     // Run setGiteaOIDCConfig every 30 seconds
+    console.info(`
+      #####################################
+      START INIT
+      #####################################
+      `)
     createSetGiteaOIDCConfig()
+    console.info(`
+      #####################################
+      END INIT
+      #####################################
+      `)
     // Watch apl-gitea-operator-secrets
     try {
       await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
@@ -206,7 +218,7 @@ async function checkAndExecute() {
     await setupGitea()
   }
 
-  // Interval to check and update the Gitea OIDC config
+  // Check and execute setGiteaOIDCConfig if dependencies changed
   if (
     !currentState.oidcClientId ||
     !currentState.oidcClientSecret ||
