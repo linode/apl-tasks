@@ -33,7 +33,7 @@ jobs:
           set -u
           tag=$(echo $(basename $GITHUB_REF))
           echo "Creating tag: $tag"
-          echo "TAG=$tag" >> $GITHUB_ENV
+          echo "TAG=v3.0.0" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v4
       - name: CI tests, image build and push tag to cache for main or branch
