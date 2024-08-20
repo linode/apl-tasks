@@ -15,7 +15,13 @@ import {
 } from '@linode/gitea-client-node'
 import { keys } from 'lodash'
 import { doApiCall } from '../utils'
-import { GITEA_OPERATOR_NAMESPACE, GITEA_URL, GITEA_URL_PORT, cleanEnv } from '../validators'
+import {
+  CHECK_OIDC_CONFIG_INTERVAL,
+  GITEA_OPERATOR_NAMESPACE,
+  GITEA_URL,
+  GITEA_URL_PORT,
+  cleanEnv,
+} from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
 
 // Interfaces
@@ -44,6 +50,7 @@ const localEnv = cleanEnv({
   GITEA_URL,
   GITEA_URL_PORT,
   GITEA_OPERATOR_NAMESPACE,
+  CHECK_OIDC_CONFIG_INTERVAL,
 })
 
 const GITEA_ENDPOINT = `${localEnv.GITEA_URL}:${localEnv.GITEA_URL_PORT}`
@@ -142,7 +149,7 @@ const createSetGiteaOIDCConfig = (() => {
           .finally(() => {
             intervalId = null
           })
-      }, 30 * 1000)
+      }, localEnv.CHECK_OIDC_CONFIG_INTERVAL * 1000)
     }
   }
 })()
@@ -210,16 +217,13 @@ async function checkAndExecute() {
     !currentState.oidcClientId ||
     !currentState.oidcClientSecret ||
     !currentState.oidcEndpoint ||
+    !currentState.teamNames ||
     currentState.oidcClientId !== lastState.oidcClientId ||
     currentState.oidcClientSecret !== lastState.oidcClientSecret ||
-    currentState.oidcEndpoint !== lastState.oidcEndpoint
+    currentState.oidcEndpoint !== lastState.oidcEndpoint ||
+    currentState.teamNames !== lastState.teamNames
   ) {
     await setGiteaOIDCConfig(true)
-  }
-
-  // Check and execute setGiteaGroupMapping if dependencies changed
-  if (!currentState.teamNames || currentState.teamNames !== lastState.teamNames) {
-    await setGiteaGroupMapping('gitea', 'gitea-0')
   }
 
   // Update last known state
@@ -446,47 +450,6 @@ export function buildTeamString(teamNames: any[]): string {
   return JSON.stringify(teamObject)
 }
 
-async function setGiteaGroupMapping(podNamespace: string, podName: string) {
-  if (!env.teamNames) {
-    console.debug('No team namespaces found with type=team configuration')
-    return
-  }
-  try {
-    const teamNamespaceString = buildTeamString(env.teamNames)
-    const execCommand = [
-      'sh',
-      '-c',
-      `AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\n') && gitea admin auth update-oauth --id "$AUTH_ID" --group-team-map '${teamNamespaceString}'`,
-    ]
-    if (podNamespace && podName) {
-      const exec = new k8s.Exec(kc)
-      // Run gitea CLI command to update the gitea oauth group mapping
-      await exec
-        .exec(
-          podNamespace,
-          podName,
-          'gitea',
-          execCommand,
-          null,
-          process.stderr as stream.Writable,
-          process.stdin as stream.Readable,
-          false,
-          (status: k8s.V1Status) => {
-            console.info('Gitea group mapping update status:', status.status)
-            console.info('New group mapping:', teamNamespaceString)
-          },
-        )
-        .catch((error) => {
-          console.debug('Error occurred during exec:', error)
-          throw error
-        })
-    }
-  } catch (error) {
-    console.debug(`Error updating IDP group mapping: ${error.message}`)
-    throw error
-  }
-}
-
 async function setGiteaOIDCConfig(update = false) {
   if (!env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) return
   const podNamespace = 'gitea'
@@ -507,7 +470,7 @@ async function setGiteaOIDCConfig(update = false) {
         gitea admin auth add-oauth --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "team-admin" --group-claim-name "groups" --group-team-map '${teamNamespaceString}'
       elif ${update}; then
         echo "Gitea OIDC config is different. Updating OIDC config for otomi-idp."
-        gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}"
+        gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL} --group-team-map '${teamNamespaceString}"
       else
         echo "Gitea OIDC config is up to date."
       fi
