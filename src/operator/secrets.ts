@@ -111,16 +111,15 @@ export default class MyOperator extends Operator {
       if (metadata && metadata.namespace?.startsWith('monitoring')) {
         if (metadata && metadata.name !== 'thanos-objectstore') return
         if (type !== 'Opaque') return
-        // Get all team namespaces
+        // Get all namespaces
         const namespaces = await k8sApi.listNamespace()
 
-        // Filter namespaces that start with the given prefix
+        // Filter team namespaces
         const teamNamespaces = namespaces.body.items
           .map((ns) => ns.metadata?.name)
           .filter((name) => name && name.startsWith('team-') && name !== 'team-admin')
-
-        // Loop through all of them and add or delete it
         if (teamNamespaces.length === 0) return
+        // Loop through all of them and add or delete it
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         teamNamespaces.forEach(async (targetNamespace: string) => {
           await EventSwitch(e, metadata, targetNamespace, type, 'copy')
