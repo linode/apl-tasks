@@ -41,65 +41,145 @@ export default class MyOperator extends Operator {
     await this.watchResource('', 'v1', 'secrets', async (e) => {
       const { object } = e
       const { metadata, type } = object as CustomKubernetesObject
-      if (metadata && !metadata.namespace?.startsWith('team-')) return
-      if (type !== 'kubernetes.io/dockerconfigjson' && type !== 'kubernetes.io/tls') return
-      const targetNamespace = type === 'kubernetes.io/dockerconfigjson' ? 'argocd' : 'istio-system'
-      switch (e.type) {
-        case ResourceEventType.Deleted: {
-          try {
-            await k8sApi.deleteNamespacedSecret(`copy-${metadata?.namespace}-${metadata?.name}`, targetNamespace)
-            console.debug(
-              `Secret 'copy-${metadata?.namespace}-${metadata?.name}' successfully deleted in namespace '${targetNamespace}'`,
-            )
-          } catch (err) {
-            console.debug(
-              `Error deleting copied secret: statuscode: ${err.response.body.code} - message: ${err.response.body.message}`,
-            )
-          }
-          break
-        }
-        case ResourceEventType.Modified: {
-          const simpleSecret = new k8s.V1Secret()
-          simpleSecret.metadata = { name: `copy-${metadata?.namespace}-${metadata?.name}`, namespace: targetNamespace }
-          simpleSecret.type = type
-          try {
-            const headers = { 'content-type': 'application/strategic-merge-patch+json' }
-            try {
-              simpleSecret.data = (await k8sApi.readNamespacedSecret(metadata!.name!, metadata!.namespace!)).body.data
-            } catch (error) {
-              console.debug(`Secret '${metadata!.name!}' cannot be found in namespace '${metadata!.namespace!}'`)
+      if (metadata && metadata.namespace?.startsWith('monitoring')) {
+        if (type !== 'Opaque') return
+        // Get all team namespaces
+        const namespaces = await k8sApi.listNamespace()
+
+        // Filter namespaces that start with the given prefix
+        const teamNamespaces = namespaces.body.items
+          .map((ns) => ns.metadata?.name)
+          .filter((name) => name && name.startsWith('team-'))
+
+        // Loop through all of them and add or delete it
+        if (teamNamespaces.length === 0) return
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        teamNamespaces.forEach(async (targetNamespace: string) => {
+          switch (e.type) {
+            case ResourceEventType.Deleted: {
+              try {
+                await k8sApi.deleteNamespacedSecret(`copy-${metadata?.namespace}-${metadata?.name}`, targetNamespace)
+                console.debug(
+                  `Secret 'copy-${metadata?.namespace}-${metadata?.name}' successfully deleted in namespace '${targetNamespace}'`,
+                )
+              } catch (err) {
+                console.debug(
+                  `Error deleting copied secret: statuscode: ${err.response.body.code} - message: ${err.response.body.message}`,
+                )
+              }
+              break
             }
-            await k8sApi.patchNamespacedSecret(
-              simpleSecret.metadata.name!,
-              targetNamespace,
-              simpleSecret,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              { headers },
-            )
-            console.debug(
-              `Secret '${simpleSecret.metadata.name!}' successfully patched in namespace '${targetNamespace}'`,
-            )
+            case ResourceEventType.Modified: {
+              const simpleSecret = new k8s.V1Secret()
+              simpleSecret.metadata = {
+                name: `copy-${metadata?.namespace}-${metadata?.name}`,
+                namespace: targetNamespace,
+              }
+              simpleSecret.type = type
+              try {
+                const headers = { 'content-type': 'application/strategic-merge-patch+json' }
+                try {
+                  simpleSecret.data = (await k8sApi.readNamespacedSecret(metadata.name!, metadata.namespace!)).body.data
+                } catch (error) {
+                  console.debug(`Secret '${metadata.name!}' cannot be found in namespace '${metadata.namespace!}'`)
+                }
+                await k8sApi.patchNamespacedSecret(
+                  simpleSecret.metadata.name!,
+                  targetNamespace,
+                  simpleSecret,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  { headers },
+                )
+                console.debug(
+                  `Secret '${simpleSecret.metadata.name!}' successfully patched in namespace '${targetNamespace}'`,
+                )
+                break
+              } catch (err) {
+                console.debug(
+                  `Error patching copied secret: statuscode: ${err.response.body.code} - message: ${err.response.body.message}`,
+                )
+                // we know 404 indicates that a secret does not exist, in this case we recreate a new one because otherwise it will not create a copy
+                if (err.response.body.code !== 404) break
+                console.debug('Recreating a copy of the secret')
+                await createNamespacedSecret(metadata, targetNamespace, type)
+                break
+              }
+            }
+            case ResourceEventType.Added: {
+              await createNamespacedSecret(metadata, targetNamespace, type)
+              break
+            }
+            default:
+              break
+          }
+        })
+      }
+      if (metadata && metadata.namespace?.startsWith('team-')) {
+        if (type !== 'kubernetes.io/dockerconfigjson' && type !== 'kubernetes.io/tls') return
+        const targetNamespace = type === 'kubernetes.io/dockerconfigjson' ? 'argocd' : 'istio-system'
+        switch (e.type) {
+          case ResourceEventType.Deleted: {
+            try {
+              await k8sApi.deleteNamespacedSecret(`copy-${metadata?.namespace}-${metadata?.name}`, targetNamespace)
+              console.debug(
+                `Secret 'copy-${metadata?.namespace}-${metadata?.name}' successfully deleted in namespace '${targetNamespace}'`,
+              )
+            } catch (err) {
+              console.debug(
+                `Error deleting copied secret: statuscode: ${err.response.body.code} - message: ${err.response.body.message}`,
+              )
+            }
             break
-          } catch (err) {
-            console.debug(
-              `Error patching copied secret: statuscode: ${err.response.body.code} - message: ${err.response.body.message}`,
-            )
-            // we know 404 indicates that a secret does not exist, in this case we recreate a new one because otherwise it will not create a copy
-            if (err.response.body.code !== 404) break
-            console.debug('Recreating a copy of the secret')
+          }
+          case ResourceEventType.Modified: {
+            const simpleSecret = new k8s.V1Secret()
+            simpleSecret.metadata = {
+              name: `copy-${metadata?.namespace}-${metadata?.name}`,
+              namespace: targetNamespace,
+            }
+            simpleSecret.type = type
+            try {
+              const headers = { 'content-type': 'application/strategic-merge-patch+json' }
+              try {
+                simpleSecret.data = (await k8sApi.readNamespacedSecret(metadata.name!, metadata.namespace)).body.data
+              } catch (error) {
+                console.debug(`Secret '${metadata.name!}' cannot be found in namespace '${metadata.namespace}'`)
+              }
+              await k8sApi.patchNamespacedSecret(
+                simpleSecret.metadata.name!,
+                targetNamespace,
+                simpleSecret,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                { headers },
+              )
+              console.debug(
+                `Secret '${simpleSecret.metadata.name!}' successfully patched in namespace '${targetNamespace}'`,
+              )
+              break
+            } catch (err) {
+              console.debug(
+                `Error patching copied secret: statuscode: ${err.response.body.code} - message: ${err.response.body.message}`,
+              )
+              // we know 404 indicates that a secret does not exist, in this case we recreate a new one because otherwise it will not create a copy
+              if (err.response.body.code !== 404) break
+              console.debug('Recreating a copy of the secret')
+              await createNamespacedSecret(metadata, targetNamespace, type)
+              break
+            }
+          }
+          case ResourceEventType.Added: {
             await createNamespacedSecret(metadata, targetNamespace, type)
             break
           }
+          default:
+            break
         }
-        case ResourceEventType.Added: {
-          await createNamespacedSecret(metadata, targetNamespace, type)
-          break
-        }
-        default:
-          break
       }
     })
   }
