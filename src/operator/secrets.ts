@@ -131,6 +131,26 @@ export default class MyOperator extends Operator {
         await EventSwitch(e, metadata, targetNamespace, type)
       }
     })
+    await this.watchResource('', 'v1', 'namespaces', async (e) => {
+      const { object } = e
+      const { metadata, type } = object as CustomKubernetesObject
+      const simpleSecret = new k8s.V1Secret()
+      simpleSecret.metadata = {
+        name: 'thanos-objectstore',
+        namespace: 'monitoring',
+      }
+      // Check if thanos-objectstore secret exists
+      try {
+        simpleSecret.data = (
+          await k8sApi.readNamespacedSecret(simpleSecret.metadata.name!, simpleSecret.metadata.namespace!)
+        ).body.data
+      } catch (error) {
+        return
+      }
+      if (metadata && metadata.name?.startsWith('team-') && metadata.name !== 'team-admin') {
+        await EventSwitch(e, simpleSecret.metadata, metadata.name, type, 'copy')
+      }
+    })
   }
 }
 
