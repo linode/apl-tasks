@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.1.0](https://github.com/linode/apl-tasks/compare/v3.0.0...v3.1.0) (2024-09-09)
+
+
+### Features
+
+* update github workflow to push image to the linode dockerhub ([#109](https://github.com/linode/apl-tasks/issues/109)) ([6f60d44](https://github.com/linode/apl-tasks/commit/6f60d442517f358d20bdd3caaad25c800c11b52c))
+* update setGiteaOIDCConfig function and logic ([#108](https://github.com/linode/apl-tasks/issues/108)) ([80a2a98](https://github.com/linode/apl-tasks/commit/80a2a98c944a8d072344b707b99f859c841b13c2))
+
+
+### Bug Fixes
+
+* operator pod restarting ([#106](https://github.com/linode/apl-tasks/issues/106)) ([fb2a085](https://github.com/linode/apl-tasks/commit/fb2a085b54823fbafb128342a0e341a4bd05f516))
+
 ## [3.0.0](https://github.com/linode/apl-tasks/compare/v2.5.0...v3.0.0) (2024-07-11)
 
 
