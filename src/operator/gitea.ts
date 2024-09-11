@@ -460,6 +460,7 @@ async function setGiteaOIDCConfig(update = false) {
   const teamNamespaceString = buildTeamString(env.teamNames)
 
   try {
+    // WARNING: Dont enclose the teamNamespaceString in double quotes, this will escape the string incorrectly and breaks OIDC group mapping in gitea
     const execCommand = [
       'sh',
       '-c',
