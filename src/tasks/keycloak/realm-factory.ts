@@ -147,6 +147,6 @@ export function mapTeamsToRoles(
   return teamRoleRepresentations
 }
 
-export function createLoginThemeConfig(loginTheme = 'otomi'): RealmRepresentation {
+export function createLoginThemeConfig(loginTheme = 'APL'): RealmRepresentation {
   return defaultsDeep(new RealmRepresentation(), { loginTheme })
 }
