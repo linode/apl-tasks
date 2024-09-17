@@ -489,7 +489,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
 
   // set login theme for master realm
   await doApiCall(errors, 'adding theme for login page', () =>
-    api.realms.realmPut(env.KEYCLOAK_REALM, createLoginThemeConfig('otomi')),
+    api.realms.realmPut(env.KEYCLOAK_REALM, createLoginThemeConfig('APL')),
   )
 }
 
