@@ -146,8 +146,10 @@
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
       "env": {
-        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca"
-      }
+        "NODE_EXTRA_CA_CERTS": "${workspaceFolder}/.env.ca",
+        "KUBECONFIG": "/path/to/your/kubeconfig.yaml",
+      },
+      "preLaunchTask": "port-forward-keycloak"
     },
     {
       "type": "node",
