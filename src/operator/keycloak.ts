@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await */
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
-import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   ClientRepresentation,
   ClientRoleMappingsApi,
@@ -45,6 +44,7 @@ import {
   KEYCLOAK_TOKEN_OFFLINE_TTL,
   KEYCLOAK_TOKEN_TTL,
 } from '../validators'
+import Operator, { ResourceEventType } from './watcherutil'
 
 const errors: string[] = []
 
