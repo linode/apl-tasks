@@ -36,9 +36,10 @@ import {
   createIdProvider,
   createLoginThemeConfig,
   createRealm,
+  createTeamUser,
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
-import { doApiCall, waitTillAvailable } from '../utils'
+import { doApiCall } from '../utils'
 import {
   cleanEnv,
   KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
@@ -96,6 +97,7 @@ const env = {
   REDIRECT_URIS: [] as string[],
   TEAM_IDS: [] as string[],
   WAIT_OPTIONS: {},
+  USERS: [],
 }
 
 const kc = new KubeConfig()
@@ -168,6 +170,7 @@ async function runKeycloakUpdater(key: string) {
         await keycloakConfigMapChanges().then(async () => {
           await runKeycloakUpdater('addTeam')
         })
+        if (env.USERS.length > 0) await manageUsers(env.USERS)
         break
       } catch (error) {
         console.debug('Error could not update configMap', error)
@@ -206,6 +209,7 @@ export default class MyOperator extends Operator {
                 if (data!.IDP_CLIENT_ID) env.IDP_CLIENT_ID = Buffer.from(data!.IDP_CLIENT_ID, 'base64').toString()
                 if (data!.IDP_CLIENT_SECRET)
                   env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
+                env.USERS = JSON.parse(Buffer.from(data!.USERS, 'base64').toString())
                 await runKeycloakUpdater('updateConfig').then(() => {
                   console.log('Updated Config')
                 })
@@ -358,7 +362,7 @@ async function keycloakTeamDeleted() {
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
-  await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
+  // await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
   const keycloakAddress = env.KEYCLOAK_HOSTNAME_URL
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
@@ -655,6 +659,7 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
     api.users.realmUsersGet(keycloakRealm, false, userConf.email),
   )) as UserRepresentation[]
   const existingUser: UserRepresentation = existingUsersByAdminEmail?.[0]
+
   try {
     if (existingUser) {
       await doApiCall(errors, `Updating user ${env.KEYCLOAK_ADMIN}`, async () =>
@@ -699,4 +704,33 @@ async function manageGroups(connection: KeycloakConnection) {
   } catch (error) {
     console.error('Error in manageGroups: ', error)
   }
+}
+
+async function createUser(api: any, user: any) {
+  const { name: username, email, firstName, lastName, teamId } = user
+  const userConf = createTeamUser(username, email, firstName, lastName, teamId)
+  const existingUsersByAdminEmail = (await doApiCall([], `Getting users`, () =>
+    api.users.realmUsersGet(keycloakRealm, false, `${email}`),
+  )) as UserRepresentation[]
+  const existingUser: UserRepresentation = existingUsersByAdminEmail?.[0]
+
+  try {
+    if (existingUser) {
+      console.debug(`User with email ${email} already exists`)
+      // await doApiCall(errors, `Updating user ${user}`, async () =>
+      //   api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
+      // )
+    } else {
+      await doApiCall(errors, `Creating user ${username}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
+    }
+  } catch (error) {
+    console.error('Error in internalIDP: ', error)
+  }
+}
+
+async function manageUsers(users: any[]) {
+  const connection = await createKeycloakConnection()
+  const api = setupKeycloakApi(connection)
+  // Create/Update users in realm 'otomi'
+  await Promise.all(users.map((user) => createUser(api, user)))
 }

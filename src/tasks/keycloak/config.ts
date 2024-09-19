@@ -70,6 +70,31 @@ export const adminUserCfgTpl = (username: string, password: string): Record<stri
   requiredActions: [],
 })
 
+export const teamUserCfgTpl = (
+  username: string,
+  email: string,
+  firstName: string,
+  lastName: string,
+  teamId: string,
+): Record<string, unknown> => ({
+  username,
+  enabled: true,
+  email,
+  emailVerified: true,
+  firstName,
+  lastName,
+  realmRoles: ['team'],
+  groups: [`team-${teamId}`],
+  credentials: [
+    {
+      type: 'password',
+      value: `${username}@APL`,
+      temporary: true,
+    },
+  ],
+  requiredActions: [],
+})
+
 export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
   id: realm,
   realm,

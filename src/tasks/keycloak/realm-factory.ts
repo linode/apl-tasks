@@ -24,6 +24,7 @@ import {
   protocolMappersList,
   realmCfgTpl,
   roleTpl,
+  teamUserCfgTpl,
 } from './config'
 
 export function createClient(redirectUris: string[], webOrigins: string, secret: string): ClientRepresentation {
@@ -97,6 +98,19 @@ export function createClientEmailClaimMapper(): ProtocolMapperRepresentation {
 
 export function createAdminUser(username: string, password: string): UserRepresentation {
   const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(username, password))
+  return userRepresentation
+}
+export function createTeamUser(
+  username: string,
+  email: string,
+  firstName: string,
+  lastName: string,
+  teamId: string,
+): UserRepresentation {
+  const userRepresentation = defaultsDeep(
+    new UserRepresentation(),
+    teamUserCfgTpl(username, email, firstName, lastName, teamId),
+  )
   return userRepresentation
 }
 
