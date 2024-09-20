@@ -243,6 +243,7 @@ export default abstract class Operator {
 
     const startWatch = async (resourceVersion?: string): Promise<void> => {
       console.log('Starting watch with resourceVersion: ', resourceVersion)
+      console.log('Starting watch on uri: ', uri)
       return watch
         .watch(
           uri,
