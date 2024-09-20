@@ -250,8 +250,9 @@ export default abstract class Operator {
           uri,
           resourceVersion ? { resourceVersion } : {},
           (phase, obj) => {
+            console.log('PHASE: ', phase)
+            console.log('OBJECT: ', obj)
             if (obj && obj.metadata) {
-              console.log('OBJECT: ', obj.metadata.name)
               console.log('Watch event received, setting lastResourceVersion: ', obj.metadata.resourceVersion)
               // Store the latest resourceVersion for future reconnection
               lastResourceVersion = obj.metadata.resourceVersion
