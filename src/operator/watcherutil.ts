@@ -240,15 +240,20 @@ export default abstract class Operator {
 
     const watch = new Watch(this.kubeConfig)
     let lastResourceVersion = ''
-    const startWatch = (resourceVersion?: string): Promise<void> =>
-      watch
+
+    const startWatch = (resourceVersion?: string): Promise<void> => {
+      console.log('Starting watch with resourceVersion: ', resourceVersion)
+      return watch
         .watch(
           uri,
           resourceVersion ? { resourceVersion } : {},
           (phase, obj) => {
+            console.log('OBJECT: ', obj.metadata.name)
+            console.log('Watch event received, setting lastResourceVersion: ', obj.metadata.resourceVersion)
             // Store the latest resourceVersion for future reconnection
             lastResourceVersion = obj.metadata.resourceVersion
 
+            // Enqueue the event to process it
             this.eventQueue.push({
               event: {
                 meta: ResourceMetaImpl.createWithPlural(plural, obj),
@@ -259,10 +264,12 @@ export default abstract class Operator {
             })
           },
           (err) => {
+            console.log('Watcher error callback hit')
             if (err) {
-              console.log('ERROR OF WATCHER: ', err)
+              console.log('Error during watch: ', err)
               if (err.code === 410) {
                 console.log('ResourceVersion expired, falling back to list and start a new watch')
+                // Perform a list operation to get the current state
                 this.k8sApi.listNamespacedEndpoints(namespace || 'default').then((res) => {
                   lastResourceVersion = res.body.metadata!.resourceVersion!
                   // Restart the watch with the latest resourceVersion
@@ -277,9 +284,17 @@ export default abstract class Operator {
           },
         )
         .catch((reason) => {
-          console.log(`watch on resource ${id} failed: ${this.errorToJson(reason)}`)
+          console.log('Caught an error in watch:', reason)
         })
-        .then((req) => (this.watchRequests[id] = req))
+        .then((req) => {
+          if (!req) {
+            console.log('Watch request did not return a valid request object')
+          } else {
+            console.log('Watch request initiated:', req)
+            this.watchRequests[id] = req
+          }
+        })
+    }
 
     await startWatch()
 
