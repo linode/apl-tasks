@@ -240,7 +240,7 @@ export default abstract class Operator {
 
     const watch = new Watch(this.kubeConfig)
     let lastResourceVersion = ''
-    console.log('Uri to be used: ', uri)
+    console.log('Last Resource Version: ', lastResourceVersion)
     const startWatch = async (resourceVersion?: string): Promise<void> => {
       console.log('watch: ', watch)
       console.log('Starting watch with resourceVersion: ', resourceVersion)
@@ -253,10 +253,9 @@ export default abstract class Operator {
             console.log('PHASE: ', phase)
             console.log('OBJECT: ', obj)
             if (obj && obj.metadata) {
-              console.log('Watch event received, setting lastResourceVersion: ', obj.metadata.resourceVersion)
-              // Store the latest resourceVersion for future reconnection
-              lastResourceVersion = obj.metadata.resourceVersion
-
+              this.k8sApi.listNamespacedEndpoints(namespace || 'default').then((res) => {
+                lastResourceVersion = res.body.metadata!.resourceVersion!
+              })
               // Enqueue the event to process it
               this.eventQueue.push({
                 event: {
