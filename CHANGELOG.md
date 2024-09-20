@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.2.0](https://github.com/linode/apl-tasks/compare/v3.1.0...v3.2.0) (2024-09-18)
+
+
+### Bug Fixes
+
+* check if setup was a success ([#113](https://github.com/linode/apl-tasks/issues/113)) ([d359ef5](https://github.com/linode/apl-tasks/commit/d359ef56d770205c4230435a374713393a5934b3))
+* group mapping for gitea oidc ([#111](https://github.com/linode/apl-tasks/issues/111)) ([6efe076](https://github.com/linode/apl-tasks/commit/6efe07673e42e3d46cd5b0e673e264c540ea8c75))
+* keycloakstyling ([#114](https://github.com/linode/apl-tasks/issues/114)) ([c355214](https://github.com/linode/apl-tasks/commit/c3552144b94a6e669f66207aad4982f59b2350b8))
+* set keycloak theme ([#115](https://github.com/linode/apl-tasks/issues/115)) ([8e4fc5b](https://github.com/linode/apl-tasks/commit/8e4fc5b9fa93cdf60dbfa75ac7ab840e1002ad84))
+
+## [3.1.0](https://github.com/linode/apl-tasks/compare/v3.0.0...v3.1.0) (2024-09-09)
+
+
+### Features
+
+* update github workflow to push image to the linode dockerhub ([#109](https://github.com/linode/apl-tasks/issues/109)) ([6f60d44](https://github.com/linode/apl-tasks/commit/6f60d442517f358d20bdd3caaad25c800c11b52c))
+* update setGiteaOIDCConfig function and logic ([#108](https://github.com/linode/apl-tasks/issues/108)) ([80a2a98](https://github.com/linode/apl-tasks/commit/80a2a98c944a8d072344b707b99f859c841b13c2))
+
+
+### Bug Fixes
+
+* operator pod restarting ([#106](https://github.com/linode/apl-tasks/issues/106)) ([fb2a085](https://github.com/linode/apl-tasks/commit/fb2a085b54823fbafb128342a0e341a4bd05f516))
+
 ## [3.0.0](https://github.com/linode/apl-tasks/compare/v2.5.0...v3.0.0) (2024-07-11)
 
 
