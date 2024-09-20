@@ -241,7 +241,7 @@ export default abstract class Operator {
     const watch = new Watch(this.kubeConfig)
     let lastResourceVersion = ''
 
-    const startWatch = (resourceVersion?: string): Promise<void> => {
+    const startWatch = async (resourceVersion?: string): Promise<void> => {
       console.log('Starting watch with resourceVersion: ', resourceVersion)
       return watch
         .watch(
