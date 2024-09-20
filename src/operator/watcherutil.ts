@@ -242,6 +242,7 @@ export default abstract class Operator {
     let lastResourceVersion = ''
     console.log('Uri to be used: ', uri)
     const startWatch = async (resourceVersion?: string): Promise<void> => {
+      console.log('watch: ', watch)
       console.log('Starting watch with resourceVersion: ', resourceVersion)
       console.log('Starting watch on uri: ', uri)
       return watch
@@ -291,7 +292,7 @@ export default abstract class Operator {
           if (!req) {
             console.log('Watch request did not return a valid request object')
           } else {
-            console.log('Watch request initiated:', req)
+            console.log('Watch request initiated')
             this.watchRequests[id] = req
           }
         })
