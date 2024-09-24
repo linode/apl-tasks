@@ -717,9 +717,6 @@ async function createUser(api: any, user: any) {
   try {
     if (existingUser) {
       console.debug(`User with email ${email} already exists`)
-      // await doApiCall(errors, `Updating user ${user}`, async () =>
-      //   api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
-      // )
     } else {
       await doApiCall(errors, `Creating user ${username}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
     }
