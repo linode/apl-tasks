@@ -341,8 +341,8 @@ export default abstract class Operator {
                 console.log('ResourceVersion expired, falling back to list and start a new watch')
               } else {
                 console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
-                console.log(`restarting watch on resource ${id} using resourceVersion=${lastResourceVersion}`)
-                setTimeout(() => startWatch(lastResourceVersion), 200)
+                console.log(`restarting watch on resource ${id} using resourceVersion=${lastHandledResourceVersion}`)
+                setTimeout(() => startWatch(lastHandledResourceVersion), 200)
               }
             }
           },
