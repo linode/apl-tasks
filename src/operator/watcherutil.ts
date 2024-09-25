@@ -249,7 +249,7 @@ export default abstract class Operator {
 
     const watch = new Watch(this.kubeConfig)
     let lastHandledResourceVersion = ''
-    let lastResourceVersion = ''
+    // let lastResourceVersion = ''
     console.log('Last Handled Resource Version: ', lastHandledResourceVersion)
     const startWatch = async (resourceVersion?: string): Promise<void> => {
       console.log('watch: ', watch)
@@ -285,21 +285,23 @@ export default abstract class Operator {
                   console.log('SECRETLIST: ', secretList.body.items)
                   filteredList = secretList.body.items.filter((secret) => {
                     const secretResourceVersion = secret.metadata!.resourceVersion!
-                    return parseInt(secretResourceVersion, 10) > parseInt(lastResourceVersion, 10)
+                    return parseInt(secretResourceVersion, 10) > parseInt(lastHandledResourceVersion, 10)
                   })
-                  lastResourceVersion = secretList.body.metadata!.resourceVersion!
+                  console.log('FILTEREDSECRETLIST: ', filteredList.body.items)
+                  lastHandledResourceVersion = secretList.body.metadata!.resourceVersion!
                   break
                 case 'configmaps':
                   const configList = await this.k8sApi.listNamespacedConfigMap(namespace!)
                   configList.body.items.sort(
                     (a, b) => parseInt(a.metadata!.resourceVersion!, 10) - parseInt(b.metadata!.resourceVersion!, 10),
                   )
+                  console.log('CONFIGLIST: ', configList.body.items)
                   filteredList = configList.body.items.filter((secret) => {
                     const secretResourceVersion = secret.metadata!.resourceVersion!
-                    return parseInt(secretResourceVersion, 10) > parseInt(lastResourceVersion, 10)
+                    return parseInt(secretResourceVersion, 10) > parseInt(lastHandledResourceVersion, 10)
                   })
-                  console.log('CONFIGLIST: ', configList.body.items)
-                  lastResourceVersion = configList.body.metadata!.resourceVersion!
+                  console.log('FILTEREDCONFIGLIST: ', filteredList.body.items)
+                  lastHandledResourceVersion = configList.body.metadata!.resourceVersion!
                   break
                 case 'aplinstalls':
                   const aplinstallsList = await this.k8sCustomApi.listNamespacedCustomObject(
@@ -313,7 +315,7 @@ export default abstract class Operator {
                   //   const secretResourceVersion = secret.metadata!.resourceVersion!
                   //   return parseInt(secretResourceVersion, 10) > parseInt(lastResourceVersion, 10)
                   // })
-                  lastResourceVersion = 'aplinstallsList.body.metadata.resourceVersion'
+                  lastHandledResourceVersion = 'aplinstallsList.body.metadata.resourceVersion'
                   break
                 default:
                   break
@@ -325,8 +327,8 @@ export default abstract class Operator {
                   type: ResourceEventType.Modified,
                 })
               })
-              console.log(`restarting watch on resource ${id} using resourceVersion=${lastResourceVersion}`)
-              setTimeout(() => startWatch(lastResourceVersion), 200)
+              console.log(`restarting watch on resource ${id} using resourceVersion=${lastHandledResourceVersion}`)
+              setTimeout(() => startWatch(lastHandledResourceVersion), 200)
             } else {
               console.log('Received undefined or invalid object:', obj)
             }
