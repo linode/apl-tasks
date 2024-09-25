@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-return-assign */
 /* eslint-disable @typescript-eslint/no-misused-promises */
@@ -12,6 +13,12 @@ import * as FS from 'fs'
 import { instance as gaxios, GaxiosOptions, Headers } from 'gaxios'
 import * as https from 'https'
 
+// added the type property which was missing in the original KubernetesObject
+interface CustomKubernetesObject extends KubernetesObject {
+  body: {
+    metadata: k8s.V1ObjectMeta
+  }
+}
 /**
  * Logger interface.
  */
@@ -115,6 +122,8 @@ export default abstract class Operator {
   protected kubeConfig: k8s.KubeConfig
 
   protected k8sApi: k8s.CoreV1Api
+
+  protected k8sCustomApi: k8s.CustomObjectsApi
 
   protected logger: OperatorLogger
 
@@ -250,21 +259,10 @@ export default abstract class Operator {
           uri,
           resourceVersion ? { resourceVersion } : {},
           async (phase, obj) => {
-            switch (plural) {
-              case 'secrets':
-                lastResourceVersion = (await this.k8sApi.listNamespacedSecret(namespace!)).body.metadata!
-                  .resourceVersion!
-                break
-              case 'configmaps':
-                lastResourceVersion = (await this.k8sApi.listNamespacedConfigMap(namespace!)).body.metadata!
-                  .resourceVersion!
-                break
-              default:
-                break
-            }
             console.log('PHASE: ', phase)
             console.log('OBJECT: ', obj)
             if (obj && obj.status !== 'Failure') {
+              lastResourceVersion = obj.metadata.resourceVersion
               // Enqueue the event to process it
               this.eventQueue.push({
                 event: {
@@ -278,12 +276,24 @@ export default abstract class Operator {
               console.log(`watch on resource ${id} failed: ${this.errorToJson(obj)}`)
               switch (plural) {
                 case 'secrets':
-                  lastResourceVersion = (await this.k8sApi.listNamespacedSecret(namespace!)).body.metadata!
-                    .resourceVersion!
+                  const secretList = await this.k8sApi.listNamespacedSecret(namespace!)
+                  console.log('SECRETLIST: ', secretList)
+                  lastResourceVersion = secretList.body.metadata!.resourceVersion!
                   break
                 case 'configmaps':
-                  lastResourceVersion = (await this.k8sApi.listNamespacedConfigMap(namespace!)).body.metadata!
-                    .resourceVersion!
+                  const configList = await this.k8sApi.listNamespacedConfigMap(namespace!)
+                  console.log('CONFIGLIST: ', configList)
+                  lastResourceVersion = configList.body.metadata!.resourceVersion!
+                  break
+                case 'aplinstalls':
+                  const aplinstallsList = await this.k8sCustomApi.listNamespacedCustomObject(
+                    group,
+                    version,
+                    namespace!,
+                    plural,
+                  )
+                  console.log('APLINSTALLSLIST: ', aplinstallsList)
+                  lastResourceVersion = 'aplinstallsList.body.metadata.resourceVersion'
                   break
                 default:
                   break
@@ -300,12 +310,6 @@ export default abstract class Operator {
               console.log('Error during watch: ', err)
               if (err.code === 410) {
                 console.log('ResourceVersion expired, falling back to list and start a new watch')
-                // Perform a list operation to get the current state
-                // this.k8sApi.listNamespacedEndpoints(namespace || 'default').then((res) => {
-                //   lastResourceVersion = res.body.metadata!.resourceVersion!
-                //   // Restart the watch with the latest resourceVersion
-                //   setTimeout(() => startWatch(lastResourceVersion), 200)
-                // })
               } else {
                 console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
                 console.log(`restarting watch on resource ${id} using resourceVersion=${lastResourceVersion}`)
