@@ -58,6 +58,7 @@ const HarborGroupType = {
 }
 
 let lastState: DependencyState = {}
+let setupSuccess = false
 const errors: string[] = []
 const systemRobot: any = {
   name: 'harbor',
@@ -218,11 +219,17 @@ async function checkAndExecute() {
     await setupHarbor()
   }
 
-  if (currentState.teamNames && currentState.teamNames.length > 0 && currentState.teamNames !== lastState.teamNames) {
-    await Promise.all(currentState.teamNames.map((namespace) => processNamespace(`team-${namespace}`)))
-  }
+  if (!setupSuccess) await setupHarbor()
 
-  lastState = { ...currentState }
+  if (
+    setupSuccess &&
+    currentState.teamNames &&
+    currentState.teamNames.length > 0 &&
+    currentState.teamNames !== lastState.teamNames
+  ) {
+    await Promise.all(currentState.teamNames.map((namespace) => processNamespace(`team-${namespace}`)))
+    lastState = { ...currentState }
+  }
 }
 
 async function runSetupHarbor() {
@@ -265,14 +272,18 @@ async function setupHarbor() {
     self_registration: false,
   }
 
-  const bearerAuth = await getBearerToken()
-  robotApi.setDefaultAuthentication(bearerAuth)
-  configureApi.setDefaultAuthentication(bearerAuth)
-  projectsApi.setDefaultAuthentication(bearerAuth)
-  memberApi.setDefaultAuthentication(bearerAuth)
-
-  await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
-  handleErrors(errors)
+  try {
+    const bearerAuth = await getBearerToken()
+    robotApi.setDefaultAuthentication(bearerAuth)
+    configureApi.setDefaultAuthentication(bearerAuth)
+    projectsApi.setDefaultAuthentication(bearerAuth)
+    memberApi.setDefaultAuthentication(bearerAuth)
+    await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
+    if (errors.length > 0) handleErrors(errors)
+    setupSuccess = true
+  } catch (error) {
+    console.debug('Failed to set bearer Token for Harbor Api :', error)
+  }
 }
 
 /**
