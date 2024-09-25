@@ -44,7 +44,7 @@ import {
   KEYCLOAK_TOKEN_OFFLINE_TTL,
   KEYCLOAK_TOKEN_TTL,
 } from '../validators'
-import Operator, { ResourceEventType } from './watcherutil'
+import Operator, { ResourceEventType } from './watcherutilnew'
 
 const errors: string[] = []
 
@@ -224,6 +224,11 @@ export default class MyOperator extends Operator {
       console.log('Watching secrets done!')
     } catch (error) {
       console.debug(error)
+      if (error.code === 410) {
+        console.log('resourceVersion too old')
+      } else if (error.status === 'Failure') {
+        console.log('TLS disconnected')
+      }
     }
     // Watch apl-keycloak-operator-cm
     try {
