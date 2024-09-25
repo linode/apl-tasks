@@ -248,40 +248,39 @@ export default abstract class Operator {
     uri += plural
 
     const watch = new Watch(this.kubeConfig)
-    try {
-      const startWatch = (): Promise<void> =>
-        watch
-          .watch(
-            uri,
-            {},
-            (phase, obj) =>
-              this.eventQueue.push({
-                event: {
-                  meta: ResourceMetaImpl.createWithPlural(plural, obj),
-                  object: obj,
-                  type: phase as ResourceEventType,
-                },
-                onEvent,
-              }),
-            (err) => {
-              if (err) {
-                console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
-              }
-              console.log(`restarting watch on resource ${id}`)
-              throw err
-              // setTimeout(startWatch, 200)
-            },
-          )
-          .catch((reason) => {
-            console.log(`watch on resource ${id} failed: ${this.errorToJson(reason)}`)
-          })
-          .then((req) => (this.watchRequests[id] = req))
-      await startWatch()
 
-      console.log(`watching resource ${id}`)
-    } catch (error) {
-      throw error
-    }
+    const startWatch = (): Promise<void> =>
+      watch
+        .watch(
+          uri,
+          {},
+          (phase, obj) =>
+            this.eventQueue.push({
+              event: {
+                meta: ResourceMetaImpl.createWithPlural(plural, obj),
+                object: obj,
+                type: phase as ResourceEventType,
+              },
+              onEvent,
+            }),
+          (err) => {
+            if (err) {
+              console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
+            }
+            console.log(`restarting watch on resource ${id}`)
+            throw err
+            // setTimeout(startWatch, 200)
+          },
+        )
+        .catch((reason) => {
+          console.log(`watch on resource ${id} failed: ${this.errorToJson(reason)}`)
+          throw reason
+        })
+        .then((req) => (this.watchRequests[id] = req))
+
+    await startWatch()
+
+    console.log(`watching resource ${id}`)
   }
 
   /**
