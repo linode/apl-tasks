@@ -248,8 +248,9 @@ export default abstract class Operator {
     uri += plural
 
     const watch = new Watch(this.kubeConfig)
+    let lastHandledResourceVersion = ''
     let lastResourceVersion = ''
-    console.log('Last Resource Version: ', lastResourceVersion)
+    console.log('Last Handled Resource Version: ', lastHandledResourceVersion)
     const startWatch = async (resourceVersion?: string): Promise<void> => {
       console.log('watch: ', watch)
       console.log('Starting watch with resourceVersion: ', resourceVersion)
@@ -262,7 +263,6 @@ export default abstract class Operator {
             console.log('PHASE: ', phase)
             console.log('OBJECT: ', obj)
             if (obj && obj.status !== 'Failure') {
-              lastResourceVersion = obj.metadata.resourceVersion
               // Enqueue the event to process it
               this.eventQueue.push({
                 event: {
@@ -272,24 +272,32 @@ export default abstract class Operator {
                 },
                 onEvent,
               })
+              lastHandledResourceVersion = obj.metadata.resourceVersion
             } else if (obj && obj.status === 'Failure') {
               console.log(`watch on resource ${id} failed: ${this.errorToJson(obj)}`)
+              let filteredList
               switch (plural) {
                 case 'secrets':
                   const secretList = await this.k8sApi.listNamespacedSecret(namespace!)
                   secretList.body.items.sort(
-                    // eslint-disable-next-line radix
-                    (a, b) => parseInt(a.metadata!.resourceVersion!) - parseInt(b.metadata!.resourceVersion!),
+                    (a, b) => parseInt(a.metadata!.resourceVersion!, 10) - parseInt(b.metadata!.resourceVersion!, 10),
                   )
                   console.log('SECRETLIST: ', secretList.body.items)
+                  filteredList = secretList.body.items.filter((secret) => {
+                    const secretResourceVersion = secret.metadata!.resourceVersion!
+                    return parseInt(secretResourceVersion, 10) > parseInt(lastResourceVersion, 10)
+                  })
                   lastResourceVersion = secretList.body.metadata!.resourceVersion!
                   break
                 case 'configmaps':
                   const configList = await this.k8sApi.listNamespacedConfigMap(namespace!)
                   configList.body.items.sort(
-                    // eslint-disable-next-line radix
-                    (a, b) => parseInt(a.metadata!.resourceVersion!) - parseInt(b.metadata!.resourceVersion!),
+                    (a, b) => parseInt(a.metadata!.resourceVersion!, 10) - parseInt(b.metadata!.resourceVersion!, 10),
                   )
+                  filteredList = configList.body.items.filter((secret) => {
+                    const secretResourceVersion = secret.metadata!.resourceVersion!
+                    return parseInt(secretResourceVersion, 10) > parseInt(lastResourceVersion, 10)
+                  })
                   console.log('CONFIGLIST: ', configList.body.items)
                   lastResourceVersion = configList.body.metadata!.resourceVersion!
                   break
@@ -301,11 +309,22 @@ export default abstract class Operator {
                     plural,
                   )
                   console.log('APLINSTALLSLIST: ', aplinstallsList)
+                  // const filteredList = aplinstallsList.body.items.filter((secret) => {
+                  //   const secretResourceVersion = secret.metadata!.resourceVersion!
+                  //   return parseInt(secretResourceVersion, 10) > parseInt(lastResourceVersion, 10)
+                  // })
                   lastResourceVersion = 'aplinstallsList.body.metadata.resourceVersion'
                   break
                 default:
                   break
               }
+              filteredList.forEach(async (item) => {
+                await onEvent({
+                  meta: ResourceMetaImpl.createWithPlural(plural, item),
+                  object: item,
+                  type: ResourceEventType.Modified,
+                })
+              })
               console.log(`restarting watch on resource ${id} using resourceVersion=${lastResourceVersion}`)
               setTimeout(() => startWatch(lastResourceVersion), 200)
             } else {
