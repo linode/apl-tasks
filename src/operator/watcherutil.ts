@@ -277,12 +277,20 @@ export default abstract class Operator {
               switch (plural) {
                 case 'secrets':
                   const secretList = await this.k8sApi.listNamespacedSecret(namespace!)
-                  console.log('SECRETLIST: ', secretList)
+                  secretList.body.items.sort(
+                    // eslint-disable-next-line radix
+                    (a, b) => parseInt(a.metadata!.resourceVersion!) - parseInt(b.metadata!.resourceVersion!),
+                  )
+                  console.log('SECRETLIST: ', secretList.body.items)
                   lastResourceVersion = secretList.body.metadata!.resourceVersion!
                   break
                 case 'configmaps':
                   const configList = await this.k8sApi.listNamespacedConfigMap(namespace!)
-                  console.log('CONFIGLIST: ', configList)
+                  configList.body.items.sort(
+                    // eslint-disable-next-line radix
+                    (a, b) => parseInt(a.metadata!.resourceVersion!) - parseInt(b.metadata!.resourceVersion!),
+                  )
+                  console.log('CONFIGLIST: ', configList.body.items)
                   lastResourceVersion = configList.body.metadata!.resourceVersion!
                   break
                 case 'aplinstalls':
