@@ -80,8 +80,9 @@ const env = {
   IDP_OIDC_URL: '',
   IDP_CLIENT_ID: '',
   IDP_CLIENT_SECRET: '',
-  IDP_GROUP_OTOMI_ADMIN: '',
   IDP_GROUP_TEAM_ADMIN: '',
+  IDP_GROUP_ALL_TEAMS_ADMIN: '',
+  IDP_GROUP_PLATFORM_ADMIN: '',
   IDP_GROUP_MAPPINGS_TEAMS: {} || undefined,
   IDP_SUB_CLAIM_MAPPER: '',
   IDP_USERNAME_CLAIM_MAPPER: '',
@@ -117,8 +118,8 @@ async function runKeycloakUpdater(key: string) {
       !env.IDP_OIDC_URL ||
       !env.IDP_CLIENT_ID ||
       !env.IDP_CLIENT_SECRET ||
-      !env.IDP_GROUP_OTOMI_ADMIN ||
-      !env.IDP_GROUP_TEAM_ADMIN ||
+      !env.IDP_GROUP_PLATFORM_ADMIN ||
+      !env.IDP_GROUP_ALL_TEAMS_ADMIN ||
       !env.IDP_GROUP_MAPPINGS_TEAMS ||
       !env.IDP_SUB_CLAIM_MAPPER ||
       !env.IDP_USERNAME_CLAIM_MAPPER
@@ -254,8 +255,9 @@ export default class MyOperator extends Operator {
                 if (env.FEAT_EXTERNAL_IDP === 'true') {
                   env.IDP_ALIAS = data!.IDP_ALIAS
                   env.IDP_OIDC_URL = data!.IDP_OIDC_URL
-                  env.IDP_GROUP_OTOMI_ADMIN = data!.IDP_GROUP_OTOMI_ADMIN
-                  env.IDP_GROUP_TEAM_ADMIN = data!.IDP_GROUP_TEAM_ADMIN
+                  env.IDP_GROUP_PLATFORM_ADMIN = data!.IDP_GROUP_PLATFORM_ADMIN
+                  env.IDP_GROUP_ALL_TEAMS_ADMIN = data!.IDP_GROUP_TEAM_ADMIN
+                  env.IDP_GROUP_TEAM_ADMIN = 'xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
                   env.IDP_GROUP_MAPPINGS_TEAMS =
                     Object.keys(data!.IDP_GROUP_MAPPINGS_TEAMS).length === 0
                       ? JSON.parse(data!.IDP_GROUP_MAPPINGS_TEAMS)
@@ -450,7 +452,8 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     env.TEAM_IDS,
     env.IDP_GROUP_MAPPINGS_TEAMS,
     env.IDP_GROUP_TEAM_ADMIN,
-    env.IDP_GROUP_OTOMI_ADMIN,
+    env.IDP_GROUP_ALL_TEAMS_ADMIN,
+    env.IDP_GROUP_PLATFORM_ADMIN,
     env.KEYCLOAK_REALM,
   )
   const existingRealmRoles = ((await doApiCall(errors, `Getting all roles from realm ${keycloakRealm}`, async () =>
@@ -520,7 +523,8 @@ async function externalIDP(api: KeycloakApi) {
   const idpMappers = createIdpMappers(
     env.IDP_ALIAS,
     env.IDP_GROUP_MAPPINGS_TEAMS,
-    env.IDP_GROUP_OTOMI_ADMIN,
+    env.IDP_GROUP_PLATFORM_ADMIN,
+    env.IDP_GROUP_ALL_TEAMS_ADMIN,
     env.IDP_GROUP_TEAM_ADMIN,
     env.IDP_USERNAME_CLAIM_MAPPER,
     env.IDP_SUB_CLAIM_MAPPER,
@@ -612,7 +616,7 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
         // set realm roles
         const roles: Array<RoleRepresentation> = []
         const existingRole = updatedExistingRealmRoles.find(
-          (el) => el.name === (groupName === 'otomi-admin' ? 'admin' : groupName),
+          (el) => el.name === (groupName === 'otomi-admin' ? 'platform-admin' : groupName),
         ) as RoleRepresentation
         roles.push(existingRole)
         await doApiCall(errors, `Creating role mapping for group ${groupName}`, async () =>
@@ -634,10 +638,10 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
       if (!existingClientRoleMapping) {
         // let team members see other users
         const accessRoles: Array<RoleRepresentation> = [userViewerRole]
-        // both otomi-admin and team-admin role will get access to manage users
-        // so the otomi-admin can login to the 'otomi' realm just like team-admin and see the same
-        if (groupName === 'team-admin') accessRoles.push(userManagementRole)
-        if (groupName === 'otomi-admin') accessRoles.push(realmManagementRole)
+        // both platform-admin and all-teams-admin role will get access to manage users
+        // so the platform-admin can login to the 'otomi' realm just like all-teams-admin and see the same
+        if (groupName === 'all-teams-admin') accessRoles.push(userManagementRole)
+        if (groupName === 'platform-admin') accessRoles.push(realmManagementRole)
         await doApiCall(
           errors,
           `Creating access roles [${accessRoles.map((r) => r.name).join(',')}] mapping for group ${groupName}`,

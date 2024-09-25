@@ -58,8 +58,8 @@ export const adminUserCfgTpl = (username: string, password: string): Record<stri
   email: 'admin@oto.mi',
   emailVerified: true,
   enabled: true,
-  realmRoles: ['admin'],
-  groups: ['otomi-admin'],
+  realmRoles: ['platformAdmin'],
+  groups: ['platform-admin'],
   credentials: [
     {
       type: 'password',
@@ -83,7 +83,7 @@ export const teamUserCfgTpl = (
   emailVerified: true,
   firstName,
   lastName,
-  realmRoles: ['team'],
+  realmRoles: ['teamMember'],
   groups: [`team-${teamId}`],
   credentials: [
     {
