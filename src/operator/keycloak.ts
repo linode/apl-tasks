@@ -182,48 +182,43 @@ async function runKeycloakUpdater(key: string) {
   }
 }
 
+const keycloakCallback = async (e: any) => {
+  const { object } = e
+  const { metadata, data } = object as k8s.V1Secret
+  if (metadata && metadata.name !== 'apl-keycloak-operator-secret') return
+  switch (e.type) {
+    case ResourceEventType.Added:
+    case ResourceEventType.Modified: {
+      try {
+        env.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(data!.KEYCLOAK_ADMIN_PASSWORD, 'base64').toString()
+        env.KEYCLOAK_ADMIN = Buffer.from(data!.KEYCLOAK_ADMIN, 'base64').toString()
+        env.KEYCLOAK_CLIENT_SECRET = Buffer.from(data!.KEYCLOAK_CLIENT_SECRET, 'base64').toString()
+        if (data!.IDP_CLIENT_ID) env.IDP_CLIENT_ID = Buffer.from(data!.IDP_CLIENT_ID, 'base64').toString()
+        if (data!.IDP_CLIENT_SECRET) env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
+        await runKeycloakUpdater('updateConfig').then(() => {
+          console.log('Updated Config')
+        })
+        break
+      } catch (error) {
+        console.debug(error)
+        break
+      }
+    }
+    default:
+      break
+  }
+}
+
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     // Watch apl-keycloak-operator-secret
     try {
       console.log('Watching secrets!')
-      await this.watchResource(
-        '',
-        'v1',
-        'secrets',
-        async (e) => {
-          const { object } = e
-          const { metadata, data } = object as k8s.V1Secret
-          if (metadata && metadata.name !== 'apl-keycloak-operator-secret') return
-          switch (e.type) {
-            case ResourceEventType.Added:
-            case ResourceEventType.Modified: {
-              try {
-                env.KEYCLOAK_ADMIN_PASSWORD = Buffer.from(data!.KEYCLOAK_ADMIN_PASSWORD, 'base64').toString()
-                env.KEYCLOAK_ADMIN = Buffer.from(data!.KEYCLOAK_ADMIN, 'base64').toString()
-                env.KEYCLOAK_CLIENT_SECRET = Buffer.from(data!.KEYCLOAK_CLIENT_SECRET, 'base64').toString()
-                if (data!.IDP_CLIENT_ID) env.IDP_CLIENT_ID = Buffer.from(data!.IDP_CLIENT_ID, 'base64').toString()
-                if (data!.IDP_CLIENT_SECRET)
-                  env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
-                await runKeycloakUpdater('updateConfig').then(() => {
-                  console.log('Updated Config')
-                })
-                break
-              } catch (error) {
-                console.debug(error)
-                break
-              }
-            }
-            default:
-              break
-          }
-        },
-        'apl-keycloak-operator',
-      )
+      await this.watchResource('', 'v1', 'secrets', keycloakCallback, 'apl-keycloak-operator')
       console.log('Watching secrets done!')
     } catch (error) {
-      console.debug(error)
+      console.debug('DOES IT GET HERE?: ', error)
       if (error.code === 410) {
         console.log('resourceVersion too old')
       } else if (error.status === 'Failure') {
