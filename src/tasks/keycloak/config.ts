@@ -75,6 +75,8 @@ export const teamUserCfgTpl = (
   email: string,
   firstName: string,
   lastName: string,
+  isPlatformAdmin: boolean,
+  isTeamAdmin: boolean,
   teamId: string,
 ): Record<string, unknown> => ({
   username,
@@ -83,8 +85,8 @@ export const teamUserCfgTpl = (
   emailVerified: true,
   firstName,
   lastName,
-  realmRoles: ['teamMember'],
-  groups: [`team-${teamId}`],
+  realmRoles: [...(isPlatformAdmin ? ['platformAdmin'] : []), ...(isTeamAdmin ? ['teamAdmin'] : []), 'teamMember'],
+  groups: [...(isPlatformAdmin ? ['platform-admin'] : []), ...(isTeamAdmin ? ['team-admin'] : []), `team-${teamId}`],
   credentials: [
     {
       type: 'password',

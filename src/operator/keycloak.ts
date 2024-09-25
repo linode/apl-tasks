@@ -711,8 +711,8 @@ async function manageGroups(connection: KeycloakConnection) {
 }
 
 async function createUser(api: any, user: any) {
-  const { name: username, email, firstName, lastName, teamId } = user
-  const userConf = createTeamUser(username, email, firstName, lastName, teamId)
+  const { name: username, email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teamId } = user
+  const userConf = createTeamUser(username, email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teamId)
   const existingUsersByAdminEmail = (await doApiCall([], `Getting users`, () =>
     api.users.realmUsersGet(keycloakRealm, false, `${email}`),
   )) as UserRepresentation[]

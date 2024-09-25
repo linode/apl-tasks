@@ -124,11 +124,13 @@ export function createTeamUser(
   email: string,
   firstName: string,
   lastName: string,
+  isPlatformAdmin: boolean,
+  isTeamAdmin: boolean,
   teamId: string,
 ): UserRepresentation {
   const userRepresentation = defaultsDeep(
     new UserRepresentation(),
-    teamUserCfgTpl(username, email, firstName, lastName, teamId),
+    teamUserCfgTpl(username, email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teamId),
   )
   return userRepresentation
 }
