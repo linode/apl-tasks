@@ -265,14 +265,18 @@ export default abstract class Operator {
                 onEvent,
               }),
             (err) => {
-              console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
+              console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
               throw err
             },
           )
+          .catch((err) => {
+            console.log('CATCH ERR: ', err)
+            throw err
+          })
           .then(
             (req) => (this.watchRequests[id] = req),
             (reason) => {
-              console.log(`watch request failed: ${this.errorToJson(reason)}`)
+              console.log(`THEN ERR: watch request failed: ${this.errorToJson(reason)}`)
               throw reason
             },
           )
