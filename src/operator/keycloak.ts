@@ -222,7 +222,7 @@ export default class MyOperator extends Operator {
       await this.watchResource('', 'v1', 'secrets', keycloakCallback, 'apl-keycloak-operator')
       console.log('Watching secrets done!')
     } catch (error) {
-      console.debug('DOES IT GET HERE?: ', error)
+      console.log('DOES IT GET HERE?: ', error)
       if (error.code === 410) {
         console.log('resourceVersion too old')
       } else if (error.status === 'Failure') {

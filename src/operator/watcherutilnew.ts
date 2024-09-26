@@ -265,10 +265,8 @@ export default abstract class Operator {
                 onEvent,
               }),
             (err) => {
-              if (err) {
-                console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
-                throw err
-              }
+              console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
+              throw err
             },
           )
           .then(
