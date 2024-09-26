@@ -283,7 +283,12 @@ export default abstract class Operator {
         throw error
       }
     }
-    await startWatch()
+    try {
+      await startWatch()
+    } catch (error) {
+      console.log('Error in startWatch: ', error)
+      throw error
+    }
     console.log(`watching resource ${id}`)
   }
 
