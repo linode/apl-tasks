@@ -266,17 +266,15 @@ export default abstract class Operator {
               }),
             (err) => {
               if (err) {
-                console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
+                console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
+                throw err
               }
-              console.log(`restarting watch on resource ${id}`)
-              throw err
-              // setTimeout(startWatch, 200)
             },
           )
           .then(
             (req) => (this.watchRequests[id] = req),
             (reason) => {
-              console.log('go to reason :', reason)
+              console.log(`watch request failed: ${this.errorToJson(reason)}`)
               throw reason
             },
           )
