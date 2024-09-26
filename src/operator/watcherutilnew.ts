@@ -251,35 +251,24 @@ export default abstract class Operator {
 
     const startWatch = async (): Promise<void> => {
       try {
-        await watch
-          .watch(
-            uri,
-            {},
-            (phase, obj) =>
-              this.eventQueue.push({
-                event: {
-                  meta: ResourceMetaImpl.createWithPlural(plural, obj),
-                  object: obj,
-                  type: phase as ResourceEventType,
-                },
-                onEvent,
-              }),
-            (err) => {
-              console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
-              throw err
-            },
-          )
-          .catch((err) => {
-            console.log('CATCH ERR: ', err)
+        const req = await watch.watch(
+          uri,
+          {},
+          (phase, obj) =>
+            this.eventQueue.push({
+              event: {
+                meta: ResourceMetaImpl.createWithPlural(plural, obj),
+                object: obj,
+                type: phase as ResourceEventType,
+              },
+              onEvent,
+            }),
+          (err) => {
+            console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
             throw err
-          })
-          .then(
-            (req) => (this.watchRequests[id] = req),
-            (reason) => {
-              console.log(`THEN ERR: watch request failed: ${this.errorToJson(reason)}`)
-              throw reason
-            },
-          )
+          },
+        )
+        this.watchRequests[id] = req
       } catch (error) {
         console.log(`outer error: watch on resource ${id} failed: ${this.errorToJson(error)}`)
         throw error
