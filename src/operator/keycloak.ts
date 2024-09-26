@@ -710,17 +710,20 @@ async function manageGroups(connection: KeycloakConnection) {
   }
 }
 
-async function createUser(api: any, user: any) {
+async function createUpdateUser(api: any, user: any) {
   const { username, email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teamId } = user
   const userConf = createTeamUser(username, email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teamId)
-  const existingUsersByAdminEmail = (await doApiCall([], `Getting users`, () =>
+  const existingUsersByUserEmail = (await doApiCall([], `Getting users`, () =>
     api.users.realmUsersGet(keycloakRealm, false, `${email}`),
   )) as UserRepresentation[]
-  const existingUser: UserRepresentation = existingUsersByAdminEmail?.[0]
+  const existingUser: UserRepresentation = existingUsersByUserEmail?.[0]
 
   try {
     if (existingUser) {
-      console.debug(`User with email ${email} already exists`)
+      console.debug(`User with email ${email} already exists, updating user`)
+      await doApiCall(errors, `Updating user ${username}`, async () =>
+        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
+      )
     } else {
       await doApiCall(errors, `Creating user ${username}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
     }
@@ -729,9 +732,32 @@ async function createUser(api: any, user: any) {
   }
 }
 
+async function deleteUsers(api: any, users: any[]) {
+  try {
+    const { body: keycloakUsers } = await api.users.realmUsersGet(keycloakRealm)
+    const filteredUsers = keycloakUsers.filter((user) => user.username !== 'otomi-admin')
+    const usersToDelete = filteredUsers.filter((user) => !users.some((u) => u.email === user.email))
+
+    await Promise.all(
+      usersToDelete.map(async (user) => {
+        try {
+          await api.users.realmUsersIdDelete(keycloakRealm, user.id)
+          console.debug(`Deleted user ${user.email}`)
+        } catch (error) {
+          console.error(`Error deleting user ${user.email}:`, error)
+        }
+      }),
+    )
+  } catch (error) {
+    console.error('Error fetching users from Keycloak:', error)
+  }
+}
+
 async function manageUsers(users: any[]) {
   const connection = await createKeycloakConnection()
   const api = setupKeycloakApi(connection)
   // Create/Update users in realm 'otomi'
-  await Promise.all(users.map((user) => createUser(api, user)))
+  await Promise.all(users.map((user) => createUpdateUser(api, user)))
+  // Delete users not in users list
+  await deleteUsers(api, users)
 }
