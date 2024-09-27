@@ -720,7 +720,6 @@ async function createUpdateUser(api: any, user: any) {
 
   try {
     if (existingUser) {
-      console.log('existingUser', existingUser)
       console.debug(`User with email ${email} already exists, updating user`)
       const updatedUserConf = existingUser.requiredActions?.includes('UPDATE_PASSWORD')
         ? userConf
