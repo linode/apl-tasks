@@ -285,7 +285,11 @@ export default abstract class Operator {
     try {
       await startWatch()
     } catch (error) {
+      const rejected = Promise.reject(error)
       console.log('Error in startWatch: ', error)
+      rejected.catch((v) => {
+        console.log('Value: ', v)
+      })
       throw error
     }
     console.log(`watching resource ${id}`)
