@@ -301,7 +301,7 @@ export default abstract class Operator {
           (err) => {
             if (err) {
               console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
-              this.giveError(err)
+              Promise.reject(err)
             }
           },
         )
@@ -318,11 +318,6 @@ export default abstract class Operator {
       throw error
     }
     console.log(`watching resource ${id}`)
-  }
-
-  private giveError(innerError: Error): void {
-    console.log('GiveError: ', innerError)
-    throw innerError
   }
 
   /**
