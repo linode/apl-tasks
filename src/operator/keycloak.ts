@@ -23,7 +23,7 @@ import {
   UserRepresentation,
   UsersApi,
 } from '@linode/keycloak-client-node'
-import { forEach } from 'lodash'
+import { forEach, omit } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
 import { keycloakRealm } from '../tasks/keycloak/config'
 import {
@@ -721,8 +721,9 @@ async function createUpdateUser(api: any, user: any) {
   try {
     if (existingUser) {
       console.debug(`User with email ${email} already exists, updating user`)
+      const userConfWithoutCredentials = omit(userConf, ['credentials'])
       await doApiCall(errors, `Updating user ${username}`, async () =>
-        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
+        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConfWithoutCredentials),
       )
     } else {
       await doApiCall(errors, `Creating user ${username}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
