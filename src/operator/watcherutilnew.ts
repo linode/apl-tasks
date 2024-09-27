@@ -250,41 +250,6 @@ export default abstract class Operator {
     const watch = new Watch(this.kubeConfig)
 
     const startWatch = async (): Promise<void> => {
-      // try {
-      //   await new Promise<void>((resolve, reject) => {
-      //     watch
-      //       .watch(
-      //         uri,
-      //         {},
-      //         () => {
-      //           return new k8s.HttpError({} as IncomingMessage, {}, 404)
-      //         },
-
-      //         // this.eventQueue.push({
-      //         //   event: {
-      //         //     meta: ResourceMetaImpl.createWithPlural(plural, obj),
-      //         //     object: obj,
-      //         //     type: phase as ResourceEventType,
-      //         //   },
-      //         //   onEvent,
-      //         // }),
-      //         (err) => {
-      //           if (err) {
-      //             console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
-      //             reject(err)
-      //           }
-      //           throw err
-      //         },
-      //       )
-      //       .catch((reason) => {
-      //         console.log('reas:', reason)
-      //       })
-      //   })
-      // } catch (error) {
-      //   console.log('error:', error)
-      //   throw error
-      // }
-
       try {
         await new Promise<void>((resolve, reject) => {
           watch
@@ -305,7 +270,6 @@ export default abstract class Operator {
                   console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
                   reject(err)
                 }
-                resolve()
               },
             )
             .then(
