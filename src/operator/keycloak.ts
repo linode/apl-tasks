@@ -720,10 +720,13 @@ async function createUpdateUser(api: any, user: any) {
 
   try {
     if (existingUser) {
+      console.log('existingUser', existingUser)
       console.debug(`User with email ${email} already exists, updating user`)
-      const userConfWithoutCredentials = omit(userConf, ['credentials'])
+      const updatedUserConf = existingUser.requiredActions?.includes('UPDATE_PASSWORD')
+        ? userConf
+        : omit(userConf, ['credentials'])
       await doApiCall(errors, `Updating user ${username}`, async () =>
-        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConfWithoutCredentials),
+        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf),
       )
     } else {
       await doApiCall(errors, `Creating user ${username}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
