@@ -308,7 +308,10 @@ export default abstract class Operator {
                 resolve()
               },
             )
-            .then((req) => (this.watchRequests[id] = req))
+            .then(
+              (req) => (this.watchRequests[id] = req),
+              (rej) => console.log('Rejected: ', rej),
+            )
         })
       } catch (error) {
         console.log(`outer error: watch on resource ${id} failed: ${this.errorToJson(error)}`)
