@@ -250,60 +250,66 @@ export default abstract class Operator {
     const watch = new Watch(this.kubeConfig)
 
     const startWatch = async (): Promise<void> => {
-      try {
-        const req = await new Promise((resolve, reject) => {
-          watch.watch(
-            uri,
-            {},
-            (phase, obj) =>
-              this.eventQueue.push({
-                event: {
-                  meta: ResourceMetaImpl.createWithPlural(plural, obj),
-                  object: obj,
-                  type: phase as ResourceEventType,
-                },
-                onEvent,
-              }),
-            (err) => {
-              if (err) {
-                console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
-                reject(err)
-              }
-            },
-          )
-          resolve(req)
-          reject(new Error())
-        })
-        // this.watchRequests[id] = req
-      } catch (error) {
-        console.log('error:', error)
-        throw error
-      }
-
       // try {
-      //   const req = await watch.watch(
-      //     uri,
-      //     {},
-      //     (phase, obj) =>
-      //       this.eventQueue.push({
-      //         event: {
-      //           meta: ResourceMetaImpl.createWithPlural(plural, obj),
-      //           object: obj,
-      //           type: phase as ResourceEventType,
+      //   await new Promise<void>((resolve, reject) => {
+      //     watch
+      //       .watch(
+      //         uri,
+      //         {},
+      //         () => {
+      //           return new k8s.HttpError({} as IncomingMessage, {}, 404)
       //         },
-      //         onEvent,
-      //       }),
-      //     (err) => {
-      //       if (err) {
-      //         console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
-      //         reject(err)
-      //       }
-      //     },
-      //   )
+
+      //         // this.eventQueue.push({
+      //         //   event: {
+      //         //     meta: ResourceMetaImpl.createWithPlural(plural, obj),
+      //         //     object: obj,
+      //         //     type: phase as ResourceEventType,
+      //         //   },
+      //         //   onEvent,
+      //         // }),
+      //         (err) => {
+      //           if (err) {
+      //             console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
+      //             reject(err)
+      //           }
+      //           throw err
+      //         },
+      //       )
+      //       .catch((reason) => {
+      //         console.log('reas:', reason)
+      //       })
+      //   })
       // } catch (error) {
-      //   console.log(`outer error: watch on resource ${id} failed: ${this.errorToJson(error)}`)
+      //   console.log('error:', error)
       //   throw error
       // }
+
+      try {
+        const req = await watch.watch(
+          uri,
+          {},
+          (phase, obj) =>
+            this.eventQueue.push({
+              event: {
+                meta: ResourceMetaImpl.createWithPlural(plural, obj),
+                object: obj,
+                type: phase as ResourceEventType,
+              },
+              onEvent,
+            }),
+          (err) => {
+            if (err) {
+              console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
+              this.giveError(err)
+            }
+          },
+        )
+        this.watchRequests[id] = req
+      } catch (error) {
+        console.log(`outer error: watch on resource ${id} failed: ${this.errorToJson(error)}`)
+        throw error
+      }
     }
     try {
       await startWatch()
@@ -312,6 +318,11 @@ export default abstract class Operator {
       throw error
     }
     console.log(`watching resource ${id}`)
+  }
+
+  private giveError(innerError: Error): void {
+    console.log('GiveError: ', innerError)
+    throw innerError
   }
 
   /**
