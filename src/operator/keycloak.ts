@@ -171,7 +171,7 @@ async function runKeycloakUpdater(key: string) {
         await keycloakConfigMapChanges().then(async () => {
           await runKeycloakUpdater('addTeam')
         })
-        if (env.USERS.length > 0) await manageUsers(env.USERS)
+        await manageUsers(env.USERS)
         break
       } catch (error) {
         console.debug('Error could not update configMap', error)
