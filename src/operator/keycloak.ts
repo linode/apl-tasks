@@ -256,8 +256,8 @@ export default class MyOperator extends Operator {
                   env.IDP_ALIAS = data!.IDP_ALIAS
                   env.IDP_OIDC_URL = data!.IDP_OIDC_URL
                   env.IDP_GROUP_PLATFORM_ADMIN = data!.IDP_GROUP_PLATFORM_ADMIN
-                  env.IDP_GROUP_ALL_TEAMS_ADMIN = data!.IDP_GROUP_TEAM_ADMIN
-                  env.IDP_GROUP_TEAM_ADMIN = 'xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+                  env.IDP_GROUP_ALL_TEAMS_ADMIN = data!.IDP_GROUP_ALL_TEAMS_ADMIN
+                  env.IDP_GROUP_TEAM_ADMIN = data!.IDP_GROUP_TEAM_ADMIN
                   env.IDP_GROUP_MAPPINGS_TEAMS =
                     Object.keys(data!.IDP_GROUP_MAPPINGS_TEAMS).length === 0
                       ? JSON.parse(data!.IDP_GROUP_MAPPINGS_TEAMS)
@@ -364,7 +364,6 @@ async function keycloakTeamDeleted() {
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
-  // await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
   const keycloakAddress = env.KEYCLOAK_HOSTNAME_URL
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
