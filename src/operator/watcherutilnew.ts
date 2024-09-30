@@ -265,9 +265,8 @@ export default abstract class Operator {
             }),
           (err) => {
             if (err) {
-              console.log('ERROR: ', err)
               if (err.code === 'ECONNRESET') {
-                console.log(`watch on resource ${id} failed: Watcher disconnected`)
+                console.log(`watch on resource ${id} timed out: Watcher disconnected`)
               } else {
                 console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
               }
