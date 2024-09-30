@@ -249,49 +249,40 @@ export default abstract class Operator {
 
     const watch = new Watch(this.kubeConfig)
 
-    const startWatch = async (): Promise<void> => {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          watch
-            .watch(
-              uri,
-              {},
-              (phase, obj) =>
-                this.eventQueue.push({
-                  event: {
-                    meta: ResourceMetaImpl.createWithPlural(plural, obj),
-                    object: obj,
-                    type: phase as ResourceEventType,
-                  },
-                  onEvent,
-                }),
-              (err) => {
-                if (err) {
-                  console.log(`inner error: watch on resource ${id} failed: ${this.errorToJson(err)}`)
-                  reject(err)
-                }
+    const startWatch = (): Promise<void> =>
+      watch
+        .watch(
+          uri,
+          {},
+          (phase, obj) =>
+            this.eventQueue.push({
+              event: {
+                meta: ResourceMetaImpl.createWithPlural(plural, obj),
+                object: obj,
+                type: phase as ResourceEventType,
               },
-            )
-            .then(
-              (req) => (this.watchRequests[id] = req),
-              (rej) => console.log('Rejected: ', rej),
-            )
+              onEvent,
+            }),
+          (err) => {
+            if (err) {
+              console.log('ERROR: ', err)
+              if (err.statuscode === 'ECONNRESET') {
+                console.log(`watch on resource ${id} failed: Watcher disconnected`)
+              } else {
+                console.log(`watch on resource ${id} failed: ${this.errorToJson(err)}`)
+              }
+            }
+            console.log(`restarting watch on resource ${id}`)
+            setTimeout(startWatch, 200)
+          },
+        )
+        .catch((reason) => {
+          console.log(`watch on resource ${id} failed: ${this.errorToJson(reason)}`)
         })
-      } catch (error) {
-        console.log(`outer error: watch on resource ${id} failed: ${this.errorToJson(error)}`)
-        throw error
-      }
-    }
-    try {
-      await startWatch()
-    } catch (error) {
-      const rejected = Promise.reject(error)
-      console.log('Error in startWatch: ', error)
-      rejected.catch((v) => {
-        console.log('Value: ', v)
-      })
-      throw error
-    }
+        .then((req) => (this.watchRequests[id] = req))
+
+    await startWatch()
+
     console.log(`watching resource ${id}`)
   }
 
