@@ -120,18 +120,16 @@ export function createAdminUser(username: string, password: string): UserReprese
   return userRepresentation
 }
 export function createTeamUser(
-  username: string,
   email: string,
   firstName: string,
   lastName: string,
   isPlatformAdmin: boolean,
   isTeamAdmin: boolean,
   teams: string[],
-  teamId: string,
 ): UserRepresentation {
   const userRepresentation = defaultsDeep(
     new UserRepresentation(),
-    teamUserCfgTpl(username, email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams, teamId),
+    teamUserCfgTpl(email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams),
   )
   return userRepresentation
 }

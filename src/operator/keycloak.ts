@@ -710,8 +710,8 @@ async function manageGroups(connection: KeycloakConnection) {
 }
 
 async function createUpdateUser(api: any, user: any) {
-  const { username, email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams, teamId } = user
-  const userConf = createTeamUser(username, email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams, teamId)
+  const { email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams } = user
+  const userConf = createTeamUser(email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams)
   const existingUsersByUserEmail = (await doApiCall([], `Getting users`, () =>
     api.users.realmUsersGet(keycloakRealm, false, `${email}`),
   )) as UserRepresentation[]
@@ -723,11 +723,11 @@ async function createUpdateUser(api: any, user: any) {
       const updatedUserConf = existingUser.requiredActions?.includes('UPDATE_PASSWORD')
         ? userConf
         : omit(userConf, ['credentials'])
-      await doApiCall(errors, `Updating user ${username}`, async () =>
+      await doApiCall(errors, `Updating user ${email}`, async () =>
         api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf),
       )
     } else {
-      await doApiCall(errors, `Creating user ${username}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
+      await doApiCall(errors, `Creating user ${email}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
     }
   } catch (error) {
     console.error('Error in internalIDP: ', error)
