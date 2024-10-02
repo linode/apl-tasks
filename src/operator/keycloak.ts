@@ -64,6 +64,7 @@ interface KeycloakApi {
   protocols: ProtocolMappersApi
   realms: RealmsAdminApi
   users: UsersApi
+  groups: GroupsApi
 }
 
 // Create realm roles
@@ -401,6 +402,7 @@ function setupKeycloakApi(connection: KeycloakConnection) {
     protocols: new ProtocolMappersApi(basePath),
     realms: new RealmsAdminApi(basePath),
     users: new UsersApi(basePath),
+    groups: new GroupsApi(basePath),
   }
   // eslint-disable-next-line no-return-assign,no-param-reassign
   forEach(api, (a) => (a.accessToken = String(token.access_token)))
@@ -709,9 +711,52 @@ async function manageGroups(connection: KeycloakConnection) {
   }
 }
 
+async function removeUserGroups(api: any, existingUser: any, teamGroups: string[]) {
+  try {
+    const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)
+
+    await Promise.all(
+      existingUserGroups.map(async (group) => {
+        if (!teamGroups.includes(group.name)) {
+          await api.users.realmUsersIdGroupsGroupIdDelete(keycloakRealm, existingUser.id as string, group.id as string)
+        }
+      }),
+    )
+  } catch (error) {
+    console.error('Error removing user groups:', error)
+  }
+}
+
+async function addUserGroups(api: any, existingUser: any, teamGroups: string[]) {
+  try {
+    const { body: currentKeycloakGroups } = await api.groups.realmGroupsGet(keycloakRealm)
+    const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)
+
+    await Promise.all(
+      teamGroups.map(async (teamGroup) => {
+        const existingGroup = existingUserGroups.find((el) => el.name === teamGroup)
+
+        if (!existingGroup) {
+          const groupId = currentKeycloakGroups.find((el) => el.name === teamGroup)?.id
+          if (groupId) {
+            await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, existingUser.id as string, groupId as string)
+          }
+        }
+      }),
+    )
+  } catch (error) {
+    console.error('Error adding user groups:', error)
+  }
+}
+
 async function createUpdateUser(api: any, user: any) {
   const { email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams } = user
-  const userConf = createTeamUser(email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams)
+  const teamGroups = [
+    ...(isPlatformAdmin ? ['platform-admin'] : []),
+    ...(isTeamAdmin ? ['team-admin'] : []),
+    ...(teams.length > 0 ? teams.map((team) => `team-${team}`) : []),
+  ]
+  const userConf = createTeamUser(email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teamGroups)
   const existingUsersByUserEmail = (await doApiCall([], `Getting users`, () =>
     api.users.realmUsersGet(keycloakRealm, false, `${email}`),
   )) as UserRepresentation[]
@@ -726,6 +771,8 @@ async function createUpdateUser(api: any, user: any) {
       await doApiCall(errors, `Updating user ${email}`, async () =>
         api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf),
       )
+      await removeUserGroups(api, existingUser, teamGroups)
+      await addUserGroups(api, existingUser, teamGroups)
     } else {
       await doApiCall(errors, `Creating user ${email}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
     }
