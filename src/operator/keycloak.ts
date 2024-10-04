@@ -750,13 +750,13 @@ async function addUserGroups(api: any, existingUser: any, teamGroups: string[]) 
 }
 
 async function createUpdateUser(api: any, user: any) {
-  const { email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams } = user
+  const { email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams, initialPassword } = user
   const teamGroups = [
     ...(isPlatformAdmin ? ['platform-admin'] : []),
     ...(isTeamAdmin ? ['team-admin'] : []),
     ...(teams.length > 0 ? teams.map((team) => `team-${team}`) : []),
   ]
-  const userConf = createTeamUser(email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teamGroups)
+  const userConf = createTeamUser(email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teamGroups, initialPassword)
   const existingUsersByUserEmail = (await doApiCall([], `Getting users`, () =>
     api.users.realmUsersGet(keycloakRealm, false, `${email}`),
   )) as UserRepresentation[]

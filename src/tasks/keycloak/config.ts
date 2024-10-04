@@ -77,6 +77,7 @@ export const teamUserCfgTpl = (
   isPlatformAdmin: boolean,
   isTeamAdmin: boolean,
   teamGroups: string[],
+  initialPassword: string,
 ): Record<string, unknown> => ({
   username: email,
   enabled: true,
@@ -89,7 +90,7 @@ export const teamUserCfgTpl = (
   credentials: [
     {
       type: 'password',
-      value: `${email}`,
+      value: `${initialPassword}`,
       temporary: true,
     },
   ],
