@@ -9,5 +9,4 @@ Read the changelog to see what security related issues have been solved, if any.
 
 ## Reporting a Vulnerability
 
-Please reach out to security@redkubes.com for sensitive issues, such as vulnerabilities or incidents.
-Leave your contact details and we will get back to you as soon as we can.
+Please reach out to security@akamai.com for sensitive issues, such as vulnerabilities or incidents.  If required, you may encrypt your mail using [our PGP key](https://www.akamai.com/us/en/multimedia/documents/infosec/akamai-security-general.pub).
