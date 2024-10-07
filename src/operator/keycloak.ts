@@ -167,12 +167,26 @@ async function runKeycloakUpdater(key: string) {
         await runKeycloakUpdater('removeTeam')
       }
       break
+    case 'manageUsers':
+      try {
+        await manageUsers(env.USERS)
+        break
+      } catch (error) {
+        console.debug('Error could update users', error)
+        console.debug('Retrying in 30 seconds')
+        await new Promise((resolve) => setTimeout(resolve, 30000))
+        console.log('Retrying to update users')
+        await runKeycloakUpdater('manageUsers')
+      }
+      break
     case 'updateConfig':
       try {
         await keycloakConfigMapChanges().then(async () => {
           await runKeycloakUpdater('addTeam')
         })
-        await manageUsers(env.USERS)
+        if (!JSON.parse(env.FEAT_EXTERNAL_IDP)) {
+          await runKeycloakUpdater('manageUsers')
+        }
         break
       } catch (error) {
         console.debug('Error could not update configMap', error)
