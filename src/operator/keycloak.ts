@@ -142,59 +142,37 @@ async function runKeycloakUpdater(key: string) {
     console.info('Missing required keycloak variables for Keycloak setup/reconfiguration')
     return
   }
+
+  async function retryOperation(operation: () => Promise<void>, operationName: string) {
+    try {
+      await operation()
+    } catch (error) {
+      console.debug(`Error could not ${operationName}`, error)
+      console.debug('Retrying in 30 seconds')
+      await new Promise((resolve) => setTimeout(resolve, 30000))
+      console.log(`Retrying to ${operationName}`)
+      await runKeycloakUpdater(operationName)
+    }
+  }
+
   switch (key) {
     case 'addTeam':
-      try {
-        await keycloakTeamAdded()
-        break
-      } catch (error) {
-        console.debug('Error could not add team', error)
-        console.debug('Retrying in 30 seconds')
-        await new Promise((resolve) => setTimeout(resolve, 30000))
-        console.log('Retrying to add team')
-        await runKeycloakUpdater('addTeam')
-      }
+      await retryOperation(keycloakTeamAdded, 'add team')
       break
     case 'removeTeam':
-      try {
-        await keycloakTeamDeleted()
-        break
-      } catch (error) {
-        console.debug('Error could not delete team', error)
-        console.debug('Retrying in 30 seconds')
-        await new Promise((resolve) => setTimeout(resolve, 30000))
-        console.log('Retrying to delete team')
-        await runKeycloakUpdater('removeTeam')
-      }
+      await retryOperation(keycloakTeamDeleted, 'delete team')
       break
     case 'manageUsers':
-      try {
-        await manageUsers(env.USERS)
-        break
-      } catch (error) {
-        console.debug('Error could update users', error)
-        console.debug('Retrying in 30 seconds')
-        await new Promise((resolve) => setTimeout(resolve, 30000))
-        console.log('Retrying to update users')
-        await runKeycloakUpdater('manageUsers')
-      }
+      await retryOperation(() => manageUsers(env.USERS), 'update users')
       break
     case 'updateConfig':
-      try {
-        await keycloakConfigMapChanges().then(async () => {
-          await runKeycloakUpdater('addTeam')
-        })
+      await retryOperation(async () => {
+        await keycloakConfigMapChanges()
+        await runKeycloakUpdater('addTeam')
         if (!JSON.parse(env.FEAT_EXTERNAL_IDP)) {
           await runKeycloakUpdater('manageUsers')
         }
-        break
-      } catch (error) {
-        console.debug('Error could not update configMap', error)
-        console.debug('Retrying in 30 seconds')
-        await new Promise((resolve) => setTimeout(resolve, 30000))
-        console.log('Retrying to update configMap')
-        await runKeycloakUpdater('updateConfig')
-      }
+      }, 'update configMap')
       break
     default:
       break
@@ -725,7 +703,11 @@ async function manageGroups(connection: KeycloakConnection) {
   }
 }
 
-async function removeUserGroups(api: any, existingUser: any, teamGroups: string[]) {
+export async function removeUserGroups(
+  api: { users: UsersApi; groups: GroupsApi },
+  existingUser: UserRepresentation,
+  teamGroups: string[],
+): Promise<void> {
   try {
     const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)
 
@@ -741,7 +723,11 @@ async function removeUserGroups(api: any, existingUser: any, teamGroups: string[
   }
 }
 
-async function addUserGroups(api: any, existingUser: any, teamGroups: string[]) {
+export async function addUserGroups(
+  api: { users: UsersApi; groups: GroupsApi },
+  existingUser: UserRepresentation,
+  teamGroups: string[],
+): Promise<void> {
   try {
     const { body: currentKeycloakGroups } = await api.groups.realmGroupsGet(keycloakRealm)
     const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)
