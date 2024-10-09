@@ -750,13 +750,8 @@ export async function addUserGroups(
 }
 
 async function createUpdateUser(api: any, user: any) {
-  const { email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teams, initialPassword } = user
-  const teamGroups = [
-    ...(isPlatformAdmin ? ['platform-admin'] : []),
-    ...(isTeamAdmin ? ['team-admin'] : []),
-    ...(teams.length > 0 ? teams.map((team) => `team-${team}`) : []),
-  ]
-  const userConf = createTeamUser(email, firstName, lastName, isPlatformAdmin, isTeamAdmin, teamGroups, initialPassword)
+  const { email, firstName, lastName, groups, initialPassword } = user
+  const userConf = createTeamUser(email, firstName, lastName, groups, initialPassword)
   const existingUsersByUserEmail = (await doApiCall([], `Getting users`, () =>
     api.users.realmUsersGet(keycloakRealm, false, `${email}`),
   )) as UserRepresentation[]
@@ -771,8 +766,8 @@ async function createUpdateUser(api: any, user: any) {
       await doApiCall(errors, `Updating user ${email}`, async () =>
         api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf),
       )
-      await removeUserGroups(api, existingUser, teamGroups)
-      await addUserGroups(api, existingUser, teamGroups)
+      await removeUserGroups(api, existingUser, groups)
+      await addUserGroups(api, existingUser, groups)
     } else {
       await doApiCall(errors, `Creating user ${email}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
     }
