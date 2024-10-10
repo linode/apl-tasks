@@ -33,7 +33,8 @@ export const IDP_GROUP_MAPPINGS_TEAMS = json({
   default: undefined,
 })
 export const IDP_GROUP_TEAM_ADMIN = str({ desc: 'APL team-admin group name' })
-export const IDP_GROUP_OTOMI_ADMIN = str({ desc: 'APL admin group name', default: undefined })
+export const IDP_GROUP_ALL_TEAMS_ADMIN = str({ desc: 'APL all-teams-admin group name' })
+export const IDP_GROUP_PLATFORM_ADMIN = str({ desc: 'APL platform admin group name', default: undefined })
 export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url", default: undefined })
 export const IDP_USERNAME_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to username mapper string",
@@ -97,7 +98,8 @@ if (!feat.FEAT_EXTERNAL_IDP) {
   ;[
     IDP_ALIAS,
     IDP_GROUP_TEAM_ADMIN,
-    IDP_GROUP_OTOMI_ADMIN,
+    IDP_GROUP_ALL_TEAMS_ADMIN,
+    IDP_GROUP_PLATFORM_ADMIN,
     IDP_OIDC_URL,
     IDP_USERNAME_CLAIM_MAPPER,
     IDP_SUB_CLAIM_MAPPER,

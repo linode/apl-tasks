@@ -23,7 +23,7 @@ import {
   UserRepresentation,
   UsersApi,
 } from '@linode/keycloak-client-node'
-import { forEach } from 'lodash'
+import { forEach, omit } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
 import { keycloakRealm } from '../tasks/keycloak/config'
 import {
@@ -36,9 +36,10 @@ import {
   createIdProvider,
   createLoginThemeConfig,
   createRealm,
+  createTeamUser,
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
-import { doApiCall, waitTillAvailable } from '../utils'
+import { doApiCall } from '../utils'
 import {
   cleanEnv,
   KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
@@ -63,6 +64,7 @@ interface KeycloakApi {
   protocols: ProtocolMappersApi
   realms: RealmsAdminApi
   users: UsersApi
+  groups: GroupsApi
 }
 
 // Create realm roles
@@ -79,8 +81,9 @@ const env = {
   IDP_OIDC_URL: '',
   IDP_CLIENT_ID: '',
   IDP_CLIENT_SECRET: '',
-  IDP_GROUP_OTOMI_ADMIN: '',
   IDP_GROUP_TEAM_ADMIN: '',
+  IDP_GROUP_ALL_TEAMS_ADMIN: '',
+  IDP_GROUP_PLATFORM_ADMIN: '',
   IDP_GROUP_MAPPINGS_TEAMS: {} || undefined,
   IDP_SUB_CLAIM_MAPPER: '',
   IDP_USERNAME_CLAIM_MAPPER: '',
@@ -96,6 +99,7 @@ const env = {
   REDIRECT_URIS: [] as string[],
   TEAM_IDS: [] as string[],
   WAIT_OPTIONS: {},
+  USERS: [],
 }
 
 const kc = new KubeConfig()
@@ -115,8 +119,8 @@ async function runKeycloakUpdater(key: string) {
       !env.IDP_OIDC_URL ||
       !env.IDP_CLIENT_ID ||
       !env.IDP_CLIENT_SECRET ||
-      !env.IDP_GROUP_OTOMI_ADMIN ||
-      !env.IDP_GROUP_TEAM_ADMIN ||
+      !env.IDP_GROUP_PLATFORM_ADMIN ||
+      !env.IDP_GROUP_ALL_TEAMS_ADMIN ||
       !env.IDP_GROUP_MAPPINGS_TEAMS ||
       !env.IDP_SUB_CLAIM_MAPPER ||
       !env.IDP_USERNAME_CLAIM_MAPPER
@@ -138,44 +142,37 @@ async function runKeycloakUpdater(key: string) {
     console.info('Missing required keycloak variables for Keycloak setup/reconfiguration')
     return
   }
+
+  async function retryOperation(operation: () => Promise<void>, operationName: string) {
+    try {
+      await operation()
+    } catch (error) {
+      console.debug(`Error could not ${operationName}`, error)
+      console.debug('Retrying in 30 seconds')
+      await new Promise((resolve) => setTimeout(resolve, 30000))
+      console.log(`Retrying to ${operationName}`)
+      await runKeycloakUpdater(operationName)
+    }
+  }
+
   switch (key) {
     case 'addTeam':
-      try {
-        await keycloakTeamAdded()
-        break
-      } catch (error) {
-        console.debug('Error could not add team', error)
-        console.debug('Retrying in 30 seconds')
-        await new Promise((resolve) => setTimeout(resolve, 30000))
-        console.log('Retrying to add team')
-        await runKeycloakUpdater('addTeam')
-      }
+      await retryOperation(keycloakTeamAdded, 'add team')
       break
     case 'removeTeam':
-      try {
-        await keycloakTeamDeleted()
-        break
-      } catch (error) {
-        console.debug('Error could not delete team', error)
-        console.debug('Retrying in 30 seconds')
-        await new Promise((resolve) => setTimeout(resolve, 30000))
-        console.log('Retrying to delete team')
-        await runKeycloakUpdater('removeTeam')
-      }
+      await retryOperation(keycloakTeamDeleted, 'delete team')
+      break
+    case 'manageUsers':
+      await retryOperation(() => manageUsers(env.USERS), 'update users')
       break
     case 'updateConfig':
-      try {
-        await keycloakConfigMapChanges().then(async () => {
-          await runKeycloakUpdater('addTeam')
-        })
-        break
-      } catch (error) {
-        console.debug('Error could not update configMap', error)
-        console.debug('Retrying in 30 seconds')
-        await new Promise((resolve) => setTimeout(resolve, 30000))
-        console.log('Retrying to update configMap')
-        await runKeycloakUpdater('updateConfig')
-      }
+      await retryOperation(async () => {
+        await keycloakConfigMapChanges()
+        await runKeycloakUpdater('addTeam')
+        if (!JSON.parse(env.FEAT_EXTERNAL_IDP)) {
+          await runKeycloakUpdater('manageUsers')
+        }
+      }, 'update configMap')
       break
     default:
       break
@@ -206,6 +203,7 @@ export default class MyOperator extends Operator {
                 if (data!.IDP_CLIENT_ID) env.IDP_CLIENT_ID = Buffer.from(data!.IDP_CLIENT_ID, 'base64').toString()
                 if (data!.IDP_CLIENT_SECRET)
                   env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
+                env.USERS = JSON.parse(Buffer.from(data!.USERS, 'base64').toString())
                 await runKeycloakUpdater('updateConfig').then(() => {
                   console.log('Updated Config')
                 })
@@ -250,7 +248,8 @@ export default class MyOperator extends Operator {
                 if (env.FEAT_EXTERNAL_IDP === 'true') {
                   env.IDP_ALIAS = data!.IDP_ALIAS
                   env.IDP_OIDC_URL = data!.IDP_OIDC_URL
-                  env.IDP_GROUP_OTOMI_ADMIN = data!.IDP_GROUP_OTOMI_ADMIN
+                  env.IDP_GROUP_PLATFORM_ADMIN = data!.IDP_GROUP_PLATFORM_ADMIN
+                  env.IDP_GROUP_ALL_TEAMS_ADMIN = data!.IDP_GROUP_ALL_TEAMS_ADMIN
                   env.IDP_GROUP_TEAM_ADMIN = data!.IDP_GROUP_TEAM_ADMIN
                   env.IDP_GROUP_MAPPINGS_TEAMS =
                     Object.keys(data!.IDP_GROUP_MAPPINGS_TEAMS).length === 0
@@ -358,7 +357,6 @@ async function keycloakTeamDeleted() {
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
-  await waitTillAvailable(env.KEYCLOAK_HOSTNAME_URL, undefined, env.WAIT_OPTIONS)
   const keycloakAddress = env.KEYCLOAK_HOSTNAME_URL
   const basePath = `${keycloakAddress}/admin/realms`
   let token: TokenSet
@@ -396,6 +394,7 @@ function setupKeycloakApi(connection: KeycloakConnection) {
     protocols: new ProtocolMappersApi(basePath),
     realms: new RealmsAdminApi(basePath),
     users: new UsersApi(basePath),
+    groups: new GroupsApi(basePath),
   }
   // eslint-disable-next-line no-return-assign,no-param-reassign
   forEach(api, (a) => (a.accessToken = String(token.access_token)))
@@ -446,7 +445,8 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     env.TEAM_IDS,
     env.IDP_GROUP_MAPPINGS_TEAMS,
     env.IDP_GROUP_TEAM_ADMIN,
-    env.IDP_GROUP_OTOMI_ADMIN,
+    env.IDP_GROUP_ALL_TEAMS_ADMIN,
+    env.IDP_GROUP_PLATFORM_ADMIN,
     env.KEYCLOAK_REALM,
   )
   const existingRealmRoles = ((await doApiCall(errors, `Getting all roles from realm ${keycloakRealm}`, async () =>
@@ -516,7 +516,8 @@ async function externalIDP(api: KeycloakApi) {
   const idpMappers = createIdpMappers(
     env.IDP_ALIAS,
     env.IDP_GROUP_MAPPINGS_TEAMS,
-    env.IDP_GROUP_OTOMI_ADMIN,
+    env.IDP_GROUP_PLATFORM_ADMIN,
+    env.IDP_GROUP_ALL_TEAMS_ADMIN,
     env.IDP_GROUP_TEAM_ADMIN,
     env.IDP_USERNAME_CLAIM_MAPPER,
     env.IDP_SUB_CLAIM_MAPPER,
@@ -608,7 +609,7 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
         // set realm roles
         const roles: Array<RoleRepresentation> = []
         const existingRole = updatedExistingRealmRoles.find(
-          (el) => el.name === (groupName === 'otomi-admin' ? 'admin' : groupName),
+          (el) => el.name === (groupName === 'otomi-admin' ? 'platform-admin' : groupName),
         ) as RoleRepresentation
         roles.push(existingRole)
         await doApiCall(errors, `Creating role mapping for group ${groupName}`, async () =>
@@ -630,10 +631,10 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
       if (!existingClientRoleMapping) {
         // let team members see other users
         const accessRoles: Array<RoleRepresentation> = [userViewerRole]
-        // both otomi-admin and team-admin role will get access to manage users
-        // so the otomi-admin can login to the 'otomi' realm just like team-admin and see the same
-        if (groupName === 'team-admin') accessRoles.push(userManagementRole)
-        if (groupName === 'otomi-admin') accessRoles.push(realmManagementRole)
+        // both platform-admin and all-teams-admin role will get access to manage users
+        // so the platform-admin can login to the 'otomi' realm just like all-teams-admin and see the same
+        if (groupName === 'all-teams-admin') accessRoles.push(userManagementRole)
+        if (groupName === 'platform-admin') accessRoles.push(realmManagementRole)
         await doApiCall(
           errors,
           `Creating access roles [${accessRoles.map((r) => r.name).join(',')}] mapping for group ${groupName}`,
@@ -654,12 +655,14 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
   const existingUsersByAdminEmail = (await doApiCall([], `Getting users`, () =>
     api.users.realmUsersGet(keycloakRealm, false, userConf.email),
   )) as UserRepresentation[]
-  const existingUser: UserRepresentation = existingUsersByAdminEmail?.[0]
+  const existingPlatformAdminUser: UserRepresentation = existingUsersByAdminEmail?.[0]
+
   try {
-    if (existingUser) {
+    if (existingPlatformAdminUser) {
       await doApiCall(errors, `Updating user ${env.KEYCLOAK_ADMIN}`, async () =>
-        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
+        api.users.realmUsersIdPut(keycloakRealm, existingPlatformAdminUser.id as string, userConf),
       )
+      await addUserGroups(api, existingPlatformAdminUser, ['platform-admin'])
     } else {
       await doApiCall(errors, `Creating user ${env.KEYCLOAK_ADMIN}`, () =>
         api.users.realmUsersPost(keycloakRealm, userConf),
@@ -699,4 +702,107 @@ async function manageGroups(connection: KeycloakConnection) {
   } catch (error) {
     console.error('Error in manageGroups: ', error)
   }
+}
+
+export async function removeUserGroups(
+  api: { users: UsersApi; groups: GroupsApi },
+  existingUser: UserRepresentation,
+  teamGroups: string[],
+): Promise<void> {
+  try {
+    const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)
+
+    await Promise.all(
+      existingUserGroups.map(async (group) => {
+        if (!teamGroups.includes(group.name)) {
+          await api.users.realmUsersIdGroupsGroupIdDelete(keycloakRealm, existingUser.id as string, group.id as string)
+        }
+      }),
+    )
+  } catch (error) {
+    console.error('Error removing user groups:', error)
+  }
+}
+
+export async function addUserGroups(
+  api: { users: UsersApi; groups: GroupsApi },
+  existingUser: UserRepresentation,
+  teamGroups: string[],
+): Promise<void> {
+  try {
+    const { body: currentKeycloakGroups } = await api.groups.realmGroupsGet(keycloakRealm)
+    const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)
+
+    await Promise.all(
+      teamGroups.map(async (teamGroup) => {
+        const existingGroup = existingUserGroups.find((el) => el.name === teamGroup)
+
+        if (!existingGroup) {
+          const groupId = currentKeycloakGroups.find((el) => el.name === teamGroup)?.id
+          if (groupId) {
+            await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, existingUser.id as string, groupId as string)
+          }
+        }
+      }),
+    )
+  } catch (error) {
+    console.error('Error adding user groups:', error)
+  }
+}
+
+async function createUpdateUser(api: any, user: any) {
+  const { email, firstName, lastName, groups, initialPassword } = user
+  const userConf = createTeamUser(email, firstName, lastName, groups, initialPassword)
+  const existingUsersByUserEmail = (await doApiCall([], `Getting users`, () =>
+    api.users.realmUsersGet(keycloakRealm, false, `${email}`),
+  )) as UserRepresentation[]
+  const existingUser: UserRepresentation = existingUsersByUserEmail?.[0]
+
+  try {
+    if (existingUser) {
+      console.debug(`User with email ${email} already exists, updating user`)
+      const updatedUserConf = existingUser.requiredActions?.includes('UPDATE_PASSWORD')
+        ? userConf
+        : omit(userConf, ['credentials'])
+      await doApiCall(errors, `Updating user ${email}`, async () =>
+        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf),
+      )
+      await removeUserGroups(api, existingUser, groups)
+      await addUserGroups(api, existingUser, groups)
+    } else {
+      await doApiCall(errors, `Creating user ${email}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
+    }
+  } catch (error) {
+    console.error('Error in internalIDP: ', error)
+  }
+}
+
+async function deleteUsers(api: any, users: any[]) {
+  try {
+    const { body: keycloakUsers } = await api.users.realmUsersGet(keycloakRealm)
+    const filteredUsers = keycloakUsers.filter((user) => user.username !== 'otomi-admin')
+    const usersToDelete = filteredUsers.filter((user) => !users.some((u) => u.email === user.email))
+
+    await Promise.all(
+      usersToDelete.map(async (user) => {
+        try {
+          await api.users.realmUsersIdDelete(keycloakRealm, user.id)
+          console.debug(`Deleted user ${user.email}`)
+        } catch (error) {
+          console.error(`Error deleting user ${user.email}:`, error)
+        }
+      }),
+    )
+  } catch (error) {
+    console.error('Error fetching users from Keycloak:', error)
+  }
+}
+
+async function manageUsers(users: any[]) {
+  const connection = await createKeycloakConnection()
+  const api = setupKeycloakApi(connection)
+  // Create/Update users in realm 'otomi'
+  await Promise.all(users.map((user) => createUpdateUser(api, user)))
+  // Delete users not in users list
+  await deleteUsers(api, users)
 }

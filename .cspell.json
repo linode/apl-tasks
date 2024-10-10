@@ -10,6 +10,7 @@
     "camelcase",
     "creds",
     "gitea",
+    "keycloak",
     "kubernetes",
     "oidc",
     "openid",
