@@ -662,6 +662,7 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
       await doApiCall(errors, `Updating user ${env.KEYCLOAK_ADMIN}`, async () =>
         api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
       )
+      await addUserGroups(api, existingUser, ['platform-admin'])
     } else {
       await doApiCall(errors, `Creating user ${env.KEYCLOAK_ADMIN}`, () =>
         api.users.realmUsersPost(keycloakRealm, userConf),
