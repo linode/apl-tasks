@@ -655,14 +655,14 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
   const existingUsersByAdminEmail = (await doApiCall([], `Getting users`, () =>
     api.users.realmUsersGet(keycloakRealm, false, userConf.email),
   )) as UserRepresentation[]
-  const existingUser: UserRepresentation = existingUsersByAdminEmail?.[0]
+  const existingPlatformAdminUser: UserRepresentation = existingUsersByAdminEmail?.[0]
 
   try {
-    if (existingUser) {
+    if (existingPlatformAdminUser) {
       await doApiCall(errors, `Updating user ${env.KEYCLOAK_ADMIN}`, async () =>
-        api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, userConf),
+        api.users.realmUsersIdPut(keycloakRealm, existingPlatformAdminUser.id as string, userConf),
       )
-      await addUserGroups(api, existingUser, ['platform-admin'])
+      await addUserGroups(api, existingPlatformAdminUser, ['platform-admin'])
     } else {
       await doApiCall(errors, `Creating user ${env.KEYCLOAK_ADMIN}`, () =>
         api.users.realmUsersPost(keycloakRealm, userConf),
