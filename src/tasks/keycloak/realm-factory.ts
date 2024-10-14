@@ -24,6 +24,7 @@ import {
   protocolMappersList,
   realmCfgTpl,
   roleTpl,
+  teamUserCfgTpl,
 } from './config'
 
 export function createClient(redirectUris: string[], webOrigins: string, secret: string): ClientRepresentation {
@@ -35,7 +36,9 @@ export function createClient(redirectUris: string[], webOrigins: string, secret:
 }
 
 export function createGroups(teamIds: string[]): Array<GroupRepresentation> {
-  const groupNames: string[] = teamIds.map((id) => `team-${id}`).concat(['otomi-admin', 'team-admin'])
+  const groupNames: string[] = teamIds
+    .map((id) => `team-${id}`)
+    .concat(['platform-admin', 'all-teams-admin', 'team-admin'])
   const groups = groupNames.map((name) => defaultsDeep(new GroupRepresentation(), { name }))
   return groups
 }
@@ -43,18 +46,31 @@ export function createGroups(teamIds: string[]): Array<GroupRepresentation> {
 export function createIdpMappers(
   idpAlias: string,
   teams: {} | undefined,
-  adminGroupMapping: string,
+  platformAdminGroupMapping: string,
+  allTeamsAdminGroupMapping: string,
   teamAdminGroupMapping: string,
   userClaimMapper: string,
   idpSubClaimMapper: string,
 ): Array<IdentityProviderMapperRepresentation> {
-  // admin idp mapper case
-  const admin = idpMapperTpl('otomi-admin group to role', idpAlias, 'admin', adminGroupMapping)
-  const adminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), admin)
+  // platform admin idp mapper case
+  const platformAdmin = idpMapperTpl(
+    'platform-admin group to role',
+    idpAlias,
+    'platform-admin',
+    platformAdminGroupMapping,
+  )
+  const platformAdminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), platformAdmin)
+  // all teams admin idp mapper case
+  const allTeamsAdmin = idpMapperTpl(
+    'all-teams-admin group to role',
+    idpAlias,
+    'all-teams-admin',
+    allTeamsAdminGroupMapping,
+  )
+  const allTeamsAdminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), allTeamsAdmin)
   // team admin idp mapper case
   const teamAdmin = idpMapperTpl('team-admin group to role', idpAlias, 'team-admin', teamAdminGroupMapping)
   const teamAdminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), teamAdmin)
-
   // default idp mappers case
   const defaultIdps = defaultsIdpMapperTpl(idpAlias, userClaimMapper, idpSubClaimMapper)
 
@@ -67,7 +83,11 @@ export function createIdpMappers(
     const teamMapper = idpMapperTpl(`${team.name} group to role`, idpAlias, team.name, team.groupMapping)
     return defaultsDeep(new IdentityProviderMapperRepresentation(), teamMapper)
   })
-  return teamMappers.concat(defaultMapper).concat(adminMapper).concat(teamAdminMapper)
+  return teamMappers
+    .concat(defaultMapper)
+    .concat(platformAdminMapper)
+    .concat(allTeamsAdminMapper)
+    .concat(teamAdminMapper)
 }
 
 export async function createIdProvider(
@@ -99,6 +119,19 @@ export function createAdminUser(username: string, password: string): UserReprese
   const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(username, password))
   return userRepresentation
 }
+export function createTeamUser(
+  email: string,
+  firstName: string,
+  lastName: string,
+  groups: string[],
+  initialPassword: string,
+): UserRepresentation {
+  const userRepresentation = defaultsDeep(
+    new UserRepresentation(),
+    teamUserCfgTpl(email, firstName, lastName, groups, initialPassword),
+  )
+  return userRepresentation
+}
 
 export function createRealm(realm: string): RealmRepresentation {
   const realmRepresentation = defaultsDeep(new RealmRepresentation(), realmCfgTpl(realm))
@@ -117,7 +150,8 @@ export function mapTeamsToRoles(
   teamIds: string[],
   idpGroupMappings: {} | undefined,
   idpGroupTeamAdmin: string,
-  groupOtomiAdmin: string,
+  idpGroupAllTeamsAdmin: string,
+  idpGroupPlatformAdmin: string,
   realm: string,
 ): Array<RoleRepresentation> {
   // eslint-disable-next-line no-param-reassign
@@ -131,10 +165,12 @@ export function mapTeamsToRoles(
     }, {})
   // create static admin teams
   const teamAdmin = Object.create({ name: 'team-admin', groupMapping: idpGroupTeamAdmin }) as TeamMapping
-  const adminTeams = [teamAdmin]
+  const allTeamsAdmin = Object.create({ name: 'all-teams-admin', groupMapping: idpGroupAllTeamsAdmin }) as TeamMapping
+  const adminTeams = [teamAdmin, allTeamsAdmin]
+
   const otomiAdmin = Object.create({
-    name: 'admin',
-    groupMapping: groupOtomiAdmin,
+    name: 'platform-admin',
+    groupMapping: idpGroupPlatformAdmin,
   }) as TeamMapping
   adminTeams.push(otomiAdmin)
   // iterate through all the teams and map groups

@@ -58,13 +58,38 @@ export const adminUserCfgTpl = (username: string, password: string): Record<stri
   email: 'admin@oto.mi',
   emailVerified: true,
   enabled: true,
-  realmRoles: ['admin'],
-  groups: ['otomi-admin'],
+  realmRoles: ['platformAdmin'],
+  groups: ['platform-admin'],
   credentials: [
     {
       type: 'password',
       value: password,
       temporary: false,
+    },
+  ],
+  requiredActions: [],
+})
+
+export const teamUserCfgTpl = (
+  email: string,
+  firstName: string,
+  lastName: string,
+  groups: string[],
+  initialPassword: string,
+): Record<string, unknown> => ({
+  username: email,
+  enabled: true,
+  email,
+  emailVerified: true,
+  firstName,
+  lastName,
+  realmRoles: ['teamMember'],
+  groups,
+  credentials: [
+    {
+      type: 'password',
+      value: `${initialPassword}`,
+      temporary: true,
     },
   ],
   requiredActions: [],

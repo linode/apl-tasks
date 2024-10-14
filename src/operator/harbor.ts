@@ -257,7 +257,7 @@ async function setupHarbor() {
 
   const config: any = {
     auth_mode: 'oidc_auth',
-    oidc_admin_group: 'admin',
+    oidc_admin_group: 'platform-admin',
     oidc_client_id: 'otomi',
     oidc_client_secret: env.oidcClientSecret,
     oidc_endpoint: env.oidcEndpoint,
@@ -309,7 +309,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
       // unauthenticated, so remove and recreate secret
       await k8sApi.deleteNamespacedSecret(systemSecretName, systemNamespace)
       // now, the next call might throw IF:
-      // - authMode oidc was already turned on and an otomi admin accidentally removed the secret
+      // - authMode oidc was already turned on and an platform admin accidentally removed the secret
       // but that is very unlikely, an unresolvable problem and needs a manual db fix
       robotSecret = await createSystemRobotSecret()
     }
@@ -366,7 +366,7 @@ async function processNamespace(namespace: string) {
     const projAdminMember: ProjectMember = {
       roleId: HarborRole.admin,
       memberGroup: {
-        groupName: 'team-admin',
+        groupName: 'all-teams-admin',
         groupType: HarborGroupType.http,
       },
     }
@@ -377,7 +377,7 @@ async function processNamespace(namespace: string) {
     )
     await doApiCall(
       errors,
-      `Associating "project-admin" role for "team-admin" with harbor project "${projectName}"`,
+      `Associating "project-admin" role for "all-teams-admin" with harbor project "${projectName}"`,
       () => memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
     )
 
