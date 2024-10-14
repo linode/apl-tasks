@@ -52,7 +52,6 @@ Or just skip ssl verification altogether with:
 ```bash
 export NODE_TLS_REJECT_UNAUTHORIZED='0'
 ```
-
 **Setting debug level:**
 
 For all npm packages (that support it) to turn on debug, edit `.env` and uncomment `DEBUG='*'`
