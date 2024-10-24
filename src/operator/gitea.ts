@@ -22,7 +22,7 @@ import {
   GITEA_URL_PORT,
   cleanEnv,
 } from '../validators'
-import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameViewer, username } from './common'
+import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer, username } from './common'
 
 // Interfaces
 interface hookInfo {
@@ -442,10 +442,10 @@ async function setupGitea() {
 
 // Set Gitea Functions
 export function buildTeamString(teamNames: any[]): string {
-  if (teamNames === undefined) return '{}'
-  const teamObject: groupMapping = {}
+  const teamObject: groupMapping = { 'platform-admin': { otomi: [teamNameOwners] } }
+  if (teamNames === undefined) return JSON.stringify(teamObject)
   teamNames.forEach((teamName: string) => {
-    teamObject[`team-${teamName}`] = { otomi: ['otomi-viewer', `team-${teamName}`] }
+    teamObject[`team-${teamName}`] = { otomi: [teamNameViewer, `team-${teamName}`] }
   })
   return JSON.stringify(teamObject)
 }
