@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.3.0](https://github.com/linode/apl-tasks/compare/v3.2.0...v3.3.0) (2024-10-25)
+
+
+### Features
+
+* user management ([#118](https://github.com/linode/apl-tasks/issues/118)) ([d086529](https://github.com/linode/apl-tasks/commit/d086529ac7021253476f6ec520042f822ce44943)), closes [#116](https://github.com/linode/apl-tasks/issues/116)
+
+
+### Bug Fixes
+
+* platform admin as org owner ([#121](https://github.com/linode/apl-tasks/issues/121)) ([c903328](https://github.com/linode/apl-tasks/commit/c903328b821a395180431da8aa25e16b32e5f12e))
+* use platform-admin group to map admin role in gitea ([#119](https://github.com/linode/apl-tasks/issues/119)) ([6251b2b](https://github.com/linode/apl-tasks/commit/6251b2b00d65c4e49f7cda0ce56011a26a26a895))
+
 ## [3.2.0](https://github.com/linode/apl-tasks/compare/v3.1.0...v3.2.0) (2024-09-18)
 
 
