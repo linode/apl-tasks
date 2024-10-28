@@ -111,7 +111,6 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 } else {
   kc.loadFromDefault()
 }
-const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 function extractError(operationName: string, error: any): any {
   let errorDetail: any
@@ -125,7 +124,9 @@ function extractError(operationName: string, error: any): any {
 }
 
 async function retryOperation(operation: () => Promise<void>, operationName: string) {
+  // eslint-disable-next-line no-constant-condition
   while (true)
+    /* eslint-disable no-await-in-loop */
     try {
       await operation()
       return
