@@ -123,6 +123,20 @@ function extractError(operationName: string, error: any): any {
   console.error(`Error in ${operationName}:`, errorDetail)
   return errorDetail
 }
+
+async function retryOperation(operation: () => Promise<void>, operationName: string) {
+  while (true)
+    try {
+      await operation()
+      return
+    } catch (error) {
+      extractError(operationName, error)
+      console.debug('Retrying in 30 seconds')
+      await new Promise((resolve) => setTimeout(resolve, 30000))
+      console.info(`Retrying to ${operationName}`)
+    }
+}
+
 async function runKeycloakUpdater(key: string) {
   if (JSON.parse(env.FEAT_EXTERNAL_IDP)) {
     if (
@@ -154,18 +168,6 @@ async function runKeycloakUpdater(key: string) {
     return
   }
 
-  async function retryOperation(operation: () => Promise<void>, operationName: string) {
-    try {
-      await operation()
-    } catch (error) {
-      console.debug(`Error could not ${operationName}`, error)
-      console.debug('Retrying in 30 seconds')
-      await new Promise((resolve) => setTimeout(resolve, 30000))
-      console.log(`Retrying to ${operationName}`)
-      await runKeycloakUpdater(operationName)
-    }
-  }
-
   switch (key) {
     case 'addTeam':
       await retryOperation(keycloakTeamAdded, 'add team')
@@ -194,6 +196,9 @@ async function runKeycloakUpdater(key: string) {
 export default class MyOperator extends Operator {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
+    let secretInitialized = false
+    let configMapInitialized = false
+
     // Watch apl-keycloak-operator-secret
     try {
       console.info('Setting up secrets watcher')
@@ -216,9 +221,8 @@ export default class MyOperator extends Operator {
                 if (data!.IDP_CLIENT_SECRET)
                   env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
                 env.USERS = JSON.parse(Buffer.from(data!.USERS, 'base64').toString())
-                await runKeycloakUpdater('updateConfig').then(() => {
-                  console.log('Updated Config')
-                })
+                configMapInitialized = true
+                if (secretInitialized) await runKeycloakUpdater('updateConfig')
                 break
               } catch (error) {
                 throw extractError('handling secret update event', error)
@@ -269,9 +273,8 @@ export default class MyOperator extends Operator {
                   env.IDP_SUB_CLAIM_MAPPER = data!.IDP_SUB_CLAIM_MAPPER
                   env.IDP_USERNAME_CLAIM_MAPPER = data!.IDP_USERNAME_CLAIM_MAPPER
                 }
-                await runKeycloakUpdater('updateConfig').then(() => {
-                  console.log('Updated Config')
-                })
+                secretInitialized = true
+                if (configMapInitialized) await runKeycloakUpdater('updateConfig')
                 break
               } catch (error) {
                 throw extractError('handling configmap update event', error)
