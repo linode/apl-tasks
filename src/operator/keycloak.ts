@@ -120,7 +120,7 @@ function extractError(operationName: string, error: any): any {
     errorDetail = error
   }
   console.error(`Error in ${operationName}:`, errorDetail)
-  return errorDetail
+  return new Error(errorDetail)
 }
 
 async function retryOperation(operation: () => Promise<void>, operationName: string) {
