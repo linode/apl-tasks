@@ -123,7 +123,8 @@ function extractError(operationName: string, error: any): any {
   return new Error(errorDetail)
 }
 
-async function retryOperation(operation: (...params: any[]) => Promise<void>, operationName: string, ...params: any[]) {
+// eslint-disable-next-line no-unused-vars
+async function retryOperation(operation: (...args: any[]) => Promise<void>, operationName: string, ...params: any[]) {
   // eslint-disable-next-line no-constant-condition
   while (true)
     /* eslint-disable no-await-in-loop */
