@@ -13,6 +13,7 @@ import {
   IdentityProviderMapperRepresentation,
   IdentityProviderRepresentation,
   IdentityProvidersApi,
+  HttpError as KeyCloakHttpError,
   ProtocolMapperRepresentation,
   ProtocolMappersApi,
   RealmRepresentation,
@@ -112,6 +113,16 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 }
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
+function extractError(operationName: string, error: any): any {
+  let errorDetail: any
+  if (error instanceof KeyCloakHttpError || error instanceof k8s.HttpError) {
+    errorDetail = `status code: ${error.statusCode} - response: ${error.body}`
+  } else {
+    errorDetail = error
+  }
+  console.error(`Error in ${operationName}:`, errorDetail)
+  return errorDetail
+}
 async function runKeycloakUpdater(key: string) {
   if (JSON.parse(env.FEAT_EXTERNAL_IDP)) {
     if (
@@ -177,6 +188,7 @@ async function runKeycloakUpdater(key: string) {
     default:
       break
   }
+  console.info('Updated Config')
 }
 
 export default class MyOperator extends Operator {
@@ -184,7 +196,7 @@ export default class MyOperator extends Operator {
   protected async init() {
     // Watch apl-keycloak-operator-secret
     try {
-      console.log('Watching secrets!')
+      console.info('Setting up secrets watcher')
       await this.watchResource(
         '',
         'v1',
@@ -209,8 +221,7 @@ export default class MyOperator extends Operator {
                 })
                 break
               } catch (error) {
-                console.debug(error)
-                break
+                throw extractError('handling secret update event', error)
               }
             }
             default:
@@ -219,13 +230,13 @@ export default class MyOperator extends Operator {
         },
         'apl-keycloak-operator',
       )
-      console.log('Watching secrets done!')
+      console.info('Setting up secrets watcher done')
     } catch (error) {
-      console.debug(error)
+      throw extractError('setting up secrets watcher', error)
     }
     // Watch apl-keycloak-operator-cm
     try {
-      console.log('Watching configmap!')
+      console.info('Setting up configmap watcher')
       await this.watchResource(
         '',
         'v1',
@@ -263,8 +274,7 @@ export default class MyOperator extends Operator {
                 })
                 break
               } catch (error) {
-                console.debug(error)
-                break
+                throw extractError('handling configmap update event', error)
               }
             }
             default:
@@ -273,9 +283,9 @@ export default class MyOperator extends Operator {
         },
         'apl-keycloak-operator',
       )
-      console.log('Watching configmap done!')
+      console.info('Setting up configmap watcher done')
     } catch (error) {
-      console.debug(error)
+      throw extractError('setting up configmap watcher', error)
     }
   }
 }
@@ -289,7 +299,7 @@ async function main(): Promise<void> {
   await operator.start()
 
   const exit = (reason: string, error?: Error) => {
-    console.log('REASON OF EXIT:', reason)
+    console.info('REASON OF EXIT:', reason)
     if (error) {
       console.error('ERROR DETAILS:', error)
     }
@@ -298,11 +308,11 @@ async function main(): Promise<void> {
   }
 
   process.on('beforeExit', (code) => {
-    console.log('BEFORE EXIT CODE:', code)
+    console.info('BEFORE EXIT CODE:', code)
   })
 
   process.on('exit', (code) => {
-    console.log('EXIT CODE:', code)
+    console.info('EXIT CODE:', code)
   })
 
   process.on('uncaughtException', (error) => {
@@ -338,10 +348,10 @@ async function keycloakTeamAdded() {
   const connection = await createKeycloakConnection()
   try {
     await manageGroups(connection).then(() => {
-      console.log('Completed adding team')
+      console.info('Completed adding team')
     })
   } catch (error) {
-    console.log('Error adding team: ', error)
+    throw extractError('adding team', error)
   }
 }
 
@@ -349,10 +359,10 @@ async function keycloakTeamDeleted() {
   const connection = await createKeycloakConnection()
   try {
     await manageGroups(connection).then(() => {
-      console.log('Completed deleting team')
+      console.info('Completed deleting team')
     })
   } catch (error) {
-    console.log('Error deleting team: ', error)
+    throw extractError('deleting team', error)
   }
 }
 
@@ -375,9 +385,7 @@ async function createKeycloakConnection(): Promise<KeycloakConnection> {
     })
     return { token, basePath } as KeycloakConnection
   } catch (error) {
-    console.error(error)
-    console.info('Exiting!')
-    throw error
+    throw extractError('creating Keycloak connection', error)
   }
 }
 
@@ -551,9 +559,9 @@ async function externalIDP(api: KeycloakApi) {
         )
       }),
     )
-    console.error('Finished external IDP: ')
+    console.info('Finished external IDP')
   } catch (error) {
-    console.error('Error in external IDP: ', error)
+    throw extractError('setting up external IDP', error)
   }
 }
 
@@ -669,7 +677,7 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
       )
     }
   } catch (error) {
-    console.error('Error in internalIDP: ', error)
+    throw extractError('setting up admin user', error)
   }
 }
 
@@ -697,10 +705,10 @@ async function manageGroups(connection: KeycloakConnection) {
         )
       }),
     )
-    console.log('Finished managing groups')
+    console.info('Finished managing groups')
     await keycloakConfigMapChanges()
   } catch (error) {
-    console.error('Error in manageGroups: ', error)
+    throw extractError('managing groups', error)
   }
 }
 
@@ -720,7 +728,7 @@ export async function removeUserGroups(
       }),
     )
   } catch (error) {
-    console.error('Error removing user groups:', error)
+    throw extractError('removing user groups', error)
   }
 }
 
@@ -746,7 +754,7 @@ export async function addUserGroups(
       }),
     )
   } catch (error) {
-    console.error('Error adding user groups:', error)
+    throw extractError('adding user groups', error)
   }
 }
 
@@ -773,29 +781,25 @@ async function createUpdateUser(api: any, user: any) {
       await doApiCall(errors, `Creating user ${email}`, () => api.users.realmUsersPost(keycloakRealm, userConf))
     }
   } catch (error) {
-    console.error('Error in internalIDP: ', error)
+    throw extractError('creating or updating user', error)
   }
 }
 
 async function deleteUsers(api: any, users: any[]) {
-  try {
-    const { body: keycloakUsers } = await api.users.realmUsersGet(keycloakRealm)
-    const filteredUsers = keycloakUsers.filter((user) => user.username !== 'otomi-admin')
-    const usersToDelete = filteredUsers.filter((user) => !users.some((u) => u.email === user.email))
+  const { body: keycloakUsers } = await api.users.realmUsersGet(keycloakRealm)
+  const filteredUsers = keycloakUsers.filter((user) => user.username !== 'otomi-admin')
+  const usersToDelete = filteredUsers.filter((user) => !users.some((u) => u.email === user.email))
 
-    await Promise.all(
-      usersToDelete.map(async (user) => {
-        try {
-          await api.users.realmUsersIdDelete(keycloakRealm, user.id)
-          console.debug(`Deleted user ${user.email}`)
-        } catch (error) {
-          console.error(`Error deleting user ${user.email}:`, error)
-        }
-      }),
-    )
-  } catch (error) {
-    console.error('Error fetching users from Keycloak:', error)
-  }
+  await Promise.all(
+    usersToDelete.map(async (user) => {
+      try {
+        await api.users.realmUsersIdDelete(keycloakRealm, user.id)
+        console.debug(`Deleted user ${user.email}`)
+      } catch (error) {
+        throw extractError(`deleting user ${user.email}`, error)
+      }
+    }),
+  )
 }
 
 async function manageUsers(users: any[]) {
