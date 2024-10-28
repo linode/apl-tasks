@@ -123,12 +123,12 @@ function extractError(operationName: string, error: any): any {
   return new Error(errorDetail)
 }
 
-async function retryOperation(operation: () => Promise<void>, operationName: string) {
+async function retryOperation(operation: (...params: any[]) => Promise<void>, operationName: string, ...params: any[]) {
   // eslint-disable-next-line no-constant-condition
   while (true)
     /* eslint-disable no-await-in-loop */
     try {
-      await operation()
+      await operation(...params)
       return
     } catch (error) {
       extractError(operationName, error)
@@ -177,16 +177,16 @@ async function runKeycloakUpdater(key: string) {
       await retryOperation(keycloakTeamDeleted, 'delete team')
       break
     case 'manageUsers':
-      await retryOperation(() => manageUsers(env.USERS), 'update users')
+      await retryOperation(manageUsers, 'update users', env.USERS)
       break
     case 'updateConfig':
       await retryOperation(async () => {
         await keycloakConfigMapChanges()
-        await runKeycloakUpdater('addTeam')
+        await keycloakTeamAdded()
         if (!JSON.parse(env.FEAT_EXTERNAL_IDP)) {
-          await runKeycloakUpdater('manageUsers')
+          await manageUsers(env.USERS)
         }
-      }, 'update configMap')
+      }, 'update from config')
       break
     default:
       break
