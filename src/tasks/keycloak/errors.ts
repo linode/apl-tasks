@@ -3,8 +3,7 @@ import { HttpError as KeyCloakHttpError } from '@linode/keycloak-client-node'
 
 export class WrappedError extends Error {}
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export function extractError(operationName: string, error: any): any {
+export function extractError(operationName: string, error: Error): WrappedError {
   if (error instanceof WrappedError) return error
   let errorDetail: any
   if (error instanceof KeyCloakHttpError || error instanceof K8sHttpError) {
