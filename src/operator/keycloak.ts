@@ -50,6 +50,11 @@ import {
 
 const errors: string[] = []
 
+declare class WrappedError extends Error {
+  error: any
+  constructor(error: any);
+}
+
 interface KeycloakConnection {
   basePath: string
   token: TokenSet
@@ -113,6 +118,7 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 }
 
 function extractError(operationName: string, error: any): any {
+  if (error instanceof WrappedError) return error
   let errorDetail: any
   if (error instanceof KeyCloakHttpError || error instanceof k8s.HttpError) {
     errorDetail = `status code: ${error.statusCode} - response: ${error.body}`
@@ -120,7 +126,7 @@ function extractError(operationName: string, error: any): any {
     errorDetail = error
   }
   console.error(`Error in ${operationName}:`, errorDetail)
-  return new Error(errorDetail)
+  return new WrappedError(errorDetail)
 }
 
 // eslint-disable-next-line no-unused-vars
