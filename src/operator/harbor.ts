@@ -478,7 +478,6 @@ async function ensureTeamPushRobotAccountSecret(namespace: string, projectName):
       password: robotPushAccount.secret!,
     })
   }
-
 }
 
 /**
