@@ -13,7 +13,6 @@ import {
   IdentityProviderMapperRepresentation,
   IdentityProviderRepresentation,
   IdentityProvidersApi,
-  HttpError as KeyCloakHttpError,
   ProtocolMapperRepresentation,
   ProtocolMappersApi,
   RealmRepresentation,
@@ -27,6 +26,7 @@ import {
 import { forEach, omit } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
 import { keycloakRealm } from '../tasks/keycloak/config'
+import { extractError } from '../tasks/keycloak/errors'
 import {
   createAdminUser,
   createClient,
@@ -49,11 +49,6 @@ import {
 } from '../validators'
 
 const errors: string[] = []
-
-declare class WrappedError extends Error {
-  error: any
-  constructor(error: any);
-}
 
 interface KeycloakConnection {
   basePath: string
@@ -115,18 +110,6 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
   kc.loadFromCluster()
 } else {
   kc.loadFromDefault()
-}
-
-function extractError(operationName: string, error: any): any {
-  if (error instanceof WrappedError) return error
-  let errorDetail: any
-  if (error instanceof KeyCloakHttpError || error instanceof k8s.HttpError) {
-    errorDetail = `status code: ${error.statusCode} - response: ${error.body}`
-  } else {
-    errorDetail = error
-  }
-  console.error(`Error in ${operationName}:`, errorDetail)
-  return new WrappedError(errorDetail)
 }
 
 // eslint-disable-next-line no-unused-vars
