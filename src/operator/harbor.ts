@@ -400,20 +400,17 @@ async function processNamespace(namespace: string) {
  */
 async function ensureTeamPullRobotAccountSecret(namespace: string, projectName): Promise<void> {
   const k8sSecret = await getSecret(projectPullSecretName, namespace)
-  if (k8sSecret) {
-    console.debug(`Deleting pull secret/${projectPullSecretName} from ${namespace} namespace`)
-    await k8sApi.deleteNamespacedSecret(projectPullSecretName, namespace)
+  if (!k8sSecret) {
+    const robotPullAccount = await createTeamPullRobotAccount(projectName)
+    console.debug(`Creating pull secret/${projectPullSecretName} at ${namespace} namespace`)
+    await createK8sSecret({
+      namespace,
+      name: projectPullSecretName,
+      server: `${env.harborBaseRepoUrl}`,
+      username: robotPullAccount.name!,
+      password: robotPullAccount.secret!,
+    })
   }
-
-  const robotPullAccount = await createTeamPullRobotAccount(projectName)
-  console.debug(`Creating pull secret/${projectPullSecretName} at ${namespace} namespace`)
-  await createK8sSecret({
-    namespace,
-    name: projectPullSecretName,
-    server: `${env.harborBaseRepoUrl}`,
-    username: robotPullAccount.name!,
-    password: robotPullAccount.secret!,
-  })
 }
 
 /**
@@ -470,19 +467,17 @@ async function createTeamPullRobotAccount(projectName: string): Promise<RobotCre
  */
 async function ensureTeamPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
   const k8sSecret = await getSecret(projectPushSecretName, namespace)
-  if (k8sSecret) {
-    console.debug(`Deleting push secret/${projectPushSecretName} from ${namespace} namespace`)
-    await k8sApi.deleteNamespacedSecret(projectPushSecretName, namespace)
+  if (!k8sSecret) {
+    const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
+    console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
+    await createK8sSecret({
+      namespace,
+      name: projectPushSecretName,
+      server: `${env.harborBaseRepoUrl}`,
+      username: robotPushAccount.name!,
+      password: robotPushAccount.secret!,
+    })
   }
-  const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
-  console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
-  await createK8sSecret({
-    namespace,
-    name: projectPushSecretName,
-    server: `${env.harborBaseRepoUrl}`,
-    username: robotPushAccount.name!,
-    password: robotPushAccount.secret!,
-  })
 }
 
 /**
@@ -544,19 +539,17 @@ async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
  */
 async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
   const k8sSecret = await getSecret(projectBuildPushSecretName, namespace)
-  if (k8sSecret) {
-    console.debug(`Deleting build push secret/${projectBuildPushSecretName} from ${namespace} namespace`)
-    await k8sApi.deleteNamespacedSecret(projectBuildPushSecretName, namespace)
+  if (!k8sSecret) {
+    const robotBuildsPushAccount = await ensureTeamBuildsPushRobotAccount(projectName)
+    console.debug(`Creating build push secret/${projectBuildPushSecretName} at ${namespace} namespace`)
+    await createBuildsK8sSecret({
+      namespace,
+      name: projectBuildPushSecretName,
+      server: `${env.harborBaseRepoUrl}`,
+      username: robotBuildsPushAccount.name!,
+      password: robotBuildsPushAccount.secret!,
+    })
   }
-  const robotBuildsPushAccount = await ensureTeamBuildsPushRobotAccount(projectName)
-  console.debug(`Creating build push secret/${projectBuildPushSecretName} at ${namespace} namespace`)
-  await createBuildsK8sSecret({
-    namespace,
-    name: projectBuildPushSecretName,
-    server: `${env.harborBaseRepoUrl}`,
-    username: robotBuildsPushAccount.name!,
-    password: robotBuildsPushAccount.secret!,
-  })
 }
 
 /**
