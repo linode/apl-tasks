@@ -77,6 +77,7 @@ export default class MyOperator extends Operator {
               undefined,
               undefined,
               undefined,
+              undefined,
               { headers },
             )
             console.debug(

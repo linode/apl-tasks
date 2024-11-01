@@ -3,7 +3,7 @@
 import {
   CoreV1Api,
   KubeConfig,
-  NetworkingV1beta1Api,
+  NetworkingV1Api,
   V1ObjectMeta,
   V1Secret,
   V1ServiceAccount,
@@ -13,7 +13,7 @@ import { findIndex, mapValues } from 'lodash'
 
 let kc: KubeConfig
 let coreClient: CoreV1Api
-let networkingClient: NetworkingV1beta1Api
+let networkingClient: NetworkingV1Api
 
 export const k8s = {
   kc: (): KubeConfig => {
@@ -27,9 +27,9 @@ export const k8s = {
     coreClient = k8s.kc().makeApiClient(CoreV1Api)
     return coreClient
   },
-  networking: (): NetworkingV1beta1Api => {
+  networking: (): NetworkingV1Api => {
     if (networkingClient) return networkingClient
-    networkingClient = k8s.kc().makeApiClient(NetworkingV1beta1Api)
+    networkingClient = k8s.kc().makeApiClient(NetworkingV1Api)
     return networkingClient
   },
 }
@@ -128,9 +128,19 @@ export async function createK8sSecret({
   const idx = findIndex(sa.imagePullSecrets, { name })
   if (idx === -1) {
     sa.imagePullSecrets.push({ name })
-    await client.patchNamespacedServiceAccount('default', namespace, sa, undefined, undefined, undefined, undefined, {
-      headers: { 'content-type': 'application/strategic-merge-patch+json' },
-    })
+    await client.patchNamespacedServiceAccount(
+      'default',
+      namespace,
+      sa,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        headers: { 'content-type': 'application/strategic-merge-patch+json' },
+      },
+    )
   }
 }
 
@@ -196,9 +206,19 @@ export async function deleteSecret(namespace: string, name: string): Promise<voi
   const idx = findIndex(sa.imagePullSecrets, { name })
   if (idx > -1) {
     sa.imagePullSecrets!.splice(idx, 1)
-    await client.patchNamespacedServiceAccount('default', namespace, sa, undefined, undefined, undefined, undefined, {
-      headers: { 'content-type': 'application/strategic-merge-patch+json' },
-    })
+    await client.patchNamespacedServiceAccount(
+      'default',
+      namespace,
+      sa,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        headers: { 'content-type': 'application/strategic-merge-patch+json' },
+      },
+    )
   }
   try {
     await client.deleteNamespacedSecret(name, namespace)
