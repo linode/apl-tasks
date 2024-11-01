@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.6",
-    "@kubernetes/client-node": "0.12.3",
-    "@linode/apl-k8s-operator": "github:linode/apl-k8s-operator-node",
+    "@kubernetes/client-node": "0.22.1",
+    "@linode/apl-k8s-operator": "0.1.0",
     "@linode/gitea-client-node": "1.19.1",
     "@linode/harbor-client-node": "^2.2.1",
     "@linode/keycloak-client-node": "^15.0.0",
@@ -26,7 +26,7 @@
     "lowdb": "1.0.0",
     "morgan": "1.10.0",
     "node-fetch": "2.6.7",
-    "openid-client": "5.1.0",
+    "openid-client": "5.7.0",
     "ts-custom-error": "3.2.0"
   },
   "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
@@ -49,7 +49,7 @@
     "@typescript-eslint/parser": "4.32.0",
     "chai": "4.3.4",
     "chai-as-promised": "7.1.1",
-    "commitizen": "4.2.4",
+    "commitizen": "4.3.1",
     "copyfiles": "2.3.0",
     "cz-conventional-changelog": "3.3.0",
     "dotenv": "8.2.0",
