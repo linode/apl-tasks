@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.4.0](https://github.com/linode/apl-tasks/compare/v3.3.0...v3.4.0) (2024-11-01)
+
+
+### Bug Fixes
+
+* don't remove secret ([#124](https://github.com/linode/apl-tasks/issues/124)) ([fcad28a](https://github.com/linode/apl-tasks/commit/fcad28a98245fa3997b8eaa7087ade581f54b18e))
+* keycloak operator retry ([#122](https://github.com/linode/apl-tasks/issues/122)) ([4f5a0f4](https://github.com/linode/apl-tasks/commit/4f5a0f4c26a2d2fa9e87eef330c76b08c8f4a0df))
+
 ## [3.3.0](https://github.com/linode/apl-tasks/compare/v3.2.0...v3.3.0) (2024-10-25)
 
 
