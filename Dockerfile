@@ -1,5 +1,5 @@
 # --------------- Dev stage for developers to override sources
-FROM node:15-alpine as dev
+FROM node:18.20.4-alpine as dev
 ARG NPM_TOKEN
 RUN test -n "$NPM_TOKEN"
 
@@ -34,7 +34,7 @@ FROM dev as clean
 # below command removes the packages specified in devDependencies and set NODE_ENV to production
 RUN npm prune --production
 # --------------- Production stage
-FROM node:15-alpine AS prod
+FROM node:18.20.4-alpine AS prod
 
 COPY --from=dev /usr/local/bin/node /usr/bin/
 COPY --from=dev /usr/lib/libgcc* /usr/lib/
