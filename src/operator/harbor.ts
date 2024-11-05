@@ -324,7 +324,10 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
  */
 async function createSystemRobotSecret(): Promise<RobotSecret> {
   const { body: robotList } = await robotApi.listRobot()
+  console.log('robotList', robotList)
+  console.log('robot name: ', `${robotPrefix}${systemRobot.name}`)
   const existing = robotList.find((i) => i.name === `${robotPrefix}${systemRobot.name}`)
+  console.log('existing', existing)
   if (existing?.id) {
     const existingId = existing.id
     await doApiCall(errors, `Deleting previous robot account ${systemRobot.name}`, () =>
