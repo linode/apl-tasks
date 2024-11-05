@@ -326,7 +326,12 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
   const { body: robotList } = await robotApi.listRobot()
   console.log('robotList', robotList)
   console.log('robot name: ', `${robotPrefix}${systemRobot.name}`)
-  const existing = robotList.find((i) => i.name === `${robotPrefix}${systemRobot.name}`)
+  const defaultRobotPrefix = 'robot$'
+  // Also check for default robot prefix because it can happen that the robot account was created with the default prefix
+  const existing = robotList.find(
+    (robot) =>
+      robot.name === `${robotPrefix}${systemRobot.name}` || robot.name === `${defaultRobotPrefix}${systemRobot.name}`,
+  )
   console.log('existing', existing)
   if (existing?.id) {
     const existingId = existing.id
