@@ -16,7 +16,7 @@ import {
   // eslint-disable-next-line no-unused-vars
   RobotCreated,
 } from '@linode/harbor-client-node'
-import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret } from '../k8s'
+import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../utils'
 import {
   HARBOR_BASE_URL,
@@ -286,6 +286,14 @@ async function setupHarbor() {
   }
 }
 
+async function ensureRobotSecretHasCorrectName(robotSecret: RobotSecret) {
+  const preferredRobotName = `${robotPrefix}${systemRobot.name}`
+  if (robotSecret.name !== preferredRobotName) {
+    const updatedRobotSecret = { ...robotSecret, name: preferredRobotName }
+    await replaceSecret(systemSecretName, systemNamespace, updatedRobotSecret)
+  }
+}
+
 /**
  * Get token by reading access token from kubernetes secret.
  * If the secret does not exists then create Harbor robot account and populate credentials to kubernetes secret.
@@ -298,6 +306,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
     // not existing yet, create robot account and keep creds in secret
     robotSecret = await createSystemRobotSecret()
   } else {
+    await ensureRobotSecretHasCorrectName(robotSecret)
     // test if secret still works
     try {
       bearerAuth.accessToken = robotSecret.secret
@@ -309,7 +318,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
       // unauthenticated, so remove and recreate secret
       await k8sApi.deleteNamespacedSecret(systemSecretName, systemNamespace)
       // now, the next call might throw IF:
-      // - authMode oidc was already turned on and an platform admin accidentally removed the secret
+      // - authMode oidc was already turned on and a platform admin accidentally removed the secret
       // but that is very unlikely, an unresolvable problem and needs a manual db fix
       robotSecret = await createSystemRobotSecret()
     }
