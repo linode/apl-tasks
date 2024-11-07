@@ -19,7 +19,7 @@
     "aws-sdk": "2.814.0",
     "axios": "0.21.2",
     "bluebird": "3.7.2",
-    "cookie": "0.4.1",
+    "cookie": "0.7.0",
     "envalid": "6.0.2",
     "js-yaml": "3.14.0",
     "lodash": "4.17.21",
