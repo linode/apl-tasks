@@ -15,6 +15,11 @@ updates:
       prefix: ":seedling:"
     labels:
       - "dependencies"
+    ignore:
+      # For all deps
+      - dependency-name: "*"
+        # ignore all major updates
+        update-types: ["version-update:semver-major"]
 
   # Docker
   - package-ecosystem: "docker"
@@ -25,6 +30,11 @@ updates:
       prefix: ":seedling:"
     labels:
       - "dependencies"
+    ignore:
+      # For all deps
+      - dependency-name: "*"
+        # ignore all major updates
+        update-types: ["version-update:semver-major"]
 
 # github-actions
   - package-ecosystem: "github-actions"
@@ -35,3 +45,8 @@ updates:
       prefix: ":seedling:"
     labels:
       - "dependencies"
+    ignore:
+      # For all deps
+      - dependency-name: "*"
+        # ignore all major updates
+        update-types: ["version-update:semver-major"]
