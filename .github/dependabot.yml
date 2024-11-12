@@ -6,7 +6,7 @@
 version: 2
 updates:
   
-  # npm
+  # npm patch
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -15,11 +15,47 @@ updates:
       prefix: ":seedling:"
     labels:
       - "dependencies"
+      - "patch"
     ignore:
       # For all deps
       - dependency-name: "*"
         # ignore all major updates
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-patch"]
+
+  # npm minor
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: ":seedling:"
+    labels:
+      - "dependencies"
+      - "minor"
+    ignore:
+      # For all deps
+      - dependency-name: "*"
+        # ignore all major updates
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+
+  # npm major
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: ":seedling:"
+    labels:
+      - "dependencies"
+      - "major"
+    draft: true
+    ignore:
+      # For all deps
+      - dependency-name: "*"
+        # ignore all major updates
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+
 
   # Docker
   - package-ecosystem: "docker"
@@ -30,13 +66,8 @@ updates:
       prefix: ":seedling:"
     labels:
       - "dependencies"
-    ignore:
-      # For all deps
-      - dependency-name: "*"
-        # ignore all major updates
-        update-types: ["version-update:semver-major"]
 
-# github-actions
+  # github-actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -45,8 +76,3 @@ updates:
       prefix: ":seedling:"
     labels:
       - "dependencies"
-    ignore:
-      # For all deps
-      - dependency-name: "*"
-        # ignore all major updates
-        update-types: ["version-update:semver-major"]
