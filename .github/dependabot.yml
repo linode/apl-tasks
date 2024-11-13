@@ -20,7 +20,7 @@ updates:
       # For all deps
       - dependency-name: "*"
         # ignore all major updates
-        update-types: ["version-update:semver-major", "version-update:semver-patch"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   # npm minor
   - package-ecosystem: "npm"
@@ -36,7 +36,7 @@ updates:
       # For all deps
       - dependency-name: "*"
         # ignore all major updates
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        update-types: ["version-update:semver-major", "version-update:semver-patch"]
 
 
   # npm major
