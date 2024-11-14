@@ -5,74 +5,32 @@
 
 version: 2
 updates:
-  
-  # npm patch
-  - package-ecosystem: "npm"
-    directory: "/"
+  # npm
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     commit-message:
-      prefix: ":seedling:"
+      prefix: ':seedling:'
     labels:
-      - "dependencies"
-      - "patch"
-    ignore:
-      # For all deps
-      - dependency-name: "*"
-        # ignore all major updates
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-
-  # npm minor
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: ":seedling:"
-    labels:
-      - "dependencies"
-      - "minor"
-    ignore:
-      # For all deps
-      - dependency-name: "*"
-        # ignore all major updates
-        update-types: ["version-update:semver-major", "version-update:semver-patch"]
-
-
-  # npm major
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: ":seedling:"
-    labels:
-      - "dependencies"
-      - "major"
-    draft: true
-    ignore:
-      # For all deps
-      - dependency-name: "*"
-        # ignore all major updates
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-
+      - 'dependencies'
 
   # Docker
-  - package-ecosystem: "docker"
-    directory: "/"
+  - package-ecosystem: 'docker'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     commit-message:
-      prefix: ":seedling:"
+      prefix: ':seedling:'
     labels:
-      - "dependencies"
+      - 'dependencies'
 
   # github-actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     commit-message:
-      prefix: ":seedling:"
+      prefix: ':seedling:'
     labels:
-      - "dependencies"
+      - 'dependencies'
