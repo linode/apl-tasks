@@ -21,7 +21,7 @@
     "bluebird": "3.7.2",
     "cookie": "0.4.1",
     "envalid": "6.0.2",
-    "js-yaml": "3.14.0",
+    "js-yaml": "4.1.0",
     "lodash": "4.17.21",
     "lowdb": "1.0.0",
     "morgan": "1.10.0",
