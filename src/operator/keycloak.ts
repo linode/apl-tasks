@@ -458,7 +458,8 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   )
 
   // Create Otomi Client
-  const client = createClient(env.REDIRECT_URIS, env.KEYCLOAK_HOSTNAME_URL, env.KEYCLOAK_CLIENT_SECRET)
+  const uniqueUrls = [...new Set(env.REDIRECT_URIS)]
+  const client = createClient(uniqueUrls, env.KEYCLOAK_HOSTNAME_URL, env.KEYCLOAK_CLIENT_SECRET)
   console.info('Getting otomi client')
   const allClients = ((await api.clients.realmClientsGet(keycloakRealm)).body || []) as ClientRepresentation[]
   if (allClients.some((el) => el.name === client.name)) {
