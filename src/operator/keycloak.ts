@@ -124,7 +124,7 @@ async function retryOperation(operation: (...args: any[]) => Promise<void>, oper
     }
 }
 
-async function runKeycloakUpdater(key: string) {
+async function runKeycloakUpdater() {
   if (JSON.parse(env.FEAT_EXTERNAL_IDP)) {
     if (
       !env.IDP_ALIAS ||
@@ -155,28 +155,13 @@ async function runKeycloakUpdater(key: string) {
     return
   }
 
-  switch (key) {
-    case 'addTeam':
-      await retryOperation(keycloakTeamAdded, 'add team')
-      break
-    case 'removeTeam':
-      await retryOperation(keycloakTeamDeleted, 'delete team')
-      break
-    case 'manageUsers':
-      await retryOperation(manageUsers, 'update users', env.USERS)
-      break
-    case 'updateConfig':
-      await retryOperation(async () => {
-        await keycloakConfigMapChanges()
-        await keycloakTeamAdded()
-        if (!JSON.parse(env.FEAT_EXTERNAL_IDP)) {
-          await manageUsers(env.USERS)
-        }
-      }, 'update from config')
-      break
-    default:
-      break
-  }
+  await retryOperation(async () => {
+    await keycloakConfigMapChanges()
+    await keycloakTeamAdded()
+    if (!JSON.parse(env.FEAT_EXTERNAL_IDP)) {
+      await manageUsers(env.USERS)
+    }
+  }, 'update from config')
   console.info('Updated Config')
 }
 
@@ -209,7 +194,7 @@ export default class MyOperator extends Operator {
                   env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
                 env.USERS = JSON.parse(Buffer.from(data!.USERS, 'base64').toString())
                 configMapInitialized = true
-                if (secretInitialized) await runKeycloakUpdater('updateConfig')
+                if (secretInitialized) await runKeycloakUpdater()
                 break
               } catch (error) {
                 throw extractError('handling secret update event', error)
@@ -261,7 +246,7 @@ export default class MyOperator extends Operator {
                   env.IDP_USERNAME_CLAIM_MAPPER = data!.IDP_USERNAME_CLAIM_MAPPER
                 }
                 secretInitialized = true
-                if (configMapInitialized) await runKeycloakUpdater('updateConfig')
+                if (configMapInitialized) await runKeycloakUpdater()
                 break
               } catch (error) {
                 throw extractError('handling configmap update event', error)
@@ -342,17 +327,6 @@ async function keycloakTeamAdded() {
     })
   } catch (error) {
     throw extractError('adding team', error)
-  }
-}
-
-async function keycloakTeamDeleted() {
-  const connection = await createKeycloakConnection()
-  try {
-    await manageGroups(connection).then(() => {
-      console.info('Completed deleting team')
-    })
-  } catch (error) {
-    throw extractError('deleting team', error)
   }
 }
 
