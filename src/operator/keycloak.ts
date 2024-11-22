@@ -675,7 +675,7 @@ export async function addUserGroups(
         if (!existingGroup) {
           const groupId = existingGroups.find((el) => el.name === teamGroup)?.id
           if (groupId) {
-            await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, existingUser.id as string, groupId as string)
+            await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, existingUser.id as string, groupId)
           }
         }
       }),
@@ -687,14 +687,14 @@ export async function addUserGroups(
 
 async function createUpdateUser(api: any, userConf: UserRepresentation): Promise<boolean> {
   const groups = userConf.groups as string[]
-  const email = userConf.email
+  const { email } = userConf
   console.info(`Getting users for ${email}`)
   const existingUsersByUserEmail = (await api.users.realmUsersGet(keycloakRealm, false, email))
     .body as UserRepresentation[]
   const existingUser: UserRepresentation = existingUsersByUserEmail?.[0]
   const existingGroups: GroupRepresentation[] = (await api.groups.realmGroupsGet(keycloakRealm)).body
   const assignableGroups: GroupRepresentation[] = existingGroups.filter(
-    (group) => group.name && groups.indexOf(group.name) >= 0,
+    (group) => group.name && groups.includes(group.name),
   )
 
   try {
@@ -713,13 +713,18 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
       }
     } else {
       console.info(`Creating user ${email}`)
-      userConf.groups = assignableGroups.filter((group) => group.name).map((group) => group.name) as string[]
+      const assignableGroupNames = assignableGroups.filter((group) => group.name).map((group) => group.name) as string[]
+      for (let i = userConf.groups?.length || 0; i > 0; i--) {
+        if (!assignableGroupNames.includes(userConf.groups![i])) {
+          userConf.groups!.splice(i)
+        }
+      }
       await api.users.realmUsersPost(keycloakRealm, userConf)
     }
   } catch (error) {
     throw extractError('creating or updating user', error)
   }
-  return assignableGroups.length == groups.length
+  return assignableGroups.length === groups.length
 }
 
 async function deleteUsers(api: any, users: any[]) {
