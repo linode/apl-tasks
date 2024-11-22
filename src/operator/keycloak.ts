@@ -729,7 +729,14 @@ async function manageUsers(users: any[]) {
   const connection = await createKeycloakConnection()
   const api = setupKeycloakApi(connection)
   // Create/Update users in realm 'otomi'
-  await Promise.all(users.map((user) => createUpdateUser(api, user)))
+  await Promise.all(
+    users.map((user) =>
+      createUpdateUser(
+        api,
+        createTeamUser(user.email, user.firstName, user.lastName, user.groups, user.initialPassword),
+      ),
+    ),
+  )
   // Delete users not in users list
   await deleteUsers(api, users)
 }
