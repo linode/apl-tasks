@@ -641,16 +641,16 @@ async function manageGroups(connection: KeycloakConnection) {
 
 export async function removeUserGroups(
   api: { users: UsersApi; groups: GroupsApi },
-  existingUser: UserRepresentation,
+  userId: string,
+  existingUserGroups: any[],
   teamGroups: string[],
 ): Promise<void> {
   try {
-    const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)
-
     await Promise.all(
       existingUserGroups.map(async (group) => {
         if (!teamGroups.includes(group.name)) {
-          await api.users.realmUsersIdGroupsGroupIdDelete(keycloakRealm, existingUser.id as string, group.id as string)
+          console.info(`Remving user from ${group.name}`)
+          await api.users.realmUsersIdGroupsGroupIdDelete(keycloakRealm, userId, group.id as string)
         }
       }),
     )
@@ -661,13 +661,12 @@ export async function removeUserGroups(
 
 export async function addUserGroups(
   api: { users: UsersApi; groups: GroupsApi },
-  existingUser: UserRepresentation,
+  userId: string,
   existingGroups: GroupRepresentation[],
+  existingUserGroups: any[],
   teamGroups: string[],
 ): Promise<void> {
   try {
-    const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)
-
     await Promise.all(
       teamGroups.map(async (teamGroup) => {
         const existingGroup = existingUserGroups.find((el) => el.name === teamGroup)
@@ -675,7 +674,8 @@ export async function addUserGroups(
         if (!existingGroup) {
           const groupId = existingGroups.find((el) => el.name === teamGroup)?.id
           if (groupId) {
-            await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, existingUser.id as string, groupId)
+            console.info(`Adding user to ${teamGroup}`)
+            await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, userId, groupId)
           }
         } else {
           console.info(`Group ${teamGroup} does not exist, skipping assignment`)
@@ -698,21 +698,21 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
   const assignableGroups: GroupRepresentation[] = existingGroups.filter(
     (group) => group.name && groups.includes(group.name),
   )
-
   try {
     if (existingUser) {
-      const omitUpdateFields = ['realmRoles', 'initialPassword', 'requiredActions']
+      const omitUpdateFields = ['realmRoles', 'initialPassword', 'requiredActions', 'groups']
       if (!existingUser.requiredActions?.includes('UPDATE_PASSWORD')) omitUpdateFields.push('credentials')
       const updatedUserConf = omit(userConf, omitUpdateFields)
       if (isUpdated(updatedUserConf, existingUser)) {
         console.debug(`User with email ${email} already exists, updating user`)
         console.info(`Updating user ${email}`)
-        await api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, omit(updatedUserConf, ['groups']))
-        await removeUserGroups(api, existingUser, groups)
-        await addUserGroups(api, existingUser, assignableGroups, groups)
+        await api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf)
       } else {
         console.info(`User with email ${email} does not require updating`)
       }
+      const existingUserGroups = (await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)).body
+      await removeUserGroups(api, existingUser.id as string, existingUserGroups, groups)
+      await addUserGroups(api, existingUser.id as string, assignableGroups, existingUserGroups, groups)
     } else {
       console.info(`Creating user ${email}`)
       const assignableGroupNames = assignableGroups.filter((group) => group.name).map((group) => group.name) as string[]
