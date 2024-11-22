@@ -39,6 +39,7 @@ import {
   createTeamUser,
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
+import { isUpdated } from '../utils'
 import {
   cleanEnv,
   KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
@@ -388,8 +389,12 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   console.info(`Getting realm ${keycloakRealm}`)
   const existingRealm = (await api.realms.realmGet(keycloakRealm)).body
   if (existingRealm) {
-    console.info(`Updating realm ${keycloakRealm}`)
-    await api.realms.realmPut(keycloakRealm, realmConf)
+    if (isUpdated(realmConf, existingRealm)) {
+      console.info(`Updating realm ${keycloakRealm}`)
+      await api.realms.realmPut(keycloakRealm, realmConf)
+    } else {
+      console.info(`Realm ${keycloakRealm} does not require updating`)
+    }
   } else {
     console.info(`Creating realm ${keycloakRealm}`)
     await api.realms.rootPost(realmConf)
@@ -436,9 +441,14 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   const client = createClient(uniqueUrls, env.KEYCLOAK_HOSTNAME_URL, env.KEYCLOAK_CLIENT_SECRET)
   console.info('Getting otomi client')
   const allClients = ((await api.clients.realmClientsGet(keycloakRealm)).body || []) as ClientRepresentation[]
-  if (allClients.some((el) => el.name === client.name)) {
-    console.info('Updating otomi client')
-    await api.clients.realmClientsIdPut(keycloakRealm, client.id!, client)
+  const existingClient = allClients.find((el) => el.name === client.name)
+  if (existingClient) {
+    if (isUpdated(client, existingClient)) {
+      console.info('Updating otomi client')
+      await api.clients.realmClientsIdPut(keycloakRealm, existingClient.id!, client)
+    } else {
+      console.info(`Client otomi does not require updating`)
+    }
   } else {
     console.info('Creating otomi client')
     await api.clients.realmClientsPost(keycloakRealm, client)
@@ -689,14 +699,18 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
 
   try {
     if (existingUser) {
-      console.debug(`User with email ${email} already exists, updating user`)
-      const updatedUserConf = existingUser.requiredActions?.includes('UPDATE_PASSWORD')
-        ? userConf
-        : omit(userConf, ['credentials'])
-      console.info(`Updating user ${email}`)
-      await api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf)
-      await removeUserGroups(api, existingUser, groups)
-      await addUserGroups(api, existingUser, assignableGroups, groups)
+      const omitUpdateFields = ['groups', 'realmRoles', 'initialPassword', 'requiredActions']
+      if (!existingUser.requiredActions?.includes('UPDATE_PASSWORD')) omitUpdateFields.push('credentials')
+      const updatedUserConf = omit(userConf, omitUpdateFields)
+      if (isUpdated(updatedUserConf, existingUser)) {
+        console.debug(`User with email ${email} already exists, updating user`)
+        console.info(`Updating user ${email}`)
+        await api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf)
+        await removeUserGroups(api, existingUser, groups)
+        await addUserGroups(api, existingUser, assignableGroups, groups)
+      } else {
+        console.info(`User with email ${email} does not require updating`)
+      }
     } else {
       console.info(`Creating user ${email}`)
       userConf.groups = assignableGroups.filter((group) => group.name).map((group) => group.name) as string[]
