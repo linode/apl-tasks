@@ -714,9 +714,9 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
     } else {
       console.info(`Creating user ${email}`)
       const assignableGroupNames = assignableGroups.filter((group) => group.name).map((group) => group.name) as string[]
-      for (let i = userConf.groups?.length || 0; i > 0; i--) {
+      for (let i = (userConf.groups?.length || 0) - 1; i >= 0; i--) {
         if (!assignableGroupNames.includes(userConf.groups![i])) {
-          userConf.groups!.splice(i)
+          userConf.groups!.splice(i, 1)
         }
       }
       await api.users.realmUsersPost(keycloakRealm, userConf)
