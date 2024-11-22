@@ -677,6 +677,8 @@ export async function addUserGroups(
           if (groupId) {
             await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, existingUser.id as string, groupId)
           }
+        } else {
+          console.info(`Group ${teamGroup} does not exist, skipping assignment`)
         }
       }),
     )
@@ -715,7 +717,9 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
       console.info(`Creating user ${email}`)
       const assignableGroupNames = assignableGroups.filter((group) => group.name).map((group) => group.name) as string[]
       for (let i = (userConf.groups?.length || 0) - 1; i >= 0; i--) {
-        if (!assignableGroupNames.includes(userConf.groups![i])) {
+        const groupName = userConf.groups![i]
+        if (!assignableGroupNames.includes(groupName)) {
+          console.info(`Group ${groupName} does not exist, skipping assignment`)
           userConf.groups!.splice(i, 1)
         }
       }
