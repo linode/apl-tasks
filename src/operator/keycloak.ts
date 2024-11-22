@@ -598,24 +598,7 @@ async function internalIdp(api: KeycloakApi, connection: KeycloakConnection) {
   )
 
   // Create default admin user in realm 'otomi'
-  const userConf = createAdminUser(env.KEYCLOAK_ADMIN, env.KEYCLOAK_ADMIN_PASSWORD)
-  console.info('Getting users')
-  const existingUsersByAdminEmail = (await api.users.realmUsersGet(keycloakRealm, false, userConf.email))
-    .body as UserRepresentation[]
-  const existingPlatformAdminUser: UserRepresentation = existingUsersByAdminEmail?.[0]
-
-  try {
-    if (existingPlatformAdminUser) {
-      console.info(`Updating user ${env.KEYCLOAK_ADMIN}`)
-      await api.users.realmUsersIdPut(keycloakRealm, existingPlatformAdminUser.id as string, userConf)
-      await addUserGroups(api, existingPlatformAdminUser, ['platform-admin'])
-    } else {
-      console.info(`Creating user ${env.KEYCLOAK_ADMIN}`)
-      await api.users.realmUsersPost(keycloakRealm, userConf)
-    }
-  } catch (error) {
-    throw extractError('setting up admin user', error)
-  }
+  await createUpdateUser(api, createAdminUser(env.KEYCLOAK_ADMIN, env.KEYCLOAK_ADMIN_PASSWORD))
 }
 
 async function manageGroups(connection: KeycloakConnection) {
@@ -669,10 +652,10 @@ export async function removeUserGroups(
 export async function addUserGroups(
   api: { users: UsersApi; groups: GroupsApi },
   existingUser: UserRepresentation,
+  existingGroups: GroupRepresentation[],
   teamGroups: string[],
 ): Promise<void> {
   try {
-    const { body: currentKeycloakGroups } = await api.groups.realmGroupsGet(keycloakRealm)
     const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, existingUser.id as string)
 
     await Promise.all(
@@ -680,7 +663,7 @@ export async function addUserGroups(
         const existingGroup = existingUserGroups.find((el) => el.name === teamGroup)
 
         if (!existingGroup) {
-          const groupId = currentKeycloakGroups.find((el) => el.name === teamGroup)?.id
+          const groupId = existingGroups.find((el) => el.name === teamGroup)?.id
           if (groupId) {
             await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, existingUser.id as string, groupId as string)
           }
@@ -692,13 +675,17 @@ export async function addUserGroups(
   }
 }
 
-async function createUpdateUser(api: any, user: any) {
-  const { email, firstName, lastName, groups, initialPassword } = user
-  const userConf = createTeamUser(email, firstName, lastName, groups, initialPassword)
+async function createUpdateUser(api: any, userConf: UserRepresentation): Promise<boolean> {
+  const groups = userConf.groups as string[]
+  const email = userConf.email
   console.info(`Getting users for ${email}`)
   const existingUsersByUserEmail = (await api.users.realmUsersGet(keycloakRealm, false, email))
     .body as UserRepresentation[]
   const existingUser: UserRepresentation = existingUsersByUserEmail?.[0]
+  const existingGroups: GroupRepresentation[] = (await api.groups.realmGroupsGet(keycloakRealm)).body
+  const assignableGroups: GroupRepresentation[] = existingGroups.filter(
+    (group) => group.name && groups.indexOf(group.name) >= 0,
+  )
 
   try {
     if (existingUser) {
@@ -709,14 +696,16 @@ async function createUpdateUser(api: any, user: any) {
       console.info(`Updating user ${email}`)
       await api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf)
       await removeUserGroups(api, existingUser, groups)
-      await addUserGroups(api, existingUser, groups)
+      await addUserGroups(api, existingUser, assignableGroups, groups)
     } else {
       console.info(`Creating user ${email}`)
+      userConf.groups = assignableGroups.filter((group) => group.name).map((group) => group.name) as string[]
       await api.users.realmUsersPost(keycloakRealm, userConf)
     }
   } catch (error) {
     throw extractError('creating or updating user', error)
   }
+  return assignableGroups.length == groups.length
 }
 
 async function deleteUsers(api: any, users: any[]) {
