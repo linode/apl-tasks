@@ -32,9 +32,8 @@ describe('Keycloak User Group Management', () => {
         { name: 'group1', id: 'group1-id' },
         { name: 'group2', id: 'group2-id' },
       ]
-      api.users.realmUsersIdGroupsGet.resolves({ body: existingUserGroups })
 
-      await removeUserGroups(api, existingUser, existingUserGroups, ['group1'])
+      await removeUserGroups(api, existingUser.id, existingUserGroups, ['group1'])
 
       expect(api.users.realmUsersIdGroupsGroupIdDelete.calledWith(keycloakRealm, 'user-id', 'group2-id')).to.be.true
       expect(api.users.realmUsersIdGroupsGroupIdDelete.calledWith(keycloakRealm, 'user-id', 'group1-id')).to.be.false
@@ -49,9 +48,8 @@ describe('Keycloak User Group Management', () => {
       ]
       const existingUserGroups = [{ name: 'group1', id: 'group1-id' }]
       api.groups.realmGroupsGet.resolves({ body: currentKeycloakGroups })
-      api.users.realmUsersIdGroupsGet.resolves({ body: existingUserGroups })
 
-      await addUserGroups(api, existingUser, currentKeycloakGroups, existingUserGroups, ['group1', 'group2'])
+      await addUserGroups(api, existingUser.id, currentKeycloakGroups, existingUserGroups, ['group1', 'group2'])
 
       expect(api.users.realmUsersIdGroupsGroupIdPut.calledWith(keycloakRealm, 'user-id', 'group2-id')).to.be.true
       expect(api.users.realmUsersIdGroupsGroupIdPut.calledWith(keycloakRealm, 'user-id', 'group1-id')).to.be.false
