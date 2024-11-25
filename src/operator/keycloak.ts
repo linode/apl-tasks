@@ -376,17 +376,21 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   // the api does not offer a list method, and trying to get by id throws an error
   // which we wan to discard, so we run the next command with an empty errors array
   console.info(`Getting realm ${keycloakRealm}`)
-  const existingRealm = (await api.realms.realmGet(keycloakRealm)).body
-  if (existingRealm) {
+  try {
+    const existingRealm = (await api.realms.realmGet(keycloakRealm)).body
     if (isUpdated(realmConf, existingRealm)) {
       console.info(`Updating realm ${keycloakRealm}`)
       await api.realms.realmPut(keycloakRealm, realmConf)
     } else {
       console.info(`Realm ${keycloakRealm} does not require updating`)
     }
-  } else {
-    console.info(`Creating realm ${keycloakRealm}`)
-    await api.realms.rootPost(realmConf)
+  } catch (error) {
+    if (error.statusCode === 404) {
+      console.info(`Creating realm ${keycloakRealm}`)
+      await api.realms.rootPost(realmConf)
+    } else {
+      throw error
+    }
   }
 
   // Create Client Scopes
