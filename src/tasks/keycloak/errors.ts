@@ -7,7 +7,7 @@ export function extractError(operationName: string, error: Error): WrappedError 
   if (error instanceof WrappedError) return error
   let errorDetail: any
   if (error instanceof KeyCloakHttpError || error instanceof K8sHttpError) {
-    let responseStr = typeof error.body === 'object' ? JSON.stringify(error.body) : error.body
+    const responseStr = typeof error.body === 'object' ? JSON.stringify(error.body) : error.body
     errorDetail = `status code: ${error.statusCode} - response: ${responseStr}`
   } else {
     errorDetail = error
