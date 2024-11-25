@@ -632,36 +632,45 @@ async function manageGroups(api: KeycloakApi) {
 
 export async function updateUserGroups(
   api: KeycloakApi,
-  userId: string,
+  user: UserRepresentation,
   groupsByName: Record<string, string>,
   teamGroups: string[],
 ): Promise<void> {
+  const userId = user.id!
   const existingUserGroups = (await api.users.realmUsersIdGroupsGet(keycloakRealm, userId)).body
   const userGroupIds: Set<string> = new Set(existingUserGroups.map((userGroup) => groupsByName[userGroup.name]))
   const teamGroupIds: Set<string> = new Set()
-  await Promise.all(
-    teamGroups.map(async (teamGroup) => {
+  const addedGroup = await Promise.all(
+    teamGroups.map(async (teamGroup): Promise<boolean> => {
       const teamGroupId = groupsByName[teamGroup]
+      let isUpdated = false
       if (teamGroupId) {
         if (!userGroupIds.has(teamGroupId)) {
-          console.info(`Adding user to ${teamGroup}`)
+          console.info(`Adding user ${user.username} to ${teamGroup}`)
           await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, userId, teamGroupId)
+          isUpdated = true
         }
         teamGroupIds.add(teamGroupId)
       } else {
         console.info(`Group ${teamGroup} does not exist, skipping assignment`)
       }
+      return isUpdated
     }),
   )
-  await Promise.all(
-    existingUserGroups.map(async (userGroup) => {
+  const removedGroup = await Promise.all(
+    existingUserGroups.map(async (userGroup): Promise<boolean> => {
       const userGroupId = groupsByName[userGroup.name]
       if (!teamGroupIds.has(userGroupId)) {
-        console.info(`Removing user from ${userGroup.name}`)
+        console.info(`Removing user ${user.username} from ${userGroup.name}`)
         await api.users.realmUsersIdGroupsGroupIdDelete(keycloakRealm, userId, userGroupId)
+        return true
       }
+      return false
     }),
   )
+  if (!addedGroup.some(Boolean) && !removedGroup.some(Boolean)) {
+    console.log(`No groups updated for user ${user.username}`)
+  }
 }
 
 async function createUpdateUser(api: any, userConf: UserRepresentation): Promise<void> {
@@ -684,7 +693,7 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
       } else {
         console.info(`User with email ${email} does not require updating`)
       }
-      await updateUserGroups(api, existingUser.id as string, groupsByName, groups)
+      await updateUserGroups(api, existingUser, groupsByName, groups)
     } else {
       console.info(`Creating user ${email}`)
       for (let i = (userConf.groups?.length || 0) - 1; i >= 0; i--) {
