@@ -27,7 +27,7 @@ export function isArrayUpdated(arr: any[], ref: any[]): boolean {
   if (!ref) return arr.length === 0
   if (arr.length !== ref.length) return true
   if (arr.length === 0) return false
-  return arr.sort() === ref.sort()
+  return !arr.every((item) => ref.includes(item))
 }
 
 export function isUpdated(obj: any, ref: any): boolean {
