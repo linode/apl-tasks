@@ -635,7 +635,7 @@ export async function updateUserGroups(
       const teamGroupId = groupsByName[teamGroup]
       if (teamGroupId) {
         if (!userGroupIds.has(teamGroupId)) {
-          console.info(`Adding user ${user.username} to ${teamGroup}`)
+          console.info(`Adding user ${user.email} to ${teamGroup}`)
           await api.users.realmUsersIdGroupsGroupIdPut(keycloakRealm, userId, teamGroupId)
           groupUpdates += 1
         }
@@ -649,14 +649,14 @@ export async function updateUserGroups(
     existingUserGroups.map(async (userGroup): Promise<void> => {
       const userGroupId = groupsByName[userGroup.name]
       if (!teamGroupIds.has(userGroupId)) {
-        console.info(`Removing user ${user.username} from ${userGroup.name}`)
+        console.info(`Removing user ${user.email} from ${userGroup.name}`)
         await api.users.realmUsersIdGroupsGroupIdDelete(keycloakRealm, userId, userGroupId)
         groupUpdates += 1
       }
     }),
   )
   if (!groupUpdates) {
-    console.log(`No groups updated for user ${user.username}`)
+    console.log(`No groups updated for user ${user.email}`)
   }
 }
 
