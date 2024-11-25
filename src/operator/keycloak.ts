@@ -672,7 +672,7 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
     .body as UserRepresentation[]
   const existingUser: UserRepresentation = existingUsersByUserEmail?.[0]
   const existingGroups: GroupRepresentation[] = (await api.groups.realmGroupsGet(keycloakRealm)).body
-  const groupsByName = Object.fromEntries(existingGroups.map((group) => [group.name, group.id]))
+  const groupsByName: Record<string, string> = Object.fromEntries(existingGroups.map((group) => [group.name, group.id]))
   try {
     if (existingUser) {
       const omitUpdateFields = ['realmRoles', 'initialPassword', 'requiredActions', 'groups']
@@ -689,7 +689,7 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
       console.info(`Creating user ${email}`)
       for (let i = (userConf.groups?.length || 0) - 1; i >= 0; i--) {
         const groupName = userConf.groups![i]
-        if (!groupsByName.has(groupName)) {
+        if (!(groupName in groupsByName)) {
           console.info(`Group ${groupName} does not exist, skipping assignment`)
           userConf.groups!.splice(i, 1)
         }
