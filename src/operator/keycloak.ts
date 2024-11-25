@@ -315,9 +315,9 @@ if (typeof require !== 'undefined' && require.main === module) {
   })
 }
 async function keycloakConfigMapChanges(api: KeycloakApi) {
-  keycloakRealmProviderConfigurer(api)
-  if (env.FEAT_EXTERNAL_IDP === 'true') externalIDP(api)
-  else internalIdp(api)
+  await keycloakRealmProviderConfigurer(api)
+  if (env.FEAT_EXTERNAL_IDP === 'true') await externalIDP(api)
+  else await internalIdp(api)
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
