@@ -160,7 +160,7 @@ async function runKeycloakUpdater() {
     const connection = await createKeycloakConnection()
     const api = setupKeycloakApi(connection)
     await keycloakConfigMapChanges(api)
-    await keycloakTeamAdded(api)
+    await manageGroups(api)
     if (!JSON.parse(env.FEAT_EXTERNAL_IDP)) {
       await manageUsers(api, env.USERS)
     }
@@ -318,16 +318,6 @@ async function keycloakConfigMapChanges(api: KeycloakApi) {
   keycloakRealmProviderConfigurer(api)
   if (env.FEAT_EXTERNAL_IDP === 'true') externalIDP(api)
   else internalIdp(api)
-}
-
-async function keycloakTeamAdded(api: KeycloakApi) {
-  try {
-    await manageGroups(api).then(() => {
-      console.info('Completed adding team')
-    })
-  } catch (error) {
-    throw extractError('adding team', error)
-  }
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
@@ -608,10 +598,9 @@ async function internalIdp(api: KeycloakApi) {
 
 async function manageGroups(api: KeycloakApi) {
   const teamGroups = createGroups(env.TEAM_IDS)
-
   console.info('Getting realm groups')
-  const existingGroups = ((await api.groups.realmGroupsGet(keycloakRealm)).body || []) as GroupRepresentation[]
   try {
+    const existingGroups = ((await api.groups.realmGroupsGet(keycloakRealm)).body || []) as GroupRepresentation[]
     await Promise.all(
       teamGroups.map((group) => {
         const groupName = group.name!
