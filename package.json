@@ -135,7 +135,7 @@
     "operator:harbor": "node dist/operator/harbor.js",
     "operator:keycloak-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/keycloak.ts",
     "operator:keycloak": "node dist/operator/keycloak.js",
-    "test": "NODE_ENV=test mocha -r ts-node/register -r ts-custom-error --exit src/**/*.test.*"
+    "test": "NODE_ENV=test mocha -r ts-node/register -r ts-custom-error --exit src/*.test.* src/**/*.test.*"
   },
   "standard-version": {
     "skip": {
