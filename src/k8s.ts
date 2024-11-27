@@ -48,6 +48,20 @@ export async function createSecret(name: string, namespace: string, data: Record
   console.info(`New secret ${name} has been created in the namespace ${namespace}`)
 }
 
+export async function replaceSecret(name: string, namespace: string, data: Record<string, any>): Promise<void> {
+  const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
+  const secret: V1Secret = {
+    ...new V1Secret(),
+    metadata: { ...new V1ObjectMeta(), name },
+    data: mapValues(data, b64enc) as {
+      [key: string]: string
+    },
+  }
+
+  await k8s.core().replaceNamespacedSecret(name, namespace, secret)
+  console.info(`Secret ${name} has been patched in the namespace ${namespace}`)
+}
+
 export type SecretPromise = Promise<{
   response: IncomingMessage
   body: V1Secret
