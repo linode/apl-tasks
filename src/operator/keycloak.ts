@@ -524,7 +524,6 @@ async function externalIDP(api: KeycloakApi) {
 
 async function internalIdp(api: KeycloakApi) {
   // IDP instead of broker
-  // create groups
   console.info('Getting realm groups')
   const updatedExistingGroups = ((await api.groups.realmGroupsGet(keycloakRealm)).body || []) as GroupRepresentation[]
 
