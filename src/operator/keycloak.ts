@@ -667,8 +667,8 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
   const groups = userConf.groups as string[]
   const { email } = userConf
   console.info(`Getting users for ${email}`)
-  const existingUsersByUserEmail = (await api.users.realmUsersGet(keycloakRealm, false, email))
-    .body as UserRepresentation[]
+  const existingUsersByUserEmail: UserRepresentation[] = (await api.users.realmUsersGet(keycloakRealm, false, email))
+    .body
   const existingUser: UserRepresentation = existingUsersByUserEmail?.[0]
   const existingGroups: GroupRepresentation[] = (await api.groups.realmGroupsGet(keycloakRealm)).body
   const groupsByName: Record<string, string> = Object.fromEntries(existingGroups.map((group) => [group.name, group.id]))
