@@ -39,7 +39,7 @@ import {
   createTeamUser,
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
-import { isUpdated } from '../utils'
+import { isObjectSubsetDifferent } from '../utils'
 import {
   cleanEnv,
   KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
@@ -378,7 +378,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   console.info(`Getting realm ${keycloakRealm}`)
   try {
     const existingRealm = (await api.realms.realmGet(keycloakRealm)).body
-    if (isUpdated(realmConf, existingRealm)) {
+    if (isObjectSubsetDifferent(realmConf, existingRealm)) {
       console.info(`Updating realm ${keycloakRealm}`)
       await api.realms.realmPut(keycloakRealm, realmConf)
     } else {
@@ -436,7 +436,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   const allClients = ((await api.clients.realmClientsGet(keycloakRealm)).body || []) as ClientRepresentation[]
   const existingClient = allClients.find((el) => el.name === client.name)
   if (existingClient) {
-    if (isUpdated(client, existingClient)) {
+    if (isObjectSubsetDifferent(client, existingClient)) {
       console.info('Updating otomi client')
       await api.clients.realmClientsIdPut(keycloakRealm, existingClient.id!, client)
     } else {
@@ -678,7 +678,7 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
       const omitUpdateFields = ['realmRoles', 'initialPassword', 'requiredActions', 'groups']
       if (!existingUser.requiredActions?.includes('UPDATE_PASSWORD')) omitUpdateFields.push('credentials')
       const updatedUserConf = omit(userConf, omitUpdateFields)
-      if (isUpdated(updatedUserConf, existingUser)) {
+      if (isObjectSubsetDifferent(updatedUserConf, existingUser)) {
         console.info(`Updating user ${email}`)
         await api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf)
       } else {

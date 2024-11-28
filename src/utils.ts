@@ -23,28 +23,23 @@ export function objectToArray(obj: any, keyName: string, keyValue: string): any[
   return arr
 }
 
-export function isArrayUpdated(arr: any[], ref: any[]): boolean {
+export function isArrayDifferent(arr: any[], ref: any[]): boolean {
   if (!ref) return arr.length === 0
   if (arr.length !== ref.length) return true
   if (arr.length === 0) return false
   return !arr.every((item) => ref.includes(item))
 }
 
-export function isUpdated(obj: any, ref: any): boolean {
-  const updated: string[] = []
-  Object.entries(obj).forEach(([key, value]) => {
+export function isObjectSubsetDifferent(obj: any, ref: any): boolean {
+  return !Object.entries(obj).every(([key, value]) => {
     const refValue = ref[key]
     if (Array.isArray(value)) {
-      if (isArrayUpdated(value, refValue)) updated.push(key)
+      if (isArrayDifferent(value, refValue)) return false
     } else if (typeof value === 'object') {
-      if (isUpdated(value, refValue)) updated.push(key)
-    } else if (refValue !== value) updated.push(key)
-  })
-  if (updated.length > 0) {
-    console.info(`Updated keys ${updated.join(', ')}`)
+      if (isObjectSubsetDifferent(value, refValue)) return false
+    } else if (refValue !== value) return false
     return true
-  }
-  return false
+  })
 }
 
 export type openapiResponse = {
