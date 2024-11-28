@@ -450,8 +450,8 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   console.info('Getting client email claim mapper')
   const allClaims = ((await api.protocols.realmClientsIdProtocolMappersModelsGet(keycloakRealm, client.id!)).body ||
     []) as ProtocolMapperRepresentation[]
-  const mapper = createClientEmailClaimMapper()
-  if (!allClaims.some((el) => el.name === mapper.name)) {
+  if (!allClaims.some((el) => el.name === 'email')) {
+    const mapper = createClientEmailClaimMapper()
     console.info('Creating client email claim mapper')
     await api.protocols.realmClientsIdProtocolMappersModelsPost(keycloakRealm, client.id!, mapper)
   }
