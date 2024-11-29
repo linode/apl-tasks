@@ -629,7 +629,7 @@ export async function updateUserGroups(
   teamGroups: string[],
 ): Promise<void> {
   const userId = user.id!
-  const existingUserGroups = (await api.users.realmUsersIdGroupsGet(keycloakRealm, userId)).body
+  const { body: existingUserGroups } = await api.users.realmUsersIdGroupsGet(keycloakRealm, userId)
   const userGroupIds: Set<string> = new Set(existingUserGroups.map((userGroup) => groupsByName[userGroup.name]))
   const teamGroupIds: Set<string> = new Set()
   let groupUpdates = 0
