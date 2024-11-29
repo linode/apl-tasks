@@ -416,7 +416,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     env.KEYCLOAK_REALM,
   )
   console.info(`Getting all roles from realm ${keycloakRealm}`)
-  const existingRealmRoles = ((await api.roles.realmRolesGet(keycloakRealm)).body || []) as RealmRole[]
+  const existingRealmRoles = (await api.roles.realmRolesGet(keycloakRealm)).body as RealmRole[]
   await Promise.all(
     teamRoles.map((role) => {
       const exists = existingRealmRoles.some((el) => el.name === role.name!)
@@ -433,7 +433,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   const uniqueUrls = [...new Set(env.REDIRECT_URIS)]
   const client = createClient(uniqueUrls, env.KEYCLOAK_HOSTNAME_URL, env.KEYCLOAK_CLIENT_SECRET)
   console.info('Getting otomi client')
-  const allClients = ((await api.clients.realmClientsGet(keycloakRealm)).body || []) as ClientRepresentation[]
+  const allClients = (await api.clients.realmClientsGet(keycloakRealm)).body as ClientRepresentation[]
   const existingClient = allClients.find((el) => el.name === client.name)
   if (existingClient) {
     if (isObjectSubsetDifferent(client, existingClient)) {
@@ -490,9 +490,9 @@ async function externalIDP(api: KeycloakApi) {
   )
 
   console.info('Getting role mappers')
-  const existingMappers = ((
+  const existingMappers = (
     await api.providers.realmIdentityProviderInstancesAliasMappersGet(keycloakRealm, env.IDP_ALIAS)
-  ).body || []) as IdentityProviderMapperRepresentation[]
+  ).body as IdentityProviderMapperRepresentation[]
 
   try {
     await Promise.all(
@@ -525,23 +525,23 @@ async function externalIDP(api: KeycloakApi) {
 async function internalIdp(api: KeycloakApi) {
   // IDP instead of broker
   console.info('Getting realm groups')
-  const updatedExistingGroups = ((await api.groups.realmGroupsGet(keycloakRealm)).body || []) as GroupRepresentation[]
+  const updatedExistingGroups = (await api.groups.realmGroupsGet(keycloakRealm)).body as GroupRepresentation[]
 
   // get updated existing roles
   console.info(`Getting all roles from realm ${keycloakRealm}`)
-  const updatedExistingRealmRoles = ((await api.roles.realmRolesGet(keycloakRealm)).body || []) as RealmRole[]
+  const updatedExistingRealmRoles = (await api.roles.realmRolesGet(keycloakRealm)).body as RealmRole[]
 
   // get clients for access roles
   console.info(`Getting client realm-management from realm ${keycloakRealm}`)
-  const realmManagementClients = ((await api.clients.realmClientsGet(keycloakRealm, 'realm-management')).body ||
-    []) as ClientRepresentation[]
+  const realmManagementClients = (await api.clients.realmClientsGet(keycloakRealm, 'realm-management'))
+    .body as ClientRepresentation[]
   const realmManagementClient = realmManagementClients.find(
     (el) => el.clientId === 'realm-management',
   ) as ClientRepresentation
 
   console.info(`Getting realm-management roles from realm ${keycloakRealm}`)
-  const realmManagementRoles = ((await api.roles.realmClientsIdRolesGet(keycloakRealm, realmManagementClient.id!))
-    .body || []) as RealmRole[]
+  const realmManagementRoles = (await api.roles.realmClientsIdRolesGet(keycloakRealm, realmManagementClient.id!))
+    .body as RealmRole[]
   const realmManagementRole = realmManagementRoles.find((el) => el.name === 'manage-realm') as RoleRepresentation
   const userManagementRole = realmManagementRoles.find((el) => el.name === 'manage-users') as RoleRepresentation
   const userViewerRole = realmManagementRoles.find((el) => el.name === 'view-users') as RoleRepresentation
@@ -552,8 +552,8 @@ async function internalIdp(api: KeycloakApi) {
       const groupName = group.name!
       // get realm roles for group
       console.info(`Getting all roles from realm ${keycloakRealm} for group ${groupName}`)
-      const existingRoleMappings = ((await api.roleMapper.realmGroupsIdRoleMappingsRealmGet(keycloakRealm, group.id!))
-        .body || []) as RoleRepresentation[]
+      const existingRoleMappings = (await api.roleMapper.realmGroupsIdRoleMappingsRealmGet(keycloakRealm, group.id!))
+        .body as RoleRepresentation[]
       const existingRoleMapping = existingRoleMappings.find((el) => el.name === groupName)
       if (!existingRoleMapping) {
         // set realm roles
@@ -567,13 +567,13 @@ async function internalIdp(api: KeycloakApi) {
       }
       // get client roles for group
       console.info(`Getting all client roles from realm ${keycloakRealm} for group ${groupName}`)
-      const existingClientRoleMappings = ((
+      const existingClientRoleMappings = (
         await api.clientRoleMappings.realmGroupsIdRoleMappingsClientsClientGet(
           keycloakRealm,
           group.id!,
           realmManagementClient.id!,
         )
-      ).body || []) as RoleRepresentation[]
+      ).body as RoleRepresentation[]
       const existingClientRoleMapping = existingClientRoleMappings.find((el) => el.name === groupName)
       if (!existingClientRoleMapping) {
         // let team members see other users
@@ -603,7 +603,7 @@ async function manageGroups(api: KeycloakApi) {
   const teamGroups = createGroups(env.TEAM_IDS)
   console.info('Getting realm groups')
   try {
-    const existingGroups = ((await api.groups.realmGroupsGet(keycloakRealm)).body || []) as GroupRepresentation[]
+    const existingGroups = (await api.groups.realmGroupsGet(keycloakRealm)).body as GroupRepresentation[]
     await Promise.all(
       teamGroups.map((group) => {
         const groupName = group.name!
