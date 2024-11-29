@@ -26,7 +26,7 @@ env:
 jobs:
   build-test-push-release:
     if: "((contains(github.event.head_commit.message, 'chore(release)') && github.ref == 'refs/heads/main') || !contains(github.event.head_commit.message, 'chore(release)')) && !contains(github.event.head_commit.message, 'ci skip') && !startsWith(github.ref, 'refs/tags/')"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Set env
         run: |
@@ -46,6 +46,7 @@ jobs:
           image_tag: ${{ env.TAG }}
           build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.GITHUB_TOKEN }}'
       - name: Retag from cache and push
+        if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
           set -u
           docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
@@ -59,7 +60,7 @@ jobs:
           docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
           docker tag $REPO:$TAG $REPO:latest
           docker push $REPO:latest
-          release_tag=v${COMMIT_MSG#* }
+          release_tag=v$(jq -r '.version' < package.json)
           echo tag=$release_tag >> $GITHUB_OUTPUT
           echo "Releasing $REPO:$release_tag"
           docker tag $REPO:$TAG $REPO:$release_tag
