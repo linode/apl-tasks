@@ -11,7 +11,7 @@ updates:
     schedule:
       interval: 'weekly'
     commit-message:
-      prefix: ':seedling:'
+      prefix: 'chore(deps)'
     labels:
       - 'dependencies'
 
@@ -21,9 +21,12 @@ updates:
     schedule:
       interval: 'weekly'
     commit-message:
-      prefix: ':seedling:'
+      prefix: 'chore(deps)'
     labels:
       - 'dependencies'
+    ignore:
+      - dependency-name: 'node'
+        versions: ['>=21']
 
   # github-actions
   - package-ecosystem: 'github-actions'
@@ -31,6 +34,6 @@ updates:
     schedule:
       interval: 'weekly'
     commit-message:
-      prefix: ':seedling:'
+      prefix: 'chore(deps)'
     labels:
       - 'dependencies'

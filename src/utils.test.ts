@@ -2,9 +2,51 @@ import { expect } from 'chai'
 import fetch from 'node-fetch'
 import sinon from 'sinon'
 import './test-init'
-import { objectToArray, waitTillAvailable } from './utils'
+import { isObjectSubsetDifferent, objectToArray, waitTillAvailable } from './utils'
 
 describe('utils', () => {
+  describe('isObjectSubsetDifferent', () => {
+    it('should detect equivalent objects', () => {
+      expect(
+        isObjectSubsetDifferent(
+          { a: 1, b: 'x', c: { c1: false, c2: ['a', 'b'] } },
+          { a: 1, b: 'x', c: { c1: false, c2: ['b', 'a'] } },
+        ),
+      ).to.be.false
+    })
+
+    it('should detect subset equivalent objects', () => {
+      expect(isObjectSubsetDifferent({ b: 'x', c: { c1: false } }, { a: 1, b: 'x', c: { c1: false } })).to.be.false
+    })
+
+    it('should detect changes in objects', () => {
+      expect(
+        isObjectSubsetDifferent(
+          { a: 1, b: 'y', c: { c1: false, c2: ['a', 'b'] } },
+          { a: 1, b: 'x', c: { c1: false, c2: ['b', 'a'] } },
+        ),
+      ).to.be.true
+      expect(
+        isObjectSubsetDifferent(
+          { a: 2, b: 'x', c: { c1: false, c2: ['a', 'b'] } },
+          { a: 1, b: 'x', c: { c1: false, c2: ['b', 'a'] } },
+        ),
+      ).to.be.true
+      expect(
+        isObjectSubsetDifferent(
+          { a: 1, b: 'x', c: { c1: true, c2: ['a', 'b'] } },
+          { a: 1, b: 'x', c: { c1: false, c2: ['b', 'a'] } },
+        ),
+      ).to.be.true
+      expect(
+        isObjectSubsetDifferent(
+          { a: 1, b: 'x', c: { c1: false, c2: ['a', 'b', 'c'] } },
+          { a: 1, b: 'x', c: { c1: false, c2: ['b', 'a'] } },
+        ),
+      ).to.be.true
+    })
+  })
+
   it('objectToArray should convert an object to array', (done) => {
     const obj = {
       bla: {

@@ -46,6 +46,7 @@ jobs:
           image_tag: ${{ env.TAG }}
           build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.GITHUB_TOKEN }}'
       - name: Retag from cache and push
+        if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
           set -u
           docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
