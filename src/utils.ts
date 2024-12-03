@@ -23,6 +23,25 @@ export function objectToArray(obj: any, keyName: string, keyValue: string): any[
   return arr
 }
 
+export function isArrayDifferent(arr: any[], ref: any[]): boolean {
+  if (!ref) return arr.length === 0
+  if (arr.length !== ref.length) return true
+  if (arr.length === 0) return false
+  return !arr.every((item) => ref.includes(item))
+}
+
+export function isObjectSubsetDifferent(obj: any, ref: any): boolean {
+  return !Object.entries(obj).every(([key, value]) => {
+    const refValue = ref[key]
+    if (Array.isArray(value)) {
+      if (isArrayDifferent(value, refValue)) return false
+    } else if (typeof value === 'object') {
+      if (isObjectSubsetDifferent(value, refValue)) return false
+    } else if (refValue !== value) return false
+    return true
+  })
+}
+
 export type openapiResponse = {
   response: http.IncomingMessage
   body?: any
