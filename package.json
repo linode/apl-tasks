@@ -27,8 +27,7 @@
     "morgan": "1.10.0",
     "node-fetch": "2.6.7",
     "openid-client": "5.7.0",
-    "ts-custom-error": "3.3.1",
-    "dotenv": "^8.6.0"
+    "ts-custom-error": "3.3.1"
   },
   "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
   "devDependencies": {
