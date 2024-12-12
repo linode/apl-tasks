@@ -46,6 +46,7 @@ jobs:
           image_tag: ${{ env.TAG }}
           build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.GITHUB_TOKEN }}'
       - name: Retag from cache and push
+        if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
           set -u
           docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
@@ -76,7 +77,7 @@ jobs:
           echo changes=$changelog >> $GITHUB_OUTPUT
       - if: "contains(github.event.head_commit.message, 'chore(release)')"
         name: Create GitHub release
-        uses: ncipollo/release-action@v1.12.0
+        uses: ncipollo/release-action@v1.14.0
         env:
           token: ${{ secrets.GITHUB_TOKEN }}
         with:
