@@ -20,7 +20,7 @@ RUN npm ci
 # --------------- ci stage for CI runner
 FROM dev as ci
 
-COPY . esling.config.mjs ./
+COPY . eslint.config.mjs ./
 
 ARG SKIP_TESTS='false'
 ARG CI=true
