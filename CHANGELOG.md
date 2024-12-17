@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.5.0](https://github.com/linode/apl-tasks/compare/v3.4.0...v3.5.0) (2024-12-17)
+
+
+### Features
+
+* create dependabot.yml ([#128](https://github.com/linode/apl-tasks/issues/128)) ([798e887](https://github.com/linode/apl-tasks/commit/798e8876f9ca3987a7ea4dacb16104523038ca7a))
+* update node 20 and packages ([#153](https://github.com/linode/apl-tasks/issues/153)) ([39581bf](https://github.com/linode/apl-tasks/commit/39581bfbc9a52818444c2b0039f74a8a391a17d9))
+* updated dependencies to remove critical issues ([#126](https://github.com/linode/apl-tasks/issues/126)) ([68e60f1](https://github.com/linode/apl-tasks/commit/68e60f119659ce9772328dabec3a950994fe1ef0))
+* updated release tag generation ([#144](https://github.com/linode/apl-tasks/issues/144)) ([c3c9765](https://github.com/linode/apl-tasks/commit/c3c97652b331d0d8e647a9a7eeac9b0b23154b6f))
+
+
+### Bug Fixes
+
+* assign users to new team ([#143](https://github.com/linode/apl-tasks/issues/143)) ([a7193ec](https://github.com/linode/apl-tasks/commit/a7193ec23742ebadeed5b9f27a0fa1bd7f4f1fb5))
+* check if robot  already exists and re-create secret if robot name is wrong ([#127](https://github.com/linode/apl-tasks/issues/127)) ([3b077bc](https://github.com/linode/apl-tasks/commit/3b077bc881ae3d0198f3cc83f25e6b53ecd6c1a9))
+* dependabot ignore >=21 node ([#151](https://github.com/linode/apl-tasks/issues/151)) ([ff4efb7](https://github.com/linode/apl-tasks/commit/ff4efb7a5460ca6ec295289ad0dcd0fe297c5943))
+* dont push images for dependabot ([#148](https://github.com/linode/apl-tasks/issues/148)) ([323612f](https://github.com/linode/apl-tasks/commit/323612fdb109ec2cfca785635f129a248bed8c4b))
+
 ## [3.4.0](https://github.com/linode/apl-tasks/compare/v3.3.0...v3.4.0) (2024-11-01)
 
 
