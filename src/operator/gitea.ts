@@ -480,7 +480,7 @@ export function buildTeamString(teamNames: any[]): string {
   if (teamNames === undefined) return JSON.stringify(teamObject)
   teamNames.forEach((teamName: string) => {
     const team = `team-${teamName}`
-    teamObject[team] = { teamName: [teamNameViewer, team] }
+    teamObject[team] = { team: [teamNameViewer, team] }
   })
   return JSON.stringify(teamObject)
 }
