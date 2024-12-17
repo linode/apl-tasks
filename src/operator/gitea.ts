@@ -252,7 +252,7 @@ async function upsertTeam(
   const existingTeams: Team[] = await doApiCall(errors, `Getting all teams in org "${orgName}"`, () =>
     orgApi.orgListTeams(organizationName),
   )
-  const existingTeam = existingTeams.find((el) => el.name === teamOption.name)
+  const existingTeam = existingTeams?.find((el) => el.name === teamOption.name)
   if (existingTeam)
     return doApiCall(
       errors,
