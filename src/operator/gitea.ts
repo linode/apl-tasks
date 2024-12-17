@@ -14,7 +14,7 @@ import {
   RepositoryApi,
   Team,
 } from '@linode/gitea-client-node'
-import { keys } from 'lodash'
+import { isEmpty, keys } from 'lodash'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
@@ -363,7 +363,7 @@ async function upsertOrganization(
     repoAdminChangeTeamAccess: true,
   }
   const existingOrg = existingOrganizations.find((el) => el.name === organizationName)
-  if (!existingOrg)
+  if (isEmpty(existingOrg))
     return doApiCall(errors, `Creating org "${organizationName}"`, () => orgApi.orgCreate(orgOption), 422)
 
   return doApiCall(errors, `Updating org "${organizationName}"`, () => orgApi.orgEdit(organizationName, orgOption), 422)
@@ -458,14 +458,14 @@ async function setupGitea() {
 
   if (!hasArgocd) return
 
-  // then create initial gitops repo for teams
-  await Promise.all(
-    teamIds.map(async (teamId) => {
-      const name = `team-${teamId}-argocd`
-      const option = { ...repoOption, autoInit: true, name }
-      return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
-    }),
-  )
+  // // then create initial gitops repo for teams
+  // await Promise.all(
+  //   teamIds.map(async (teamId) => {
+  //     const name = `team-${teamId}-argocd`
+  //     const option = { ...repoOption, autoInit: true, name }
+  //     return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
+  //   }),
+  // )
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
     process.exit(1)
