@@ -363,7 +363,7 @@ async function upsertOrganization(
     repoAdminChangeTeamAccess: true,
   }
   const existingOrg = existingOrganizations.find((el) => el.name === organizationName)
-  if (isEmpty(existingOrg))
+  if (!isEmpty(existingOrg))
     return doApiCall(errors, `Creating org "${organizationName}"`, () => orgApi.orgCreate(orgOption), 422)
 
   return doApiCall(errors, `Updating org "${organizationName}"`, () => orgApi.orgEdit(organizationName, orgOption), 422)
@@ -439,7 +439,7 @@ async function setupGitea() {
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
 
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
-
+  console.log('Organizations: ', existingOrganizations)
   await createOrgsandTeams(orgApi, existingOrganizations, teamIds)
 
   const existingRepos = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
