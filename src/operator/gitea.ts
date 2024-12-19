@@ -250,7 +250,7 @@ async function upsertOrganization(
 ): Promise<void> {
   const orgOption = {
     ...new CreateOrgOption(),
-    username: orgName,
+    username: organizationName,
     fullName: organizationName,
     repoAdminChangeTeamAccess: true,
   }
@@ -267,11 +267,11 @@ async function upsertTeam(
   organizationName: string,
   teamOption: CreateTeamOption,
 ): Promise<void> {
-  const existingTeams: Team[] = await doApiCall(errors, `Getting all teams in org "${orgName}"`, () =>
+  const getErrors: string[] = []
+  const existingTeams: Team[] = await doApiCall(getErrors, `Getting all teams in org "${orgName}"`, () =>
     orgApi.orgListTeams(organizationName),
   )
-  console.log('existingTeams: ', existingTeams)
-  console.log('teamOption: ', teamOption)
+  if (!isEmpty(getErrors)) console.error('Errors when gettings teams.', getErrors)
   const existingTeam = existingTeams?.find((team) => team.name === teamOption.name)
   if (isEmpty(existingTeam))
     return doApiCall(
