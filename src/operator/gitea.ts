@@ -243,6 +243,24 @@ async function runSetupGitea() {
   }
 }
 
+async function upsertOrganization(
+  orgApi: OrganizationApi,
+  existingOrganizations: Organization[],
+  organizationName: string,
+): Promise<void> {
+  const orgOption = {
+    ...new CreateOrgOption(),
+    username: orgName,
+    fullName: organizationName,
+    repoAdminChangeTeamAccess: true,
+  }
+  const existingOrg = existingOrganizations.find((el) => el.name === organizationName)
+  if (isEmpty(existingOrg))
+    return doApiCall(errors, `Creating org "${organizationName}"`, () => orgApi.orgCreate(orgOption), 422)
+
+  return doApiCall(errors, `Updating org "${organizationName}"`, () => orgApi.orgEdit(organizationName, orgOption), 422)
+}
+
 // Setup Gitea Functions
 async function upsertTeam(
   orgApi: OrganizationApi,
@@ -303,6 +321,37 @@ async function upsertRepo(
     )
 }
 
+async function createOrgsandTeams(orgApi: OrganizationApi, existingOrganizations: Organization[], teamIds: string[]) {
+  await Promise.all(
+    teamIds.map((organizationName) => {
+      return upsertOrganization(orgApi, existingOrganizations, organizationName)
+    }),
+  ).then(() => {
+    teamIds.map((organizationName) => {
+      const name = `team-${organizationName}`
+      return upsertTeam(orgApi, organizationName, { ...adminTeam, name })
+    })
+  })
+  // create org wide viewer team for otomi role "team-viewer"
+  await upsertTeam(orgApi, orgName, readOnlyTeam)
+}
+
+// async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[], teamIds: string[], teamConfig: any) {
+//   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
+//   await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
+
+//   // create all the teams first
+//   await Promise.all(
+//     teamIds.map((teamId) => {
+//       // determine self service flags
+//       const name = `team-${teamId}`
+//       if ((teamConfig[teamId]?.selfService?.apps || []).includes('gitea'))
+//         return upsertTeam(existingTeams, orgApi, { ...adminTeam, name })
+//       return upsertTeam(existingTeams, orgApi, { ...editorTeam, name })
+//     }),
+//   )
+// }
+
 async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Promise<hookInfo> {
   const hooks: any[] = await doApiCall(
     errors,
@@ -350,55 +399,6 @@ async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
     )
   }
 }
-
-async function upsertOrganization(
-  orgApi: OrganizationApi,
-  existingOrganizations: Organization[],
-  organizationName: string,
-): Promise<void> {
-  const orgOption = {
-    ...new CreateOrgOption(),
-    username: orgName,
-    fullName: organizationName,
-    repoAdminChangeTeamAccess: true,
-  }
-  const existingOrg = existingOrganizations.find((el) => el.name === organizationName)
-  if (isEmpty(existingOrg))
-    return doApiCall(errors, `Creating org "${organizationName}"`, () => orgApi.orgCreate(orgOption), 422)
-
-  return doApiCall(errors, `Updating org "${organizationName}"`, () => orgApi.orgEdit(organizationName, orgOption), 422)
-}
-
-async function createOrgsandTeams(orgApi: OrganizationApi, existingOrganizations: Organization[], teamIds: string[]) {
-  await Promise.all(
-    teamIds.map((organizationName) => {
-      return upsertOrganization(orgApi, existingOrganizations, organizationName)
-    }),
-  ).then(() => {
-    teamIds.map((organizationName) => {
-      const name = `team-${organizationName}`
-      return upsertTeam(orgApi, organizationName, { ...adminTeam, name })
-    })
-  })
-}
-
-// async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[], teamIds: string[], teamConfig: any) {
-//   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
-//   await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
-
-//   // create all the teams first
-//   await Promise.all(
-//     teamIds.map((teamId) => {
-//       // determine self service flags
-//       const name = `team-${teamId}`
-//       if ((teamConfig[teamId]?.selfService?.apps || []).includes('gitea'))
-//         return upsertTeam(existingTeams, orgApi, { ...adminTeam, name })
-//       return upsertTeam(existingTeams, orgApi, { ...editorTeam, name })
-//     }),
-//   )
-//   // create org wide viewer team for otomi role "team-viewer"
-//   await upsertTeam(existingTeams, orgApi, readOnlyTeam)
-// }
 
 async function createReposAndAddToTeam(
   orgApi: OrganizationApi,
