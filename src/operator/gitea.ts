@@ -338,22 +338,6 @@ async function createOrgsandTeams(orgApi: OrganizationApi, existingOrganizations
   await upsertTeam(orgApi, orgName, readOnlyTeam)
 }
 
-// async function createOrgAndTeams(orgApi: OrganizationApi, existingTeams: Team[], teamIds: string[], teamConfig: any) {
-//   const orgOption = { ...new CreateOrgOption(), username: orgName, repoAdminChangeTeamAccess: true }
-//   await doApiCall(errors, `Creating org "${orgName}"`, () => orgApi.orgCreate(orgOption), 422)
-
-//   // create all the teams first
-//   await Promise.all(
-//     teamIds.map((teamId) => {
-//       // determine self service flags
-//       const name = `team-${teamId}`
-//       if ((teamConfig[teamId]?.selfService?.apps || []).includes('gitea'))
-//         return upsertTeam(existingTeams, orgApi, { ...adminTeam, name })
-//       return upsertTeam(existingTeams, orgApi, { ...editorTeam, name })
-//     }),
-//   )
-// }
-
 async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Promise<hookInfo> {
   const hooks: any[] = await doApiCall(
     errors,
