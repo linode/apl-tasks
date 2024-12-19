@@ -254,7 +254,7 @@ async function upsertOrganization(
     fullName: organizationName,
     repoAdminChangeTeamAccess: true,
   }
-  const existingOrg = existingOrganizations.find((el) => el.name === organizationName)
+  const existingOrg = existingOrganizations.find((organization) => organization.name === organizationName)
   if (isEmpty(existingOrg))
     return doApiCall(errors, `Creating org "${organizationName}"`, () => orgApi.orgCreate(orgOption), 422)
 
@@ -270,7 +270,9 @@ async function upsertTeam(
   const existingTeams: Team[] = await doApiCall(errors, `Getting all teams in org "${orgName}"`, () =>
     orgApi.orgListTeams(organizationName),
   )
-  const existingTeam = existingTeams?.find((el) => el.name === teamOption.name)
+  console.log('existingTeams: ', existingTeams)
+  console.log('teamOption: ', teamOption)
+  const existingTeam = existingTeams?.find((team) => team.name === teamOption.name)
   if (isEmpty(existingTeam))
     return doApiCall(
       errors,
@@ -287,13 +289,13 @@ async function upsertTeam(
 }
 
 async function upsertRepo(
-  existingRepos: Repository[] = [],
+  existingReposInOrg: Repository[] = [],
   orgApi: OrganizationApi,
   repoApi: RepositoryApi,
   repoOption: CreateRepoOption | EditRepoOption,
   teamName?: string,
 ): Promise<void> {
-  const existingRepo = existingRepos.find((el) => el.name === repoOption.name)
+  const existingRepo = existingReposInOrg.find((repository) => repository.name === repoOption.name)
   if (isEmpty(existingRepo)) {
     // org repo create
     await doApiCall(
@@ -412,20 +414,23 @@ async function createReposAndAddToTeam(
   await upsertRepo(existingRepos, orgApi, repoApi, { ...repoOption, name: otomiChartsRepoName })
 
   // add repo: otomi/values to the team: otomi-viewer
-  await doApiCall(
-    errors,
-    `Adding repo ${otomiValuesRepoName} to team ${teamNameViewer}`,
-    () => repoApi.repoAddTeam(orgName, otomiValuesRepoName, teamNameViewer),
-    422,
-  )
-
-  // add repo: otomi/charts to the team: otomi-viewer
-  await doApiCall(
-    errors,
-    `Adding repo ${otomiChartsRepoName} to team ${teamNameViewer}`,
-    () => repoApi.repoAddTeam(orgName, otomiChartsRepoName, teamNameViewer),
-    422,
-  )
+  const existingValuesRepo = existingRepos.find((repo) => repo.name === otomiValuesRepoName)
+  const existingChartsRepo = existingRepos.find((repo) => repo.name === otomiChartsRepoName)
+  if (!existingValuesRepo)
+    await doApiCall(
+      errors,
+      `Adding repo ${otomiValuesRepoName} to team ${teamNameViewer}`,
+      () => repoApi.repoAddTeam(orgName, otomiValuesRepoName, teamNameViewer),
+      422,
+    )
+  if (!existingChartsRepo)
+    // add repo: otomi/charts to the team: otomi-viewer
+    await doApiCall(
+      errors,
+      `Adding repo ${otomiChartsRepoName} to team ${teamNameViewer}`,
+      () => repoApi.repoAddTeam(orgName, otomiChartsRepoName, teamNameViewer),
+      422,
+    )
 }
 
 async function setupGitea() {
@@ -442,7 +447,7 @@ async function setupGitea() {
   console.log('Organizations: ', existingOrganizations)
   await createOrgsandTeams(orgApi, existingOrganizations, teamIds)
 
-  const existingRepos = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
+  const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
   )
   const repoOption: CreateRepoOption = {
