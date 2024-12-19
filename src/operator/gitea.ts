@@ -253,17 +253,17 @@ async function upsertTeam(
     orgApi.orgListTeams(organizationName),
   )
   const existingTeam = existingTeams?.find((el) => el.name === teamOption.name)
-  if (existingTeam)
+  if (isEmpty(existingTeam))
     return doApiCall(
       errors,
-      `Updating team "${teamOption.name}" in org "${orgName}"`,
-      () => orgApi.orgEditTeam(existingTeam.id!, teamOption),
+      `Creating team "${teamOption.name}" in org "${orgName}"`,
+      () => orgApi.orgCreateTeam(orgName, teamOption),
       422,
     )
   return doApiCall(
     errors,
-    `Creating team "${teamOption.name}" in org "${orgName}"`,
-    () => orgApi.orgCreateTeam(orgName, teamOption),
+    `Updating team "${teamOption.name}" in org "${orgName}"`,
+    () => orgApi.orgEditTeam(existingTeam!.id!, teamOption),
     422,
   )
 }
@@ -276,7 +276,7 @@ async function upsertRepo(
   teamName?: string,
 ): Promise<void> {
   const existingRepo = existingRepos.find((el) => el.name === repoOption.name)
-  if (!existingRepo) {
+  if (isEmpty(existingRepo)) {
     // org repo create
     await doApiCall(
       errors,
