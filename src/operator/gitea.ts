@@ -257,12 +257,7 @@ async function upsertOrganization(
   }
   const existingOrg = existingOrganizations.find((organization) => organization.name === organizationName)
   if (isEmpty(existingOrg))
-    return doApiCall(
-      errors,
-      `Creating org "${orgOption.fullName}", with owner "${orgOption.username}"`,
-      () => orgApi.orgCreate(orgOption),
-      422,
-    )
+    return doApiCall(errors, `Creating org "${orgOption.fullName}"`, () => orgApi.orgCreate(orgOption), 422)
 
   return doApiCall(
     errors,
@@ -431,7 +426,8 @@ async function createReposAndAddToTeam(
 async function setupGitea() {
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const teamIds = Object.keys(teamConfig)
+  const teamIds = ['otomi']
+  teamIds.push(...Object.keys(teamConfig))
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   // create the org
@@ -442,6 +438,8 @@ async function setupGitea() {
   console.log('Users: ', existingUsers)
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
   console.log('Organizations: ', existingOrganizations)
+  console.log('teamIds: ', teamIds)
+
   await createOrgsandTeams(orgApi, existingOrganizations, teamIds)
 
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
