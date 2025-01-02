@@ -251,7 +251,7 @@ async function upsertOrganization(
 ): Promise<void> {
   const orgOption = {
     ...new CreateOrgOption(),
-    username,
+    username: organizationName,
     fullName: organizationName,
     repoAdminChangeTeamAccess: true,
   }
