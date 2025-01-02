@@ -3,6 +3,7 @@ import stream from 'stream'
 
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
+  AdminApi,
   CreateHookOption,
   CreateOrgOption,
   CreateRepoOption,
@@ -250,15 +251,25 @@ async function upsertOrganization(
 ): Promise<void> {
   const orgOption = {
     ...new CreateOrgOption(),
-    username: organizationName,
+    username,
     fullName: organizationName,
     repoAdminChangeTeamAccess: true,
   }
   const existingOrg = existingOrganizations.find((organization) => organization.name === organizationName)
   if (isEmpty(existingOrg))
-    return doApiCall(errors, `Creating org "${organizationName}"`, () => orgApi.orgCreate(orgOption), 422)
+    return doApiCall(
+      errors,
+      `Creating org "${orgOption.fullName}", with owner "${orgOption.username}"`,
+      () => orgApi.orgCreate(orgOption),
+      422,
+    )
 
-  return doApiCall(errors, `Updating org "${organizationName}"`, () => orgApi.orgEdit(organizationName, orgOption), 422)
+  return doApiCall(
+    errors,
+    `Updating org "${orgOption.fullName}"`,
+    () => orgApi.orgEdit(organizationName, orgOption),
+    422,
+  )
 }
 
 // Setup Gitea Functions
@@ -422,11 +433,13 @@ async function setupGitea() {
   console.info('Starting Gitea setup/reconfiguration')
   const teamIds = Object.keys(teamConfig)
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
-
+  const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   // create the org
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
 
+  const existingUsers = await doApiCall(errors, 'Getting all users', () => adminApi.adminGetAllUsers())
+  console.log('Users: ', existingUsers)
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
   console.log('Organizations: ', existingOrganizations)
   await createOrgsandTeams(orgApi, existingOrganizations, teamIds)
