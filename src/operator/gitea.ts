@@ -335,10 +335,12 @@ async function createOrgsandTeams(orgApi: OrganizationApi, existingOrganizations
       return upsertOrganization(orgApi, existingOrganizations, organizationName)
     }),
   ).then(() => {
-    teamIds.map((teamId) => {
-      const name = `team-${teamId}`
-      return upsertTeam(orgApi, orgName, { ...adminTeam, name })
-    })
+    teamIds
+      .filter((id) => !id.includes('otomi'))
+      .map((teamId) => {
+        const name = `team-${teamId}`
+        return upsertTeam(orgApi, orgName, { ...adminTeam, name })
+      })
   })
   // create org wide viewer team for otomi role "team-viewer"
   await upsertTeam(orgApi, orgName, readOnlyTeam)
