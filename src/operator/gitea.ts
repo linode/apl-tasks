@@ -274,7 +274,7 @@ async function upsertTeam(
   teamOption: CreateTeamOption,
 ): Promise<void> {
   const getErrors: string[] = []
-  const existingTeams: Team[] = await doApiCall(getErrors, `Getting all teams in org "${orgName}"`, () =>
+  const existingTeams: Team[] = await doApiCall(getErrors, `Getting all teams in org "${organizationName}"`, () =>
     orgApi.orgListTeams(organizationName),
   )
   if (!isEmpty(getErrors)) console.error('Errors when gettings teams.', getErrors)
@@ -282,13 +282,13 @@ async function upsertTeam(
   if (isEmpty(existingTeam))
     return doApiCall(
       errors,
-      `Creating team "${teamOption.name}" in org "${orgName}"`,
-      () => orgApi.orgCreateTeam(orgName, teamOption),
+      `Creating team "${teamOption.name}" in org "${organizationName}"`,
+      () => orgApi.orgCreateTeam(organizationName, teamOption),
       422,
     )
   return doApiCall(
     errors,
-    `Updating team "${teamOption.name}" in org "${orgName}"`,
+    `Updating team "${teamOption.name}" in org "${organizationName}"`,
     () => orgApi.orgEditTeam(existingTeam!.id!, teamOption),
     422,
   )
@@ -335,9 +335,9 @@ async function createOrgsandTeams(orgApi: OrganizationApi, existingOrganizations
       return upsertOrganization(orgApi, existingOrganizations, organizationName)
     }),
   ).then(() => {
-    teamIds.map((organizationName) => {
-      const name = `team-${organizationName}`
-      return upsertTeam(orgApi, organizationName, { ...adminTeam, name })
+    teamIds.map((teamId) => {
+      const name = `team-${teamId}`
+      return upsertTeam(orgApi, orgName, { ...adminTeam, name })
     })
   })
   // create org wide viewer team for otomi role "team-viewer"
@@ -426,8 +426,7 @@ async function createReposAndAddToTeam(
 async function setupGitea() {
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const teamIds = ['otomi']
-  teamIds.push(...Object.keys(teamConfig))
+  const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => !id.includes('admin'))
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   // create the org
@@ -480,7 +479,10 @@ export function buildTeamString(teamNames: any[]): string {
   if (teamNames === undefined) return JSON.stringify(teamObject)
   teamNames.forEach((teamName: string) => {
     const team = `team-${teamName}`
-    teamObject[team] = { [teamName]: [teamNameViewer, team] }
+    teamObject[team] = {
+      otomi: [teamNameViewer, team],
+      [teamName]: ['owners'],
+    }
   })
   return JSON.stringify(teamObject)
 }
