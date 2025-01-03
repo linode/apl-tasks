@@ -429,7 +429,7 @@ async function createReposAndAddToTeam(
 async function setupGitea() {
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => !id.includes('admin'))
+  const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   // create the org
