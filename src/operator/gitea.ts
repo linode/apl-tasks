@@ -334,15 +334,14 @@ async function createOrgsandTeams(orgApi: OrganizationApi, existingOrganizations
     teamIds.map((organizationName) => {
       return upsertOrganization(orgApi, existingOrganizations, organizationName)
     }),
-  )
-  // .then(() => {
-  //   teamIds
-  //     .filter((id) => !id.includes('otomi'))
-  //     .map((teamId) => {
-  //       const name = `team-${teamId}`
-  //       return upsertTeam(orgApi, orgName, { ...adminTeam, name })
-  //     })
-  // })
+  ).then(() => {
+    teamIds
+      .filter((id) => !id.includes('otomi'))
+      .map((teamId) => {
+        const name = `team-${teamId}`
+        return upsertTeam(orgApi, orgName, { ...adminTeam, name })
+      })
+  })
   // create org wide viewer team for otomi role "team-viewer"
   await upsertTeam(orgApi, orgName, readOnlyTeam)
 }
@@ -460,14 +459,16 @@ async function setupGitea() {
 
   if (!hasArgocd) return
 
-  // // then create initial gitops repo for teams
-  // await Promise.all(
-  //   teamIds.map(async (teamId) => {
-  //     const name = `team-${teamId}-argocd`
-  //     const option = { ...repoOption, autoInit: true, name }
-  //     return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
-  //   }),
-  // )
+  // then create initial gitops repo for teams
+  await Promise.all(
+    teamIds
+      .filter((id) => !id.includes('otomi'))
+      .map(async (teamId) => {
+        const name = `team-${teamId}-argocd`
+        const option = { ...repoOption, autoInit: true, name }
+        return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
+      }),
+  )
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
     process.exit(1)
