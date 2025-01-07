@@ -4,7 +4,7 @@
         {
             "label": "port-forward-gitea",
             "type": "shell",
-            "command": "export KUBECONFIG=/Users/melderho/.kube/apl-430-z2 && kubectl -n gitea port-forward svc/gitea-http 8082:3000",
+            "command": "export KUBECONFIG=/path/to/your/kubeconfig.yaml && kubectl -n gitea port-forward svc/gitea-http 8082:3000",
             "problemMatcher": [],
             "isBackground": true,
             "presentation": {
@@ -15,7 +15,7 @@
         {
             "label": "port-forward-harbor",
             "type": "shell",
-            "command": "export KUBECONFIG=/Users/melderho/.kube/apl-430-z2 && kubectl -n harbor port-forward svc/harbor-core 8083:80",
+            "command": "export KUBECONFIG=/path/to/your/kubeconfig.yaml && kubectl -n harbor port-forward svc/harbor-core 8083:80",
             "problemMatcher": [],
             "isBackground": true,
             "presentation": {
@@ -26,7 +26,7 @@
         {
             "label": "port-forward-keycloak",
             "type": "shell",
-            "command": "export KUBECONFIG=/Users/melderho/.kube/apl-430-z2 && kubectl -n keycloak port-forward svc/keycloak-operator 8084:80",
+            "command": "export KUBECONFIG=/path/to/your/kubeconfig.yaml && kubectl -n keycloak port-forward svc/keycloak-operator 8084:80",
             "problemMatcher": [],
             "isBackground": true,
             "presentation": {
