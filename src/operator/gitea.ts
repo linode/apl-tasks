@@ -3,7 +3,6 @@ import stream from 'stream'
 
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
-  AdminApi,
   CreateHookOption,
   CreateOrgOption,
   CreateRepoOption,
@@ -158,7 +157,6 @@ const createSetGiteaOIDCConfig = (() => {
 
 // Operator
 export default class MyOperator extends Operator {
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     // Run setGiteaOIDCConfig every 30 seconds
     createSetGiteaOIDCConfig()
@@ -329,7 +327,7 @@ async function upsertRepo(
     )
 }
 
-async function createOrgsandTeams(orgApi: OrganizationApi, existingOrganizations: Organization[], teamIds: string[]) {
+async function createOrgsAndTeams(orgApi: OrganizationApi, existingOrganizations: Organization[], teamIds: string[]) {
   await Promise.all(
     teamIds.map((organizationName) => {
       return upsertOrganization(orgApi, existingOrganizations, organizationName)
@@ -430,15 +428,13 @@ async function setupGitea() {
   console.info('Starting Gitea setup/reconfiguration')
   const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
-  const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   // create the org
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
 
-  const existingUsers = await doApiCall(errors, 'Getting all users', () => adminApi.adminGetAllUsers())
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
 
-  await createOrgsandTeams(orgApi, existingOrganizations, teamIds)
+  await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
 
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
