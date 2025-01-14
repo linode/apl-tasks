@@ -287,7 +287,7 @@ async function upsertTeam(
   return doApiCall(
     errors,
     `Updating team "${teamOption.name}" in org "${organizationName}"`,
-    () => orgApi.orgEditTeam(existingTeam!.id!, teamOption),
+    () => orgApi.orgEditTeam(existingTeam.id!, teamOption),
     422,
   )
 }
