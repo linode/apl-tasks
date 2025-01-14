@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.6.0](https://github.com/linode/apl-tasks/compare/v3.5.0...v3.6.0) (2025-01-14)
+
+
+### Features
+
+* gitea org for each team ([#163](https://github.com/linode/apl-tasks/issues/163)) ([1ae215a](https://github.com/linode/apl-tasks/commit/1ae215ac7cb6a1f429e5323176f0197ba6d7a561))
+
 ## [3.5.0](https://github.com/linode/apl-tasks/compare/v3.4.0...v3.5.0) (2024-12-17)
 
 
