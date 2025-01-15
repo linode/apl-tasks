@@ -27,6 +27,7 @@ import {
 } from '../validators'
 import {
   giteaOperatorEmail,
+  giteaOperatorPassword,
   giteaOperatorUsername,
   orgName,
   otomiChartsRepoName,
@@ -155,6 +156,7 @@ const createOperatorAccount = async (adminApi: AdminApi) => {
     loginName: giteaOperatorUsername,
     username: giteaOperatorUsername,
     fullName: giteaOperatorUsername,
+    password: giteaOperatorPassword,
     email: giteaOperatorEmail,
     restricted: false,
     mustChangePassword: false,
