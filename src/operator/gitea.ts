@@ -3,10 +3,12 @@ import stream from 'stream'
 
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
+  AdminApi,
   CreateHookOption,
   CreateOrgOption,
   CreateRepoOption,
   CreateTeamOption,
+  CreateUserOption,
   EditRepoOption,
   Organization,
   OrganizationApi,
@@ -23,7 +25,16 @@ import {
   GITEA_URL_PORT,
   cleanEnv,
 } from '../validators'
-import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer, username } from './common'
+import {
+  giteaOperatorEmail,
+  giteaOperatorUsername,
+  orgName,
+  otomiChartsRepoName,
+  otomiValuesRepoName,
+  teamNameOwners,
+  teamNameViewer,
+  username,
+} from './common'
 
 // Interfaces
 interface hookInfo {
@@ -136,6 +147,21 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     default:
       break
   }
+}
+
+const createOperatorAccount = async (adminApi: AdminApi) => {
+  const userOption = {
+    ...new CreateUserOption(),
+    loginName: giteaOperatorUsername,
+    username: giteaOperatorUsername,
+    fullName: giteaOperatorUsername,
+    email: giteaOperatorEmail,
+    restricted: false,
+    mustChangePassword: false,
+    repoAdminChangeTeamAccess: true,
+  }
+  const adminUser = await adminApi.adminCreateUser(userOption)
+  return adminUser
 }
 
 const createSetGiteaOIDCConfig = (() => {
@@ -429,9 +455,14 @@ async function setupGitea() {
   const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   // create the org
+  const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
 
+  const adminUser = createOperatorAccount(adminApi)
+  console.log('adminuser: ', adminUser)
+  const users = adminApi.adminGetAllUsers()
+  console.log('users: ', users)
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
 
   await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
