@@ -15,6 +15,7 @@ import {
   Repository,
   RepositoryApi,
   Team,
+  User,
 } from '@linode/gitea-client-node'
 import { isEmpty, keys } from 'lodash'
 import { doApiCall } from '../utils'
@@ -151,6 +152,8 @@ const secretsAndConfigmapsCallback = async (e: any) => {
 }
 
 const createOperatorAccount = async (adminApi: AdminApi) => {
+  const users: User[] = await doApiCall(errors, `Getting all users"`, () => adminApi.adminGetAllUsers())
+  if (users.some((user) => user.login === giteaOperatorUsername)) return
   const userOption = {
     ...new CreateUserOption(),
     loginName: giteaOperatorUsername,
@@ -158,6 +161,7 @@ const createOperatorAccount = async (adminApi: AdminApi) => {
     fullName: giteaOperatorUsername,
     password: giteaOperatorPassword,
     email: giteaOperatorEmail,
+    isAdmin: true,
     restricted: false,
     mustChangePassword: false,
     repoAdminChangeTeamAccess: true,
@@ -463,7 +467,7 @@ async function setupGitea() {
 
   const adminUser = createOperatorAccount(adminApi)
   console.log('adminuser: ', adminUser)
-  const users = adminApi.adminGetAllUsers()
+  const users: User[] = await doApiCall(errors, `Getting all users"`, () => adminApi.adminGetAllUsers())
   console.log('users: ', users)
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
 
