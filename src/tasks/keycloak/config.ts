@@ -191,6 +191,20 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
       'jsonType.label': 'String',
     },
   },
+  {
+    name: 'transformed-email',
+    protocol: 'openid-connect',
+    protocolMapper: 'oidc-usermodel-attribute-mapper',
+    consentRequired: false,
+    config: {
+      'user.attribute': 'transformedEmail',
+      'id.token.claim': 'true',
+      'access.token.claim': 'true',
+      'userinfo.token.claim': 'true',
+      'claim.name': 'transformed_email',
+      'jsonType.label': 'String',
+    },
+  },
 ]
 
 export const roleTpl = (name: string, groupMapping: string, containerId: string): Record<string, unknown> => ({
