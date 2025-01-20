@@ -286,7 +286,7 @@ export const otomiClientCfgTpl = (
 ): Record<string, unknown> => ({
   id: 'otomi',
   secret,
-  defaultClientScopes: ['openid', 'email', 'profile'],
+  defaultClientScopes: ['openid', 'email', 'profile', 'transformed-email'],
   redirectUris,
   standardFlowEnabled: true,
   implicitFlowEnabled: true,
