@@ -125,18 +125,10 @@ export function createTeamUser(
   groups: string[],
   initialPassword: string,
 ): UserRepresentation {
-  // 1) Create the default user representation
   const userRepresentation = defaultsDeep(
     new UserRepresentation(),
     teamUserCfgTpl(email, firstName, lastName, groups, initialPassword),
   )
-
-  // 2) Transform the email string: "demo@example.com" -> "demo-example-com"
-  const transformedEmail = email.replace(/@/g, '-').replace(/\./g, '-')
-
-  // 3) Store it in a custom user attribute
-  userRepresentation.attributes = userRepresentation.attributes || {}
-  userRepresentation.attributes['transformedEmail'] = transformedEmail
 
   return userRepresentation
 }

@@ -93,6 +93,9 @@ export const teamUserCfgTpl = (
     },
   ],
   requiredActions: [],
+  attributes: {
+    transformedEmail: email.replace(/@/g, '-').replace(/\./g, '-'),
+  },
 })
 
 export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
