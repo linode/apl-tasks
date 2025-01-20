@@ -677,6 +677,8 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
       const omitUpdateFields = ['realmRoles', 'initialPassword', 'requiredActions', 'groups']
       if (!existingUser.requiredActions?.includes('UPDATE_PASSWORD')) omitUpdateFields.push('credentials')
       const updatedUserConf = omit(userConf, omitUpdateFields)
+      updatedUserConf.attributes = updatedUserConf.attributes || {}
+      existingUser.attributes = existingUser.attributes || {}
       if (isObjectSubsetDifferent(updatedUserConf, existingUser)) {
         console.info(`Updating user ${email}`)
         await api.users.realmUsersIdPut(keycloakRealm, existingUser.id as string, updatedUserConf)
