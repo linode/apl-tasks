@@ -396,7 +396,6 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   const existingOpenIdClientScope = clientScopes.find((el) => el.name === openIdClientScope.name)
   if (existingOpenIdClientScope) {
     console.info('Updating openid client scope')
-    // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
     if (existingOpenIdClientScope.protocolMappers?.some((el) => el.name === transformedEmailMapper.name)) {
       console.info('Adding transformed email mapper to openid client scope')
       await api.protocols.realmClientScopesIdProtocolMappersModelsPost(
@@ -405,6 +404,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
         transformedEmailMapper,
       )
     }
+    // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
     await api.clientScope.realmClientScopesIdPut(keycloakRealm, existingOpenIdClientScope.id!, openIdClientScope)
   } else {
     console.info('Creating openid client scope')
