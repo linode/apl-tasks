@@ -1,7 +1,8 @@
 /* eslint-disable no-template-curly-in-string */
 /* eslint-disable camelcase */
-import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
+import { ClientScopeRepresentation, ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
 import axios from 'axios'
+import { defaultsDeep } from 'lodash'
 
 export const keycloakRealm = 'otomi'
 
@@ -194,20 +195,6 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
       'jsonType.label': 'String',
     },
   },
-  {
-    name: 'transformed-email',
-    protocol: 'openid-connect',
-    protocolMapper: 'oidc-usermodel-attribute-mapper',
-    consentRequired: false,
-    config: {
-      'user.attribute': 'transformedEmail',
-      'id.token.claim': 'true',
-      'access.token.claim': 'true',
-      'userinfo.token.claim': 'true',
-      'claim.name': 'transformed_email',
-      'jsonType.label': 'String',
-    },
-  },
 ]
 
 export const roleTpl = (name: string, groupMapping: string, containerId: string): Record<string, unknown> => ({
@@ -310,4 +297,29 @@ export type OidcProviderCfg = {
   userinfo_endpoint: string
   authorization_endpoint: string
   end_session_endpoint: string
+}
+
+export const transformedEmailScope = {
+  name: 'transformed-email',
+  protocol: 'openid-connect',
+  attributes: {
+    'include.in.token.scope': 'true',
+    'display.on.consent.screen': 'true',
+  },
+  protocolMappers: [
+    {
+      name: 'transformed-email',
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-usermodel-attribute-mapper',
+      consentRequired: false,
+      config: {
+        'user.attribute': 'transformedEmail',
+        'id.token.claim': 'true',
+        'access.token.claim': 'true',
+        'userinfo.token.claim': 'true',
+        'claim.name': 'transformed_email',
+        'jsonType.label': 'String',
+      },
+    },
+  ],
 }

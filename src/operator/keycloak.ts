@@ -36,7 +36,7 @@ import {
   createIdProvider,
   createLoginThemeConfig,
   createRealm,
-  createTeamUser,
+  createTeamUser, createTransformedEmailScope,
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
 import { isObjectSubsetDifferent } from '../utils'
@@ -394,17 +394,29 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   }
 
   // Create Client Scopes
-  const scope = createClientScopes()
-  console.info('Getting openid client scope')
+  const openIdClientScope = createClientScopes()
+  console.info('Getting all client scopes')
   const clientScopes = (await api.clientScope.realmClientScopesGet(keycloakRealm)).body as ClientScopeRepresentation[]
-  const existingScope = clientScopes.find((el) => el.name === scope.name)
-  if (existingScope) {
+  const existingOpenIdClientScope = clientScopes.find((el) => el.name === openIdClientScope.name)
+  if (existingOpenIdClientScope) {
     console.info('Updating openid client scope')
     // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
-    await api.clientScope.realmClientScopesIdPut(keycloakRealm, existingScope.id!, scope)
+    await api.clientScope.realmClientScopesIdPut(keycloakRealm, existingOpenIdClientScope.id!, openIdClientScope)
   } else {
     console.info('Creating openid client scope')
-    await api.clientScope.realmClientScopesPost(keycloakRealm, scope)
+    await api.clientScope.realmClientScopesPost(keycloakRealm, openIdClientScope)
+  }
+
+  const transformedEmailScope = createTransformedEmailScope()
+  console.info('Getting transformed-email client scope')
+  const existingTransformedEmailScope = clientScopes.find((el) => el.name === transformedEmailScope.name)
+  if (existingTransformedEmailScope) {
+    console.info('Updating transformed-email client scope')
+    // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
+    await api.clientScope.realmClientScopesIdPut(keycloakRealm, existingTransformedEmailScope.id!, transformedEmailScope)
+  } else {
+    console.info('Creating transformed-email client scope')
+    await api.clientScope.realmClientScopesPost(keycloakRealm, transformedEmailScope)
   }
 
   const teamRoles = mapTeamsToRoles(

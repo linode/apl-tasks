@@ -23,7 +23,7 @@ import {
   protocolMappersList,
   realmCfgTpl,
   roleTpl,
-  teamUserCfgTpl,
+  teamUserCfgTpl, transformedEmailScope,
 } from './config'
 
 export function createClient(redirectUris: string[], webOrigins: string, secret: string): ClientRepresentation {
@@ -184,4 +184,8 @@ export function mapTeamsToRoles(
 
 export function createLoginThemeConfig(loginTheme = 'APL'): RealmRepresentation {
   return defaultsDeep(new RealmRepresentation(), { loginTheme })
+}
+
+export function createTransformedEmailScope(): ClientScopeRepresentation {
+  return defaultsDeep(new ClientScopeRepresentation(), transformedEmailScope)
 }
