@@ -129,7 +129,7 @@ export function createTeamUser(
     new UserRepresentation(),
     teamUserCfgTpl(email, firstName, lastName, groups, initialPassword),
   )
-
+  console.info('createTeamUser' + JSON.stringify(userRepresentation))
   return userRepresentation
 }
 

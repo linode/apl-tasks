@@ -699,6 +699,7 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
           userConf.groups!.splice(i, 1)
         }
       }
+      console.info('createUpdateUser: ' + JSON.stringify(userConf))
       await api.users.realmUsersPost(keycloakRealm, userConf)
     }
   } catch (error) {
@@ -724,9 +725,10 @@ async function deleteUsers(api: any, users: any[]) {
 }
 
 async function manageUsers(api: KeycloakApi, users: any[]) {
+  console.info('manageUsers: ' + JSON.stringify(users))
   // Create/Update users in realm 'otomi'
   await Promise.all(
-    users.map((user) =>
+        users.map((user) =>
       createUpdateUser(
         api,
         createTeamUser(user.email, user.firstName, user.lastName, user.groups, user.initialPassword),
