@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await */
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
@@ -24,7 +23,7 @@ import {
 } from '@linode/keycloak-client-node'
 import { forEach, omit } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
-import { keycloakRealm } from '../tasks/keycloak/config'
+import { keycloakRealm, transformedEmailMapper } from '../tasks/keycloak/config'
 import { extractError } from '../tasks/keycloak/errors'
 import {
   createAdminUser,
@@ -36,7 +35,7 @@ import {
   createIdProvider,
   createLoginThemeConfig,
   createRealm,
-  createTeamUser, createTransformedEmailScope,
+  createTeamUser,
   mapTeamsToRoles,
 } from '../tasks/keycloak/realm-factory'
 import { isObjectSubsetDifferent } from '../utils'
@@ -111,9 +110,7 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 
 // eslint-disable-next-line no-unused-vars
 async function retryOperation(operation: (...args: any[]) => Promise<void>, operationName: string, ...params: any[]) {
-  // eslint-disable-next-line no-constant-condition
   while (true)
-    /* eslint-disable no-await-in-loop */
     try {
       await operation(...params)
       return
@@ -169,7 +166,6 @@ async function runKeycloakUpdater() {
 }
 
 export default class MyOperator extends Operator {
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     let secretInitialized = false
     let configMapInitialized = false
@@ -358,7 +354,7 @@ function setupKeycloakApi(connection: KeycloakConnection) {
     users: new UsersApi(basePath),
     groups: new GroupsApi(basePath),
   }
-  // eslint-disable-next-line no-return-assign,no-param-reassign
+  // eslint-disable-next-line no-param-reassign
   forEach(api, (a) => (a.accessToken = String(token.access_token)))
   return api
 }
@@ -401,22 +397,18 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   if (existingOpenIdClientScope) {
     console.info('Updating openid client scope')
     // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
+    if (existingOpenIdClientScope.protocolMappers?.some((el) => el.name === transformedEmailMapper.name)) {
+      console.info('Adding transformed email mapper to openid client scope')
+      await api.protocols.realmClientScopesIdProtocolMappersModelsPost(
+        keycloakRealm,
+        existingOpenIdClientScope.id!,
+        transformedEmailMapper,
+      )
+    }
     await api.clientScope.realmClientScopesIdPut(keycloakRealm, existingOpenIdClientScope.id!, openIdClientScope)
   } else {
     console.info('Creating openid client scope')
     await api.clientScope.realmClientScopesPost(keycloakRealm, openIdClientScope)
-  }
-
-  const transformedEmailScope = createTransformedEmailScope()
-  console.info('Getting transformed-email client scope')
-  const existingTransformedEmailScope = clientScopes.find((el) => el.name === transformedEmailScope.name)
-  if (existingTransformedEmailScope) {
-    console.info('Updating transformed-email client scope')
-    // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
-    await api.clientScope.realmClientScopesIdPut(keycloakRealm, existingTransformedEmailScope.id!, transformedEmailScope)
-  } else {
-    console.info('Creating transformed-email client scope')
-    await api.clientScope.realmClientScopesPost(keycloakRealm, transformedEmailScope)
   }
 
   const teamRoles = mapTeamsToRoles(

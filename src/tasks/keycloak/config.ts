@@ -1,9 +1,5 @@
-/* eslint-disable no-template-curly-in-string */
-/* eslint-disable camelcase */
-import { ClientScopeRepresentation, ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
+import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
 import axios from 'axios'
-import { defaultsDeep } from 'lodash'
-
 export const keycloakRealm = 'otomi'
 
 export const defaultsIdpMapperTpl = (
@@ -125,6 +121,21 @@ export const clientScopeCfgTpl = (protocolMappers: ProtocolMapperRepresentation[
   protocolMappers,
 })
 
+export const transformedEmailMapper = {
+  name: 'transformed-email',
+  protocol: 'openid-connect',
+  protocolMapper: 'oidc-usermodel-attribute-mapper',
+  config: {
+    'user.attribute': 'transformedEmail',
+    'id.token.claim': 'true',
+    'access.token.claim': 'true',
+    'userinfo.token.claim': 'true',
+    'claim.name': 'transformed_email',
+    'jsonType.label': 'String',
+  },
+}
+
+
 export const protocolMappersList: Array<Record<string, unknown>> = [
   {
     name: 'groups',
@@ -195,6 +206,7 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
       'jsonType.label': 'String',
     },
   },
+  transformedEmailMapper,
 ]
 
 export const roleTpl = (name: string, groupMapping: string, containerId: string): Record<string, unknown> => ({
@@ -273,7 +285,7 @@ export const otomiClientCfgTpl = (
 ): Record<string, unknown> => ({
   id: 'otomi',
   secret,
-  defaultClientScopes: ['openid', 'email', 'profile', 'transformed-email'],
+  defaultClientScopes: ['openid', 'email', 'profile'],
   redirectUris,
   standardFlowEnabled: true,
   implicitFlowEnabled: true,
@@ -297,29 +309,4 @@ export type OidcProviderCfg = {
   userinfo_endpoint: string
   authorization_endpoint: string
   end_session_endpoint: string
-}
-
-export const transformedEmailScope = {
-  name: 'transformed-email',
-  protocol: 'openid-connect',
-  attributes: {
-    'include.in.token.scope': 'true',
-    'display.on.consent.screen': 'true',
-  },
-  protocolMappers: [
-    {
-      name: 'transformed-email',
-      protocol: 'openid-connect',
-      protocolMapper: 'oidc-usermodel-attribute-mapper',
-      consentRequired: false,
-      config: {
-        'user.attribute': 'transformedEmail',
-        'id.token.claim': 'true',
-        'access.token.claim': 'true',
-        'userinfo.token.claim': 'true',
-        'claim.name': 'transformed_email',
-        'jsonType.label': 'String',
-      },
-    },
-  ],
 }
