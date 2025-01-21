@@ -396,7 +396,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   const existingOpenIdClientScope = clientScopes.find((el) => el.name === openIdClientScope.name)
   if (existingOpenIdClientScope) {
     console.info('Updating openid client scope')
-    if (existingOpenIdClientScope.protocolMappers?.some((el) => el.name === transformedEmailMapper.name)) {
+    if (!existingOpenIdClientScope.protocolMappers?.some((el) => el.name === transformedEmailMapper.name)) {
       console.info('Adding transformed email mapper to openid client scope')
       await api.protocols.realmClientScopesIdProtocolMappersModelsPost(
         keycloakRealm,
