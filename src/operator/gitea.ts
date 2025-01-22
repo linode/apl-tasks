@@ -10,6 +10,7 @@ import {
   CreateTeamOption,
   CreateUserOption,
   EditRepoOption,
+  EditUserOption,
   Organization,
   OrganizationApi,
   Repository,
@@ -17,7 +18,9 @@ import {
   Team,
   User,
 } from '@linode/gitea-client-node'
-import { isEmpty, keys } from 'lodash'
+import { generate as generatePassword } from 'generate-password'
+import { forEach, isEmpty, keys } from 'lodash'
+import { createSecret } from '../k8s'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
@@ -28,7 +31,6 @@ import {
 } from '../validators'
 import {
   giteaOperatorEmail,
-  giteaOperatorPassword,
   giteaOperatorUsername,
   orgName,
   otomiChartsRepoName,
@@ -150,24 +152,92 @@ const secretsAndConfigmapsCallback = async (e: any) => {
       break
   }
 }
+const addOrganizationsAccountsToOrganizations = async (
+  organizationApi: OrganizationApi,
+  user: User,
+  organisations: Organization[],
+) => {
+  const organisation = organisations.find((org) => user.login?.includes(org.name!))
+  const teams: Team[] = await doApiCall(errors, `Getting teams from organization: ${organisation?.name}`, () =>
+    organizationApi.orgListTeams(organisation!.name!),
+  )
+  const ownerTeam = teams.find((team) => team.name === 'Owners')
+  const members: User[] = await doApiCall(errors, `Getting members from Owners team`, () =>
+    organizationApi.orgListTeamMembers(ownerTeam!.id!),
+  )
 
-const createOperatorAccount = async (adminApi: AdminApi) => {
-  const users: User[] = await doApiCall(errors, `Getting all users"`, () => adminApi.adminGetAllUsers())
-  if (users.some((user) => user.login === giteaOperatorUsername)) return
-  const userOption = {
-    ...new CreateUserOption(),
+  const exists = members.some((member) => member.login === user.login)
+  if (exists) return
+  await doApiCall(errors, `Adding user to organization Owners team`, () =>
+    organizationApi.orgAddTeamMember(ownerTeam!.id!, user.login!),
+  )
+}
+
+const editOrganizationAccount = async (adminApi: AdminApi, user: User) => {
+  if (user.isAdmin) return
+  const editUserOption = {
+    ...new EditUserOption(),
     loginName: giteaOperatorUsername,
-    username: giteaOperatorUsername,
-    fullName: giteaOperatorUsername,
-    password: giteaOperatorPassword,
-    email: giteaOperatorEmail,
-    isAdmin: true,
-    restricted: false,
-    mustChangePassword: false,
-    repoAdminChangeTeamAccess: true,
+    admin: true,
   }
-  const adminUser = await adminApi.adminCreateUser(userOption)
-  return adminUser
+  await doApiCall(errors, `Giving user: ${user.login} admin rights`, () =>
+    adminApi.adminEditUser(user.login!, editUserOption),
+  )
+}
+
+const createOrganizationAccounts = async (
+  adminApi: AdminApi,
+  organizations: Organization[],
+  orgApi: OrganizationApi,
+) => {
+  const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
+  const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
+  forEach(filteredOrganizations, async (organization) => {
+    const exists = users.some((user) => user.login === `organization-${organization.name}`)
+    if (!exists) {
+      const password = generatePassword({
+        length: 16,
+        numbers: true,
+        symbols: true,
+        lowercase: true,
+        uppercase: true,
+        exclude: String(':,;"/=|%\\\''),
+      })
+      const organizationAccount = `organization-${organization.name}`
+      const organizationEmail = `${organization.name}@mail.com`
+      const createUserOption = {
+        ...new CreateUserOption(),
+        email: organizationEmail,
+        password,
+        username: organizationAccount,
+        loginName: organizationAccount,
+        fullName: organizationAccount,
+        restricted: false,
+        mustChangePassword: false,
+        repoAdminChangeTeamAccess: true,
+      }
+      const user: User = await doApiCall(errors, `Creating user: ${organizationAccount}`, () =>
+        adminApi.adminCreateUser(createUserOption),
+      )
+      const editUserOption = {
+        ...new EditUserOption(),
+        loginName: organizationAccount,
+        admin: true,
+      }
+      await doApiCall(errors, `Giving user: ${createUserOption.loginName} admin rights`, () =>
+        adminApi.adminEditUser(createUserOption.loginName, editUserOption),
+      )
+      // eslint-disable-next-line object-shorthand
+      await createSecret(organizationAccount, 'gitea', { login: organizationAccount, password: password })
+      await addOrganizationsAccountsToOrganizations(orgApi, user, filteredOrganizations)
+    } else {
+      const organizationAccount = users.find((user) => user.login === `organization-${organization.name}`)
+      if (organizationAccount && !organizationAccount.isAdmin)
+        await editOrganizationAccount(adminApi, organizationAccount)
+      if (organizationAccount)
+        await addOrganizationsAccountsToOrganizations(orgApi, organizationAccount, filteredOrganizations)
+    }
+  })
 }
 
 const createSetGiteaOIDCConfig = (() => {
@@ -456,21 +526,21 @@ async function createReposAndAddToTeam(
 }
 
 async function setupGitea() {
+  const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
-  const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
-  // create the org
   const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  await createOperatorAccount()
+  const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
+
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-
-  const adminUser = createOperatorAccount(adminApi)
-  console.log('adminuser: ', adminUser)
   const users: User[] = await doApiCall(errors, `Getting all users"`, () => adminApi.adminGetAllUsers())
+
   console.log('users: ', users)
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
-
+  const adminUser = await createOrganizationAccounts(adminApi, existingOrganizations, orgApi)
+  console.log('adminuser: ', adminUser)
   await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
 
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
@@ -515,7 +585,7 @@ export function buildTeamString(teamNames: any[]): string {
     const team = `team-${teamName}`
     teamObject[team] = {
       otomi: [teamNameViewer, team],
-      [teamName]: ['owners'],
+      [teamName]: ['Owners'],
     }
   })
   return JSON.stringify(teamObject)
@@ -576,6 +646,67 @@ async function setGiteaOIDCConfig(update = false) {
       })
   } catch (error) {
     console.debug(`Error Gitea OIDC config: ${error.message}`)
+    throw error
+  }
+}
+
+async function createOperatorAccount() {
+  const podNamespace = 'gitea'
+  const podName = 'gitea-0'
+  const password = generatePassword({
+    length: 16,
+    numbers: true,
+    symbols: true,
+    lowercase: true,
+    uppercase: true,
+    exclude: String(':,;"/=|%)(\\\''),
+  })
+
+  try {
+    const execCommand = [
+      'sh',
+      '-c',
+      `
+      if gitea admin user list | grep -q "${giteaOperatorUsername}"; then
+        echo "User ${giteaOperatorUsername} already exists.";
+      else
+        gitea admin user create --username "${giteaOperatorUsername}" --password "${password}" --email "${giteaOperatorEmail}@mail.com" --admin;
+        echo "User ${giteaOperatorUsername} created with admin rights.";
+      fi
+      `,
+    ]
+    const exec = new k8s.Exec(kc)
+    const outputStream = new stream.PassThrough()
+    let output = ''
+    outputStream.on('data', (chunk) => {
+      output += chunk.toString()
+    })
+    // Run gitea CLI command to create/update the gitea oauth configuration
+    await exec
+      .exec(
+        podNamespace,
+        podName,
+        'gitea',
+        execCommand,
+        outputStream,
+        process.stderr as stream.Writable,
+        process.stdin as stream.Readable,
+        false,
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        async (status: k8s.V1Status) => {
+          console.info(output.trim())
+          console.info('Gitea operator account status:', status.status)
+          if (!output.includes('already exists'))
+            // eslint-disable-next-line object-shorthand
+            await createSecret('apl-operator', 'gitea', { login: 'apl-operator', password: password })
+        },
+      )
+      .catch((error) => {
+        console.debug('Error occurred during exec:', error)
+        throw error
+      })
+  } catch (error) {
+    console.debug(`Error Gitea operator account: ${error.message}`)
     throw error
   }
 }
