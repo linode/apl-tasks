@@ -23,7 +23,7 @@ import {
 } from '@linode/keycloak-client-node'
 import { forEach, omit } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
-import { keycloakRealm, transformedEmailMapper } from '../tasks/keycloak/config'
+import { keycloakRealm } from '../tasks/keycloak/config'
 import { extractError } from '../tasks/keycloak/errors'
 import {
   createAdminUser,
@@ -396,14 +396,6 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   const existingOpenIdClientScope = clientScopes.find((el) => el.name === openIdClientScope.name)
   if (existingOpenIdClientScope) {
     console.info('Updating openid client scope')
-    if (!existingOpenIdClientScope.protocolMappers?.some((el) => el.name === transformedEmailMapper.name)) {
-      console.info('Adding transformed email mapper to openid client scope')
-      await api.protocols.realmClientScopesIdProtocolMappersModelsPost(
-        keycloakRealm,
-        existingOpenIdClientScope.id!,
-        transformedEmailMapper,
-      )
-    }
     // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
     await api.clientScope.realmClientScopesIdPut(keycloakRealm, existingOpenIdClientScope.id!, openIdClientScope)
   } else {
@@ -699,7 +691,6 @@ async function createUpdateUser(api: any, userConf: UserRepresentation): Promise
           userConf.groups!.splice(i, 1)
         }
       }
-      console.info('createUpdateUser: ' + JSON.stringify(userConf))
       await api.users.realmUsersPost(keycloakRealm, userConf)
     }
   } catch (error) {
@@ -725,10 +716,9 @@ async function deleteUsers(api: any, users: any[]) {
 }
 
 async function manageUsers(api: KeycloakApi, users: any[]) {
-  console.info('manageUsers: ' + JSON.stringify(users))
   // Create/Update users in realm 'otomi'
   await Promise.all(
-        users.map((user) =>
+    users.map((user) =>
       createUpdateUser(
         api,
         createTeamUser(user.email, user.firstName, user.lastName, user.groups, user.initialPassword),

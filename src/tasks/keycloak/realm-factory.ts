@@ -118,6 +118,7 @@ export function createAdminUser(username: string, password: string): UserReprese
   const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(username, password))
   return userRepresentation
 }
+
 export function createTeamUser(
   email: string,
   firstName: string,
@@ -129,7 +130,6 @@ export function createTeamUser(
     new UserRepresentation(),
     teamUserCfgTpl(email, firstName, lastName, groups, initialPassword),
   )
-  console.info('createTeamUser' + JSON.stringify(userRepresentation))
   return userRepresentation
 }
 

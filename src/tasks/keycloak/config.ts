@@ -91,7 +91,6 @@ export const teamUserCfgTpl = (
   ],
   requiredActions: [],
   attributes: {
-    transformedEmail: email.replace(/@/g, '-').replace(/\./g, '-'),
     nickname: email.replace(/@/g, '-').replace(/\./g, '-'),
   },
 })
@@ -121,21 +120,6 @@ export const clientScopeCfgTpl = (protocolMappers: ProtocolMapperRepresentation[
   },
   protocolMappers,
 })
-
-export const transformedEmailMapper = {
-  name: 'transformed-email',
-  protocol: 'openid-connect',
-  protocolMapper: 'oidc-usermodel-attribute-mapper',
-  config: {
-    'user.attribute': 'transformedEmail',
-    'id.token.claim': 'true',
-    'access.token.claim': 'true',
-    'userinfo.token.claim': 'true',
-    'claim.name': 'transformed_email',
-    'jsonType.label': 'String',
-  },
-}
-
 
 export const protocolMappersList: Array<Record<string, unknown>> = [
   {
@@ -207,7 +191,6 @@ export const protocolMappersList: Array<Record<string, unknown>> = [
       'jsonType.label': 'String',
     },
   },
-  transformedEmailMapper,
 ]
 
 export const roleTpl = (name: string, groupMapping: string, containerId: string): Record<string, unknown> => ({
