@@ -542,8 +542,7 @@ async function setupGitea() {
 
   console.log('users: ', users)
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
-  const adminUser = await createOrganizationAccounts(adminApi, existingOrganizations, orgApi)
-  console.log('adminuser: ', adminUser)
+  await createOrganizationAccounts(adminApi, existingOrganizations, orgApi)
   await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
 
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
