@@ -92,6 +92,7 @@ export const teamUserCfgTpl = (
   requiredActions: [],
   attributes: {
     transformedEmail: email.replace(/@/g, '-').replace(/\./g, '-'),
+    nickname: email.replace(/@/g, '-').replace(/\./g, '-'),
   },
 })
 
