@@ -191,9 +191,12 @@ const createOrganizationAccounts = async (
   orgApi: OrganizationApi,
 ) => {
   const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
+  console.log('users that have been created: ', users)
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
+  console.log('filteredOrgs: ', filteredOrganizations)
   forEach(filteredOrganizations, async (organization) => {
     const exists = users.some((user) => user.login === `organization-${organization.name}`)
+    console.log('user exists?: ', exists)
     if (!exists) {
       const password = generatePassword({
         length: 16,
