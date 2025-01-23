@@ -78,6 +78,7 @@ const env = {
   oidcClientId: '',
   oidcClientSecret: '',
   oidcEndpoint: '',
+  operatorAccountExists: false,
 }
 let lastState: DependencyState = {
   giteaPassword: null,
@@ -529,6 +530,7 @@ async function createReposAndAddToTeam(
 
 async function setupGitea() {
   await createOperatorAccount()
+  if (!env.operatorAccountExists) throw new Error(`Operator account: ${giteaOperatorUsername} not found!`)
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
@@ -537,7 +539,7 @@ async function setupGitea() {
 
   const orgApi = new OrganizationApi(giteaOperatorUsername, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(giteaOperatorUsername, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-  const users: User[] = await doApiCall(errors, `Getting all users"`, () => adminApi.adminGetAllUsers())
+  const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
 
   console.log('users: ', users)
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
@@ -664,16 +666,20 @@ async function createOperatorAccount() {
   })
 
   try {
-    const execCommand = [
+    const checkUserCommand = [
+      'sh',
+      '-c',
+      `if gitea admin user list | grep -q "${giteaOperatorUsername}"; then
+        echo "User ${giteaOperatorUsername} already exists"
+      fi
+      `,
+    ]
+    const createUserCommand = [
       'sh',
       '-c',
       `
-      if gitea admin user list | grep -q "${giteaOperatorUsername}"; then
-        echo "User ${giteaOperatorUsername} already exists.";
-      else
-        gitea admin user create --username "${giteaOperatorUsername}" --password "${password}" --email "${giteaOperatorEmail}" --admin;
-        echo "User ${giteaOperatorUsername} created with admin rights.";
-      fi
+      gitea admin user create --username "${giteaOperatorUsername}" --password "${password}" --email "${giteaOperatorEmail}" --admin &&
+      echo "User ${giteaOperatorUsername} created with admin rights.";
       `,
     ]
     const exec = new k8s.Exec(kc)
@@ -688,7 +694,32 @@ async function createOperatorAccount() {
         podNamespace,
         podName,
         'gitea',
-        execCommand,
+        checkUserCommand,
+        outputStream,
+        process.stderr as stream.Writable,
+        process.stdin as stream.Readable,
+        false,
+        (status: k8s.V1Status) => {
+          console.info(output.trim())
+          console.info('Gitea operator account status:', status.status)
+          if (!output.includes('already exists')) {
+            env.operatorAccountExists = false
+          } else {
+            env.operatorAccountExists = true
+          }
+        },
+      )
+      .catch((error) => {
+        console.debug('Error occurred during checking for user exec:', error)
+        throw error
+      })
+    if (env.operatorAccountExists) return
+    await exec
+      .exec(
+        podNamespace,
+        podName,
+        'gitea',
+        createUserCommand,
         outputStream,
         process.stderr as stream.Writable,
         process.stdin as stream.Readable,
@@ -699,13 +730,14 @@ async function createOperatorAccount() {
           console.info('Gitea operator account status:', status.status)
           if (!output.includes('already exists')) {
             // eslint-disable-next-line object-shorthand
-            await createSecret('apl-operator', 'gitea', { login: 'apl-operator', password: password })
+            await createSecret(giteaOperatorUsername, 'gitea', { login: giteaOperatorUsername, password: password })
             env.giteaPassword = password
+            env.operatorAccountExists = true
           }
         },
       )
       .catch((error) => {
-        console.debug('Error occurred during exec:', error)
+        console.debug('Error occurred during creating operator account exec:', error)
         throw error
       })
   } catch (error) {
