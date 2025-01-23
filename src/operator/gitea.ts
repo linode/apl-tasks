@@ -37,7 +37,6 @@ import {
   otomiValuesRepoName,
   teamNameOwners,
   teamNameViewer,
-  username,
 } from './common'
 
 // Interfaces
@@ -177,7 +176,7 @@ const editOrganizationAccount = async (adminApi: AdminApi, user: User) => {
   if (user.isAdmin) return
   const editUserOption = {
     ...new EditUserOption(),
-    loginName: giteaOperatorUsername,
+    loginName: user.loginName!,
     admin: true,
   }
   await doApiCall(errors, `Giving user: ${user.login} admin rights`, () =>
@@ -529,15 +528,15 @@ async function createReposAndAddToTeam(
 }
 
 async function setupGitea() {
+  await createOperatorAccount()
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-  await createOperatorAccount()
+  const adminApi = new AdminApi(giteaOperatorUsername, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
 
-  const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-  const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  const orgApi = new OrganizationApi(giteaOperatorUsername, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  const repoApi = new RepositoryApi(giteaOperatorUsername, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const users: User[] = await doApiCall(errors, `Getting all users"`, () => adminApi.adminGetAllUsers())
 
   console.log('users: ', users)
@@ -672,7 +671,7 @@ async function createOperatorAccount() {
       if gitea admin user list | grep -q "${giteaOperatorUsername}"; then
         echo "User ${giteaOperatorUsername} already exists.";
       else
-        gitea admin user create --username "${giteaOperatorUsername}" --password "${password}" --email "${giteaOperatorEmail}@mail.com" --admin;
+        gitea admin user create --username "${giteaOperatorUsername}" --password "${password}" --email "${giteaOperatorEmail}" --admin;
         echo "User ${giteaOperatorUsername} created with admin rights.";
       fi
       `,
@@ -698,9 +697,11 @@ async function createOperatorAccount() {
         async (status: k8s.V1Status) => {
           console.info(output.trim())
           console.info('Gitea operator account status:', status.status)
-          if (!output.includes('already exists'))
+          if (!output.includes('already exists')) {
             // eslint-disable-next-line object-shorthand
             await createSecret('apl-operator', 'gitea', { login: 'apl-operator', password: password })
+            env.giteaPassword = password
+          }
         },
       )
       .catch((error) => {
