@@ -20,7 +20,7 @@ import {
 } from '@linode/gitea-client-node'
 import { generate as generatePassword } from 'generate-password'
 import { forEach, isEmpty, keys } from 'lodash'
-import { createSecret } from '../k8s'
+import { createSecret, getSecret } from '../k8s'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
@@ -529,8 +529,10 @@ async function createReposAndAddToTeam(
 }
 
 async function setupGitea() {
-  await createOperatorAccount()
-  if (!env.operatorAccountExists) throw new Error(`Operator account: ${giteaOperatorUsername} not found!`)
+  const operatorAccountExists = await checkForOperatorAccount()
+  if (!operatorAccountExists) await createOperatorAccount()
+  await loadOperaterAccount()
+
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
@@ -652,6 +654,45 @@ async function setGiteaOIDCConfig(update = false) {
     throw error
   }
 }
+async function checkForOperatorAccount(): Promise<boolean> {
+  const podNamespace = 'gitea'
+  const podName = 'gitea-0'
+
+  try {
+    const checkUserCommand = ['sh', '-c', `gitea admin user list || echo "FAILED TO LIST USERS"`]
+    const exec = new k8s.Exec(kc)
+    const outputStream = new stream.PassThrough()
+    let output = ''
+    outputStream.on('data', (chunk) => {
+      output += chunk.toString()
+    })
+    // Run gitea CLI command to list the gitea users
+    await new Promise<void>((resolve, reject) => {
+      exec.exec(
+        podNamespace,
+        podName,
+        'gitea',
+        checkUserCommand,
+        outputStream,
+        process.stderr as stream.Writable,
+        process.stdin as stream.Readable,
+        false,
+        (status: k8s.V1Status) => {
+          if (status.status === 'Success') {
+            resolve() // Resolve the Promise when the exec completes successfully
+          } else {
+            reject(new Error(`Exec failed with status: ${status.status}`))
+          }
+        },
+      )
+    })
+    console.info('Gitea Admin User List Output:', output.trim())
+    return output.includes(giteaOperatorUsername)
+  } catch (error) {
+    console.debug(`Error Gitea operator account: ${error.message}`)
+    throw error
+  }
+}
 
 async function createOperatorAccount() {
   const podNamespace = 'gitea'
@@ -666,14 +707,6 @@ async function createOperatorAccount() {
   })
 
   try {
-    const checkUserCommand = [
-      'sh',
-      '-c',
-      `if gitea admin user list | grep -q "${giteaOperatorUsername}"; then
-        echo "User ${giteaOperatorUsername} already exists"
-      fi
-      `,
-    ]
     const createUserCommand = [
       'sh',
       '-c',
@@ -688,34 +721,9 @@ async function createOperatorAccount() {
     outputStream.on('data', (chunk) => {
       output += chunk.toString()
     })
-    // Run gitea CLI command to create/update the gitea oauth configuration
-    await exec
-      .exec(
-        podNamespace,
-        podName,
-        'gitea',
-        checkUserCommand,
-        outputStream,
-        process.stderr as stream.Writable,
-        process.stdin as stream.Readable,
-        false,
-        (status: k8s.V1Status) => {
-          console.info(output.trim())
-          console.info('Gitea operator account status:', status.status)
-          if (!output.includes('already exists')) {
-            env.operatorAccountExists = false
-          } else {
-            env.operatorAccountExists = true
-          }
-        },
-      )
-      .catch((error) => {
-        console.debug('Error occurred during checking for user exec:', error)
-        throw error
-      })
     if (env.operatorAccountExists) return
-    await exec
-      .exec(
+    await new Promise<void>((resolve, reject) => {
+      exec.exec(
         podNamespace,
         podName,
         'gitea',
@@ -726,22 +734,30 @@ async function createOperatorAccount() {
         false,
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         async (status: k8s.V1Status) => {
+          if (status.status === 'Success') {
+            if (!output.includes('already exists')) {
+              // eslint-disable-next-line object-shorthand
+              await createSecret(giteaOperatorUsername, 'gitea', { login: giteaOperatorUsername, password: password })
+              env.giteaPassword = password
+            }
+            resolve() // Resolve the Promise when the exec completes successfully
+          } else {
+            reject(new Error(`Exec failed with status: ${status.status}`))
+          }
           console.info(output.trim())
           console.info('Gitea operator account status:', status.status)
-          if (!output.includes('already exists')) {
-            // eslint-disable-next-line object-shorthand
-            await createSecret(giteaOperatorUsername, 'gitea', { login: giteaOperatorUsername, password: password })
-            env.giteaPassword = password
-            env.operatorAccountExists = true
-          }
         },
       )
-      .catch((error) => {
-        console.debug('Error occurred during creating operator account exec:', error)
-        throw error
-      })
+    })
   } catch (error) {
     console.debug(`Error Gitea operator account: ${error.message}`)
     throw error
   }
+}
+
+async function loadOperaterAccount() {
+  console.log('LOADING OPERATOR SECRET!')
+  const secret = await getSecret(giteaOperatorUsername, 'gitea')
+  if (secret !== undefined) env.giteaPassword = secret.data!['password']
+  else throw new Error(`Secret ${giteaOperatorUsername} could not be found!`)
 }

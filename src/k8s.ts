@@ -1,5 +1,3 @@
-/* eslint-disable no-loop-func */
-/* eslint-disable no-await-in-loop */
 import {
   CoreV1Api,
   KubeConfig,
@@ -72,7 +70,7 @@ export type ServiceAccountPromise = Promise<{
   body: V1ServiceAccount
 }>
 
-export async function getSecret(name: string, namespace: string): Promise<unknown> {
+export async function getSecret(name: string, namespace: string): Promise<V1Secret | undefined> {
   const b64dec = (val): string => Buffer.from(val, 'base64').toString()
   try {
     const response = await k8s.core().readNamespacedSecret(name, namespace)
@@ -128,7 +126,7 @@ export async function createK8sSecret({
       '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
     },
   }
-  // eslint-disable-next-line no-useless-catch
+
   try {
     await client.createNamespacedSecret(namespace, secret)
   } catch (e) {
@@ -198,7 +196,7 @@ export async function createBuildsK8sSecret({
       'config.json': Buffer.from(JSON.stringify(data)).toString('base64'),
     },
   }
-  // eslint-disable-next-line no-useless-catch
+
   try {
     await client.createNamespacedSecret(namespace, secret)
   } catch (e) {
