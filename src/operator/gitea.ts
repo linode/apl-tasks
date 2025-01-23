@@ -247,7 +247,7 @@ async function upsertOrganization(
   existingOrganizations: Organization[],
   organizationName: string,
 ): Promise<void> {
-  const prefixedOrgName = organizationName.includes('otomi') ? `team-${organizationName}` : organizationName
+  const prefixedOrgName = !organizationName.includes('otomi') ? `team-${organizationName}` : organizationName
   const orgOption = {
     ...new CreateOrgOption(),
     username: prefixedOrgName,
