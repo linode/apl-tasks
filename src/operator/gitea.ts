@@ -37,6 +37,7 @@ import {
   otomiValuesRepoName,
   teamNameOwners,
   teamNameViewer,
+  username,
 } from './common'
 
 // Interfaces
@@ -222,14 +223,13 @@ const createOrganizationAccounts = async (
       const user: User = await doApiCall(errors, `Creating user: ${organizationAccount}`, () =>
         adminApi.adminCreateUser(createUserOption),
       )
-      const editUserOption = {
-        ...new EditUserOption(),
-        loginName: organizationAccount,
-        admin: true,
-      }
-      await doApiCall(errors, `Giving user: ${createUserOption.loginName} admin rights`, () =>
-        adminApi.adminEditUser(createUserOption.loginName, editUserOption),
-      )
+      // const editUserOption = {
+      //   ...new EditUserOption(),
+      //   loginName: organizationAccount,
+      // }
+      // await doApiCall(errors, `Giving user: ${createUserOption.loginName} admin rights`, () =>
+      //   adminApi.adminEditUser(createUserOption.loginName, editUserOption),
+      // )
       // eslint-disable-next-line object-shorthand
       await createSecret(organizationAccount, 'gitea', { login: organizationAccount, password: password })
       await addOrganizationsAccountsToOrganizations(orgApi, user, filteredOrganizations)
@@ -529,14 +529,14 @@ async function createReposAndAddToTeam(
 }
 
 async function setupGitea() {
-  const operatorAccountExists = await checkForOperatorAccount()
-  if (!operatorAccountExists) await createOperatorAccount()
-  await loadOperaterAccount()
+  // const operatorAccountExists = await checkForOperatorAccount()
+  // if (!operatorAccountExists) await createOperatorAccount()
+  // await loadOperaterAccount()
 
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const adminApi = new AdminApi(giteaOperatorUsername, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
 
   const orgApi = new OrganizationApi(giteaOperatorUsername, giteaPassword, `${formattedGiteaUrl}/api/v1`)
@@ -604,7 +604,9 @@ async function setGiteaOIDCConfig(update = false) {
   const clientSecret = env.oidcClientSecret
   const discoveryURL = `${env.oidcEndpoint}/.well-known/openid-configuration`
   const teamNamespaceString = buildTeamString(env.teamNames)
-
+  console.log(
+    `gitea admin auth add-oauth --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "platform-admin" --group-claim-name "groups" --group-team-map '${teamNamespaceString}'`,
+  )
   try {
     // WARNING: Dont enclose the teamNamespaceString in double quotes, this will escape the string incorrectly and breaks OIDC group mapping in gitea
     const execCommand = [
@@ -655,6 +657,7 @@ async function setGiteaOIDCConfig(update = false) {
   }
 }
 async function checkForOperatorAccount(): Promise<boolean> {
+  console.info(`Checking for operator account: ${giteaOperatorUsername}`)
   const podNamespace = 'gitea'
   const podName = 'gitea-0'
 
@@ -687,7 +690,10 @@ async function checkForOperatorAccount(): Promise<boolean> {
       )
     })
     console.info('Gitea Admin User List Output:', output.trim())
-    return output.includes(giteaOperatorUsername)
+    const exists = output.includes(giteaOperatorUsername)
+    if (exists) console.info('Operator account found!')
+    else console.info('Operator account not found!')
+    return exists
   } catch (error) {
     console.debug(`Error Gitea operator account: ${error.message}`)
     throw error
@@ -695,6 +701,7 @@ async function checkForOperatorAccount(): Promise<boolean> {
 }
 
 async function createOperatorAccount() {
+  console.info(`Trying to create operator accound with name: ${giteaOperatorUsername}`)
   const podNamespace = 'gitea'
   const podName = 'gitea-0'
   const password = generatePassword({
@@ -711,7 +718,7 @@ async function createOperatorAccount() {
       'sh',
       '-c',
       `
-      gitea admin user create --username "${giteaOperatorUsername}" --password "${password}" --email "${giteaOperatorEmail}" --admin &&
+      gitea admin user create --username "${giteaOperatorUsername}" --password "${password}" --email "${giteaOperatorEmail}" --admin --must-change-password=false &&
       echo "User ${giteaOperatorUsername} created with admin rights.";
       `,
     ]
@@ -758,6 +765,7 @@ async function createOperatorAccount() {
 async function loadOperaterAccount() {
   console.log('LOADING OPERATOR SECRET!')
   const secret = await getSecret(giteaOperatorUsername, 'gitea')
-  if (secret !== undefined) env.giteaPassword = secret.data!['password']
+
+  if (secret !== undefined) env.giteaPassword = (secret as { login: string; password: string }).password
   else throw new Error(`Secret ${giteaOperatorUsername} could not be found!`)
 }
