@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.1](https://github.com/linode/apl-tasks/compare/v3.6.0...v3.6.1) (2025-01-27)
+
+
+### Bug Fixes
+
+* apl-430 with prefix ([#183](https://github.com/linode/apl-tasks/issues/183)) ([5255f43](https://github.com/linode/apl-tasks/commit/5255f434f3d86be799d21feac55d9e3497d94973))
+
 ## [3.6.0](https://github.com/linode/apl-tasks/compare/v3.5.0...v3.6.0) (2025-01-14)
 
 
