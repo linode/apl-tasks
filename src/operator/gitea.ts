@@ -352,20 +352,21 @@ async function upsertOrganization(
   existingOrganizations: Organization[],
   organizationName: string,
 ): Promise<void> {
+  const prefixedOrgName = !organizationName.includes('otomi') ? `team-${organizationName}` : organizationName
   const orgOption = {
     ...new CreateOrgOption(),
-    username: organizationName,
-    fullName: organizationName,
+    username: prefixedOrgName,
+    fullName: prefixedOrgName,
     repoAdminChangeTeamAccess: true,
   }
-  const existingOrg = existingOrganizations.find((organization) => organization.name === organizationName)
+  const existingOrg = existingOrganizations.find((organization) => organization.name === prefixedOrgName)
   if (isEmpty(existingOrg))
     return doApiCall(errors, `Creating org "${orgOption.fullName}"`, () => orgApi.orgCreate(orgOption), 422)
 
   return doApiCall(
     errors,
     `Updating org "${orgOption.fullName}"`,
-    () => orgApi.orgEdit(organizationName, orgOption),
+    () => orgApi.orgEdit(prefixedOrgName, orgOption),
     422,
   )
 }
@@ -382,19 +383,21 @@ async function upsertTeam(
   )
   if (!isEmpty(getErrors)) console.error('Errors when gettings teams.', getErrors)
   const existingTeam = existingTeams?.find((team) => team.name === teamOption.name)
-  if (isEmpty(existingTeam))
+  if (existingTeam === undefined) {
     return doApiCall(
       errors,
       `Creating team "${teamOption.name}" in org "${organizationName}"`,
       () => orgApi.orgCreateTeam(organizationName, teamOption),
       422,
     )
-  return doApiCall(
-    errors,
-    `Updating team "${teamOption.name}" in org "${organizationName}"`,
-    () => orgApi.orgEditTeam(existingTeam.id!, teamOption),
-    422,
-  )
+  } else {
+    return doApiCall(
+      errors,
+      `Updating team "${teamOption.name}" in org "${organizationName}"`,
+      () => orgApi.orgEditTeam(existingTeam.id!, teamOption),
+      422,
+    )
+  }
 }
 
 async function upsertRepo(
