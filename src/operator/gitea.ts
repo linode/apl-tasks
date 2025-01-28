@@ -404,7 +404,7 @@ async function upsertRepo(
     )
   }
   // new team repo, add team
-  if (teamName)
+  if (teamName && isEmpty(existingRepo))
     await doApiCall(
       errors,
       `Adding repo "${repoOption.name}" to team "${teamName}"`,
@@ -654,6 +654,8 @@ async function checkServiceAccountSecret(serviceAccount: string): Promise<string
     uppercase: true,
     exclude: String(':,;"/=|%\\\''),
   })
+  console.log('serviceAccount: ', serviceAccount)
+  console.log('serviceAccount password: ', password)
   // eslint-disable-next-line object-shorthand
   await createSecret(serviceAccount, 'gitea', { login: serviceAccount, password: password })
   return password
