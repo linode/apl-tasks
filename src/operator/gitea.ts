@@ -29,16 +29,7 @@ import {
   GITEA_URL_PORT,
   cleanEnv,
 } from '../validators'
-import {
-  giteaOperatorEmail,
-  giteaOperatorUsername,
-  orgName,
-  otomiChartsRepoName,
-  otomiValuesRepoName,
-  teamNameOwners,
-  teamNameViewer,
-  username,
-} from './common'
+import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer, username } from './common'
 
 // Interfaces
 interface hookInfo {
@@ -155,10 +146,10 @@ const secretsAndConfigmapsCallback = async (e: any) => {
 }
 const addOrganizationsAccountsToOrganizations = async (
   organizationApi: OrganizationApi,
-  user: User,
+  loginName: string,
   organisations: Organization[],
 ) => {
-  const organisation = organisations.find((org) => user.login?.includes(org.name!))
+  const organisation = organisations.find((org) => loginName.includes(org.name!))
   const teams: Team[] = await doApiCall(errors, `Getting teams from organization: ${organisation?.name}`, () =>
     organizationApi.orgListTeams(organisation!.name!),
   )
@@ -167,30 +158,25 @@ const addOrganizationsAccountsToOrganizations = async (
     organizationApi.orgListTeamMembers(ownerTeam!.id!),
   )
 
-  const exists = members.some((member) => member.login === user.login)
+  const exists = members.some((member) => member.login === loginName)
   if (exists) return
   await doApiCall(errors, `Adding user to organization Owners team`, () =>
-    organizationApi.orgAddTeamMember(ownerTeam!.id!, user.login!),
+    organizationApi.orgAddTeamMember(ownerTeam!.id!, loginName),
   )
 }
 
-const editOrganizationAccount = async (adminApi: AdminApi, user: User) => {
-  if (user.isAdmin) return
+const editServiceAccount = async (adminApi: AdminApi, loginName: string, password: string) => {
   const editUserOption = {
     ...new EditUserOption(),
-    loginName: user.loginName!,
-    admin: true,
+    loginName,
+    password,
   }
-  await doApiCall(errors, `Giving user: ${user.login} admin rights`, () =>
-    adminApi.adminEditUser(user.login!, editUserOption),
+  await doApiCall(errors, `Giving user: ${loginName} admin rights`, () =>
+    adminApi.adminEditUser(loginName, editUserOption),
   )
 }
 
-const createOrganizationAccounts = async (
-  adminApi: AdminApi,
-  organizations: Organization[],
-  orgApi: OrganizationApi,
-) => {
+const createServiceAccounts = async (adminApi: AdminApi, organizations: Organization[], orgApi: OrganizationApi) => {
   const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
   console.log('users that have been created: ', users)
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
@@ -207,38 +193,30 @@ const createOrganizationAccounts = async (
         uppercase: true,
         exclude: String(':,;"/=|%\\\''),
       })
-      const organizationAccount = `organization-${organization.name}`
+      const serviceAccount = `organization-${organization.name}`
       const organizationEmail = `${organization.name}@mail.com`
       const createUserOption = {
         ...new CreateUserOption(),
         email: organizationEmail,
         password,
-        username: organizationAccount,
-        loginName: organizationAccount,
-        fullName: organizationAccount,
+        username: serviceAccount,
+        loginName: serviceAccount,
+        fullName: serviceAccount,
         restricted: false,
         mustChangePassword: false,
         repoAdminChangeTeamAccess: true,
       }
-      const user: User = await doApiCall(errors, `Creating user: ${organizationAccount}`, () =>
+      const user: User = await doApiCall(errors, `Creating user: ${serviceAccount}`, () =>
         adminApi.adminCreateUser(createUserOption),
       )
-      // const editUserOption = {
-      //   ...new EditUserOption(),
-      //   loginName: organizationAccount,
-      // }
-      // await doApiCall(errors, `Giving user: ${createUserOption.loginName} admin rights`, () =>
-      //   adminApi.adminEditUser(createUserOption.loginName, editUserOption),
-      // )
       // eslint-disable-next-line object-shorthand
-      await createSecret(organizationAccount, 'gitea', { login: organizationAccount, password: password })
-      await addOrganizationsAccountsToOrganizations(orgApi, user, filteredOrganizations)
+      await createSecret(serviceAccount, 'gitea', { login: serviceAccount, password: password })
+      await addOrganizationsAccountsToOrganizations(orgApi, user.loginName!, filteredOrganizations)
     } else {
-      const organizationAccount = users.find((user) => user.login === `organization-${organization.name}`)
-      if (organizationAccount && !organizationAccount.isAdmin)
-        await editOrganizationAccount(adminApi, organizationAccount)
-      if (organizationAccount)
-        await addOrganizationsAccountsToOrganizations(orgApi, organizationAccount, filteredOrganizations)
+      const serviceAccount = `organization-${organization.name}`
+      const password = await checkServiceAccountSecret(serviceAccount)
+      if (serviceAccount && password !== undefined) await editServiceAccount(adminApi, serviceAccount, password)
+      if (serviceAccount) await addOrganizationsAccountsToOrganizations(orgApi, serviceAccount, filteredOrganizations)
     }
   })
 }
@@ -542,13 +520,13 @@ async function setupGitea() {
   const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
 
-  const orgApi = new OrganizationApi(giteaOperatorUsername, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-  const repoApi = new RepositoryApi(giteaOperatorUsername, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
 
   console.log('users: ', users)
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
-  await createOrganizationAccounts(adminApi, existingOrganizations, orgApi)
+  await createServiceAccounts(adminApi, existingOrganizations, orgApi)
   await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
 
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
@@ -659,116 +637,24 @@ async function setGiteaOIDCConfig(update = false) {
     throw error
   }
 }
-async function checkForOperatorAccount(): Promise<boolean> {
-  console.info(`Checking for operator account: ${giteaOperatorUsername}`)
-  const podNamespace = 'gitea'
-  const podName = 'gitea-0'
 
-  try {
-    const checkUserCommand = ['sh', '-c', `gitea admin user list || echo "FAILED TO LIST USERS"`]
-    const exec = new k8s.Exec(kc)
-    const outputStream = new stream.PassThrough()
-    let output = ''
-    outputStream.on('data', (chunk) => {
-      output += chunk.toString()
-    })
-    // Run gitea CLI command to list the gitea users
-    await new Promise<void>((resolve, reject) => {
-      exec.exec(
-        podNamespace,
-        podName,
-        'gitea',
-        checkUserCommand,
-        outputStream,
-        process.stderr as stream.Writable,
-        process.stdin as stream.Readable,
-        false,
-        (status: k8s.V1Status) => {
-          if (status.status === 'Success') {
-            resolve() // Resolve the Promise when the exec completes successfully
-          } else {
-            reject(new Error(`Exec failed with status: ${status.status}`))
-          }
-        },
-      )
-    })
-    console.info('Gitea Admin User List Output:', output.trim())
-    const exists = output.includes(giteaOperatorUsername)
-    if (exists) console.info('Operator account found!')
-    else console.info('Operator account not found!')
-    return exists
-  } catch (error) {
-    console.debug(`Error Gitea operator account: ${error.message}`)
-    throw error
-  }
-}
+async function checkServiceAccountSecret(serviceAccount: string): Promise<string | undefined> {
+  console.log(`Checking for secret: ${serviceAccount}!`)
+  const secret = await getSecret(serviceAccount, 'gitea')
 
-async function createOperatorAccount() {
-  console.info(`Trying to create operator accound with name: ${giteaOperatorUsername}`)
-  const podNamespace = 'gitea'
-  const podName = 'gitea-0'
+  if (secret !== undefined) return undefined
+
+  console.log(`Secret ${serviceAccount} could not be found!`)
+  console.log(`Creating secret for ${serviceAccount}`)
   const password = generatePassword({
     length: 16,
     numbers: true,
     symbols: true,
     lowercase: true,
     uppercase: true,
-    exclude: String(':,;"/=|%)(\\\''),
+    exclude: String(':,;"/=|%\\\''),
   })
-
-  try {
-    const createUserCommand = [
-      'sh',
-      '-c',
-      `
-      gitea admin user create --username "${giteaOperatorUsername}" --password "${password}" --email "${giteaOperatorEmail}" --admin --must-change-password=false &&
-      echo "User ${giteaOperatorUsername} created with admin rights.";
-      `,
-    ]
-    const exec = new k8s.Exec(kc)
-    const outputStream = new stream.PassThrough()
-    let output = ''
-    outputStream.on('data', (chunk) => {
-      output += chunk.toString()
-    })
-    if (env.operatorAccountExists) return
-    await new Promise<void>((resolve, reject) => {
-      exec.exec(
-        podNamespace,
-        podName,
-        'gitea',
-        createUserCommand,
-        outputStream,
-        process.stderr as stream.Writable,
-        process.stdin as stream.Readable,
-        false,
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        async (status: k8s.V1Status) => {
-          if (status.status === 'Success') {
-            if (!output.includes('already exists')) {
-              // eslint-disable-next-line object-shorthand
-              await createSecret(giteaOperatorUsername, 'gitea', { login: giteaOperatorUsername, password: password })
-              env.giteaPassword = password
-            }
-            resolve() // Resolve the Promise when the exec completes successfully
-          } else {
-            reject(new Error(`Exec failed with status: ${status.status}`))
-          }
-          console.info(output.trim())
-          console.info('Gitea operator account status:', status.status)
-        },
-      )
-    })
-  } catch (error) {
-    console.debug(`Error Gitea operator account: ${error.message}`)
-    throw error
-  }
-}
-
-async function loadOperaterAccount() {
-  console.log('LOADING OPERATOR SECRET!')
-  const secret = await getSecret(giteaOperatorUsername, 'gitea')
-
-  if (secret !== undefined) env.giteaPassword = (secret as { login: string; password: string }).password
-  else throw new Error(`Secret ${giteaOperatorUsername} could not be found!`)
+  // eslint-disable-next-line object-shorthand
+  await createSecret(serviceAccount, 'gitea', { login: serviceAccount, password: password })
+  return password
 }
