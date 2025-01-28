@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-import sinon from 'sinon'
 import { updateUserGroups } from './keycloak'
 
 describe('Keycloak User Group Management', () => {
@@ -10,20 +8,23 @@ describe('Keycloak User Group Management', () => {
   beforeEach(() => {
     keycloakRealm = 'otomi'
     existingUser = { id: 'user-id' }
+
+    // Create a fresh mock 'api' object for each test
     api = {
       users: {
-        realmUsersIdGroupsGet: sinon.stub(),
-        realmUsersIdGroupsGroupIdDelete: sinon.stub(),
-        realmUsersIdGroupsGroupIdPut: sinon.stub(),
+        realmUsersIdGroupsGet: jest.fn(),
+        realmUsersIdGroupsGroupIdDelete: jest.fn(),
+        realmUsersIdGroupsGroupIdPut: jest.fn(),
       },
       groups: {
-        realmGroupsGet: sinon.stub(),
+        realmGroupsGet: jest.fn(),
       },
     }
   })
 
   afterEach(() => {
-    sinon.restore()
+    // Reset all Jest mocks between tests
+    jest.restoreAllMocks()
   })
 
   describe('removeUserGroups', () => {
@@ -36,12 +37,24 @@ describe('Keycloak User Group Management', () => {
         { name: 'group1', id: 'group1-id' },
         { name: 'group2', id: 'group2-id' },
       ]
-      api.users.realmUsersIdGroupsGet.resolves({ body: existingUserGroups })
+
+      // Simulate a successful fetch of the user’s current groups
+      api.users.realmUsersIdGroupsGet.mockResolvedValue({ body: existingUserGroups })
 
       await updateUserGroups(api, existingUser, groupsById, ['group1'])
 
-      expect(api.users.realmUsersIdGroupsGroupIdDelete.calledWith(keycloakRealm, 'user-id', 'group2-id')).to.be.true
-      expect(api.users.realmUsersIdGroupsGroupIdDelete.calledWith(keycloakRealm, 'user-id', 'group1-id')).to.be.false
+      // The user should be removed from 'group2-id' only
+      expect(api.users.realmUsersIdGroupsGroupIdDelete).toHaveBeenCalledWith(
+        keycloakRealm,
+        'user-id',
+        'group2-id'
+      )
+      // The user should NOT be removed from 'group1-id'
+      expect(api.users.realmUsersIdGroupsGroupIdDelete).not.toHaveBeenCalledWith(
+        keycloakRealm,
+        'user-id',
+        'group1-id'
+      )
     })
   })
 
@@ -51,13 +64,27 @@ describe('Keycloak User Group Management', () => {
         group1: 'group1-id',
         group2: 'group2-id',
       }
-      const existingUserGroups = [{ name: 'group1', id: 'group1-id' }]
-      api.users.realmUsersIdGroupsGet.resolves({ body: existingUserGroups })
+      const existingUserGroups = [
+        { name: 'group1', id: 'group1-id' },
+      ]
+
+      // Mock the existing user groups response
+      api.users.realmUsersIdGroupsGet.mockResolvedValue({ body: existingUserGroups })
 
       await updateUserGroups(api, existingUser, groupsById, ['group1', 'group2'])
 
-      expect(api.users.realmUsersIdGroupsGroupIdPut.calledWith(keycloakRealm, 'user-id', 'group2-id')).to.be.true
-      expect(api.users.realmUsersIdGroupsGroupIdPut.calledWith(keycloakRealm, 'user-id', 'group1-id')).to.be.false
+      // The user should be added to 'group2-id'
+      expect(api.users.realmUsersIdGroupsGroupIdPut).toHaveBeenCalledWith(
+        keycloakRealm,
+        'user-id',
+        'group2-id'
+      )
+      // The user should NOT be re-added to 'group1-id'
+      expect(api.users.realmUsersIdGroupsGroupIdPut).not.toHaveBeenCalledWith(
+        keycloakRealm,
+        'user-id',
+        'group1-id'
+      )
     })
   })
 })
