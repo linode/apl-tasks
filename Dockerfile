@@ -12,7 +12,7 @@ RUN mkdir /app
 WORKDIR /app
 
 COPY package*.json ./
-COPY .npmrc ./
+RUN echo "@linode:registry=https://npm.pkg.github.com/linode" > .npmrc
 RUN echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc
 
 RUN npm ci
