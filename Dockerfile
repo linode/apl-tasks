@@ -34,7 +34,7 @@ FROM dev as clean
 # below command removes the packages specified in devDependencies and set NODE_ENV to production
 RUN npm prune --production
 # --------------- Production stage
-FROM node:20.18.1-alpine AS prod
+FROM node:22.13.1-alpine AS prod
 
 COPY --from=dev /usr/local/bin/node /usr/bin/
 COPY --from=dev /usr/lib/libgcc* /usr/lib/
