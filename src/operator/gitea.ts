@@ -571,7 +571,7 @@ export function buildTeamString(teamNames: any[]): string {
     const team = `team-${teamName}`
     teamObject[team] = {
       otomi: [teamNameViewer, team],
-      [teamName]: ['Owners'],
+      [team]: ['Owners'],
     }
   })
   return JSON.stringify(teamObject)
