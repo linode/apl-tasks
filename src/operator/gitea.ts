@@ -149,7 +149,7 @@ const addOrganizationsAccountsToOrganizations = async (
   loginName: string,
   organisations: Organization[],
 ) => {
-  const organisation = organisations.find((org) => loginName.includes(org.name!))
+  const organisation = organisations.find((org) => loginName === `organization-${org.name}`)
   const teams: Team[] = await doApiCall(errors, `Getting teams from organization: ${organisation?.name}`, () =>
     organizationApi.orgListTeams(organisation!.name!),
   )
@@ -524,9 +524,8 @@ async function setupGitea() {
 
   console.log('users: ', users)
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
-  await createServiceAccounts(adminApi, existingOrganizations, orgApi)
   await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
-
+  await createServiceAccounts(adminApi, existingOrganizations, orgApi)
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
   )
