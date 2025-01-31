@@ -27,7 +27,7 @@ jobs:
           npm install
       - name: Run tests
         run: |
-          npm run test:ts -- --ci --json --coverage --testLocationInResults --outputFile=report.json
+          npm run test -- --ci --json --coverage --testLocationInResults --outputFile=report.json
       - uses: ArtiomTr/jest-coverage-report-action@v2
         with:
           coverage-file: report.json
