@@ -1,26 +1,24 @@
-/* eslint-disable no-loop-func */
-/* eslint-disable no-await-in-loop */
 import retry, { Options } from 'async-retry'
-import http, { Agent as AgentHttp } from 'http'
-import { Agent } from 'https'
+import http from 'http'
 import { set } from 'lodash'
-import fetch, { RequestInit } from 'node-fetch'
 import { cleanEnv, NODE_EXTRA_CA_CERTS, NODE_TLS_REJECT_UNAUTHORIZED } from './validators'
+
+// Use Node’s native fetch from Node 18+; no import needed.
+// If you need types, ensure you have the latest @types/node installed
+// which provides global fetch definitions for Node 18+.
 
 const env = cleanEnv({
   NODE_TLS_REJECT_UNAUTHORIZED,
   NODE_EXTRA_CA_CERTS,
 })
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function objectToArray(obj: any, keyName: string, keyValue: string): any[] {
-  const arr = Object.keys(obj).map((key) => {
-    const tmp = {}
+  return Object.keys(obj).map((key) => {
+    const tmp: Record<string, unknown> = {}
     tmp[keyName] = key
     tmp[keyValue] = obj[key]
     return tmp
   })
-  return arr
 }
 
 export function isArrayDifferent(arr: any[], ref: any[]): boolean {
@@ -58,12 +56,18 @@ export async function doApiCall(
     const res = await fn()
     const { body } = res
     return body
-  } catch (e) {
-    console.warn(e.body ?? `${e}`)
+  } catch (e: any) {
+    // e might not always have the same shape that node-fetch had; adapt as needed:
+    console.warn(e.body ?? `${String(e)}`)
     if (e.statusCode) {
-      if (e.statusCode === statusCodeExists) console.warn(`${action} > already exists.`)
-      else errors.push(`${action} > HTTP error ${e.statusCode}: ${e.message}`)
-    } else errors.push(`${action} > Unknown error: ${e.message}`)
+      if (e.statusCode === statusCodeExists) {
+        console.warn(`${action} > already exists.`)
+      } else {
+        errors.push(`${action} > HTTP error ${e.statusCode}: ${e.message}`)
+      }
+    } else {
+      errors.push(`${action} > Unknown error: ${e.message}`)
+    }
     return undefined
   }
 }
@@ -77,11 +81,10 @@ export function handleErrors(errors: string[]): void {
   }
 }
 
-type WaitTillAvailableOptions =
-  | Options & {
-      confirmations?: number
-      status?: number
-    }
+type WaitTillAvailableOptions = Options & {
+  confirmations?: number
+  status?: number
+}
 
 const defaultOptions: WaitTillAvailableOptions = {
   factor: 2,
@@ -92,7 +95,7 @@ const defaultOptions: WaitTillAvailableOptions = {
   maxTimeout: 30000,
 }
 
-const sleep = (ms) => {
+const sleep = (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
@@ -102,48 +105,63 @@ export const waitTillAvailable = async (url: string, host?: string, opts?: WaitT
     options.confirmations = 1
     options.retries = 1
   }
+
+  // Prepare fetch options
+  // NOTE: Native fetch does not allow a custom 'agent' or direct 'timeout'.
+  // If you need special TLS handling, rely on environment variables
+  // like NODE_TLS_REJECT_UNAUTHORIZED or NODE_EXTRA_CA_CERTS.
   const fetchOptions: RequestInit = {
     redirect: 'follow',
-    agent: url.startsWith('https://')
-      ? new Agent({ rejectUnauthorized: env.NODE_TLS_REJECT_UNAUTHORIZED })
-      : new AgentHttp(),
-    timeout: 5000,
+    // If you need a custom Host header:
+    // headers: host ? { host } : undefined,
   }
-  if (host) set(fetchOptions, 'headers.host', host)
 
-  // we don't trust dns in the cluster and want a lot of confirmations
-  // but we don't care about those when we call the cluster from outside
+  if (host) {
+    set(fetchOptions, 'headers.host', host)
+  }
+
   let confirmations = 0
-  do {
+  while (options.confirmations && confirmations < options.confirmations) {
     await retry(async (bail, attempt): Promise<void> => {
+      // Implement a manual timeout with AbortController
+      const controller = new AbortController()
+      const id = setTimeout(() => controller.abort(), 5000)
+      fetchOptions.signal = controller.signal
+
       try {
         const res = await fetch(url, fetchOptions)
         if (res.status !== options.status) {
           confirmations = 0
           console.warn(`GET ${url} ${res.status} !== ${options.status}`)
           const err = new Error(`Wrong status code: ${res.status}`)
-          // if we get a 404 or 503 we know some changes in either nginx or istio might still not be ready
+
+          // If we get a 404 or 503, it might be due to slow provisioning/rollout.
           if (res.status !== 404 && res.status !== 503) {
-            // but any other status code that is not the desired one tells us to stop retrying
-            // early bail points to errors, so better to know asap
+            // For other status codes, bail out early.
             bail(err)
-          } else throw err
+          } else {
+            throw err
+          }
         } else {
           confirmations += 1
           console.debug(`${confirmations}/${options.confirmations} success`)
           await sleep(1000)
         }
-      } catch (e) {
-        // Print system errors like ECONNREFUSED
+      } catch (e: any) {
         confirmations = 0
         console.error(`Error in try #${attempt}: `, e.message)
+
+        // If we’ve exhausted all retries, bail out
         if (options.retries !== 0 && attempt === options.retries!) {
           bail(new Error(`Max retries (${options.retries}) has been reached!`))
         } else {
           throw e
         }
+      } finally {
+        clearTimeout(id)
       }
     }, options)
-  } while (confirmations < options.confirmations!)
+  }
+
   console.debug(`Waiting done, ${confirmations}/${options.confirmations} found`)
 }
