@@ -171,7 +171,7 @@ const editServiceAccount = async (adminApi: AdminApi, loginName: string, passwor
     loginName,
     password,
   }
-  await doApiCall(errors, `Giving user: ${loginName} admin rights`, () =>
+  await doApiCall(errors, `Editing user: ${loginName} with new password`, () =>
     adminApi.adminEditUser(loginName, editUserOption),
   )
 }
@@ -206,12 +206,10 @@ const createServiceAccounts = async (adminApi: AdminApi, organizations: Organiza
         mustChangePassword: false,
         repoAdminChangeTeamAccess: true,
       }
-      const user: User = await doApiCall(errors, `Creating user: ${serviceAccount}`, () =>
-        adminApi.adminCreateUser(createUserOption),
-      )
+      await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
       // eslint-disable-next-line object-shorthand
       await createSecret(serviceAccount, 'gitea', { login: serviceAccount, password: password })
-      await addOrganizationsAccountsToOrganizations(orgApi, user.loginName!, filteredOrganizations)
+      await addOrganizationsAccountsToOrganizations(orgApi, createUserOption.loginName, filteredOrganizations)
     } else {
       const serviceAccount = `organization-${organization.name}`
       const password = await checkServiceAccountSecret(serviceAccount)
