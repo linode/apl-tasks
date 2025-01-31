@@ -157,7 +157,7 @@ const addOrganizationsAccountsToOrganizations = async (
   const members: User[] = await doApiCall(errors, `Getting members from Owners team`, () =>
     organizationApi.orgListTeamMembers(ownerTeam!.id!),
   )
-
+  if (isEmpty(members)) return
   const exists = members.some((member) => member.login === loginName)
   if (exists) return
   await doApiCall(errors, `Adding user to organization Owners team`, () =>
@@ -178,9 +178,7 @@ const editServiceAccount = async (adminApi: AdminApi, loginName: string, passwor
 
 const createServiceAccounts = async (adminApi: AdminApi, organizations: Organization[], orgApi: OrganizationApi) => {
   const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
-  console.log('users that have been created: ', users)
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
-  console.log('filteredOrgs: ', filteredOrganizations)
   forEach(filteredOrganizations, async (organization) => {
     const exists = users.some((user) => user.login === `organization-${organization.name}`)
     console.log('user exists?: ', exists)
@@ -531,9 +529,6 @@ async function setupGitea() {
 
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-  const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
-
-  console.log('users: ', users)
   console.log('Getting organizations')
   let existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
   console.log('Got orgs, time to check for new ones')
@@ -597,9 +592,6 @@ async function setGiteaOIDCConfig(update = false) {
   const clientSecret = env.oidcClientSecret
   const discoveryURL = `${env.oidcEndpoint}/.well-known/openid-configuration`
   const teamNamespaceString = buildTeamString(env.teamNames)
-  console.log(
-    `gitea admin auth add-oauth --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "platform-admin" --group-claim-name "groups" --group-team-map '${teamNamespaceString}'`,
-  )
   try {
     // WARNING: Dont enclose the teamNamespaceString in double quotes, this will escape the string incorrectly and breaks OIDC group mapping in gitea
     const execCommand = [
@@ -666,8 +658,6 @@ async function checkServiceAccountSecret(serviceAccount: string): Promise<string
     uppercase: true,
     exclude: String(':,;"/=|%\\\''),
   })
-  console.log('serviceAccount: ', serviceAccount)
-  console.log('serviceAccount password: ', password)
   // eslint-disable-next-line object-shorthand
   await createSecret(serviceAccount, 'gitea', { login: serviceAccount, password: password })
   return password
