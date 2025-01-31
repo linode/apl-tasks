@@ -327,7 +327,7 @@ async function upsertOrganization(
   orgApi: OrganizationApi,
   existingOrganizations: Organization[],
   organizationName: string,
-): Promise<void> {
+): Promise<Organization> {
   const prefixedOrgName = !organizationName.includes('otomi') ? `team-${organizationName}` : organizationName
   const orgOption = {
     ...new CreateOrgOption(),
@@ -411,10 +411,16 @@ async function upsertRepo(
     )
 }
 
-async function createOrgsAndTeams(orgApi: OrganizationApi, existingOrganizations: Organization[], teamIds: string[]) {
+async function createOrgsAndTeams(
+  orgApi: OrganizationApi,
+  existingOrganizations: Organization[],
+  teamIds: string[],
+): Promise<Organization[]> {
   await Promise.all(
-    teamIds.map((organizationName) => {
-      return upsertOrganization(orgApi, existingOrganizations, organizationName)
+    teamIds.map(async (organizationName) => {
+      const organization = await upsertOrganization(orgApi, existingOrganizations, organizationName)
+      if (existingOrganizations.find((org) => org.id === organization.id)) return
+      existingOrganizations.push(organization)
     }),
   ).then(() => {
     teamIds
@@ -426,6 +432,7 @@ async function createOrgsAndTeams(orgApi: OrganizationApi, existingOrganizations
   })
   // create org wide viewer team for otomi role "team-viewer"
   await upsertTeam(orgApi, orgName, readOnlyTeam)
+  return existingOrganizations
 }
 
 async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Promise<hookInfo> {
@@ -523,8 +530,8 @@ async function setupGitea() {
   const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
 
   console.log('users: ', users)
-  const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
-  await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
+  let existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
+  existingOrganizations = await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
   await createServiceAccounts(adminApi, existingOrganizations, orgApi)
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
