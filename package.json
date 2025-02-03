@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.6",
-    "@kubernetes/client-node": "0.22.1",
+    "@kubernetes/client-node": "1.0.0",
     "@linode/apl-k8s-operator": "0.1.0",
     "@linode/gitea-client-node": "1.19.1",
     "@linode/harbor-client-node": "^2.2.1",
