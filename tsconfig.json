@@ -5,7 +5,11 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "lib": ["ES2021", "ESNext"],
+    "lib": [
+      "ES2021",
+      "ESNext",
+      "dom"
+    ],
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "dist",
@@ -17,7 +21,7 @@
     "target": "ES2021"
   },
   "exclude": ["node_modules", "dist"],
-  "include": ["./src/**/*.ts"],
+  "include": ["./src/**/*.ts", "jest.config.ts"],
   "parserOptions": {
     "ecmaVersion": 2021,
     "sourceType": "module"
