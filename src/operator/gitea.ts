@@ -20,7 +20,8 @@ import {
 } from '@linode/gitea-client-node'
 import { generate as generatePassword } from 'generate-password'
 import { forEach, isEmpty, keys } from 'lodash'
-import { createSecret, getSecret } from '../k8s'
+import { checkServiceAccountSecret } from '../gitea-utils'
+import { createSecret } from '../k8s'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
@@ -144,7 +145,8 @@ const secretsAndConfigmapsCallback = async (e: any) => {
       break
   }
 }
-const addOrganizationsAccountsToOrganizations = async (
+// Exported for testing purposes
+export const addServiceAccountsToOrganizations = async (
   organizationApi: OrganizationApi,
   loginName: string,
   organisations: Organization[],
@@ -165,7 +167,8 @@ const addOrganizationsAccountsToOrganizations = async (
   )
 }
 
-const editServiceAccount = async (adminApi: AdminApi, loginName: string, password: string) => {
+// Exported for testing purposes
+export const editServiceAccount = async (adminApi: AdminApi, loginName: string, password: string) => {
   const editUserOption = {
     ...new EditUserOption(),
     loginName,
@@ -176,7 +179,12 @@ const editServiceAccount = async (adminApi: AdminApi, loginName: string, passwor
   )
 }
 
-const createServiceAccounts = async (adminApi: AdminApi, organizations: Organization[], orgApi: OrganizationApi) => {
+// Exported for testing purposes
+export const createServiceAccounts = async (
+  adminApi: AdminApi,
+  organizations: Organization[],
+  orgApi: OrganizationApi,
+) => {
   const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
   forEach(filteredOrganizations, async (organization) => {
@@ -208,12 +216,12 @@ const createServiceAccounts = async (adminApi: AdminApi, organizations: Organiza
       await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
       // eslint-disable-next-line object-shorthand
       await createSecret(serviceAccount, 'gitea', { login: serviceAccount, password: password })
-      await addOrganizationsAccountsToOrganizations(orgApi, createUserOption.loginName, filteredOrganizations)
+      await addServiceAccountsToOrganizations(orgApi, createUserOption.loginName, filteredOrganizations)
     } else {
       const serviceAccount = `organization-${organization.name}`
       const password = await checkServiceAccountSecret(serviceAccount)
-      if (serviceAccount && password !== undefined) await editServiceAccount(adminApi, serviceAccount, password)
-      if (serviceAccount) await addOrganizationsAccountsToOrganizations(orgApi, serviceAccount, filteredOrganizations)
+      if (password !== undefined) await editServiceAccount(adminApi, serviceAccount, password)
+      await addServiceAccountsToOrganizations(orgApi, serviceAccount, filteredOrganizations)
     }
   })
 }
@@ -322,7 +330,8 @@ async function runSetupGitea() {
   }
 }
 
-async function upsertOrganization(
+// Exported for testing purposes
+export async function upsertOrganization(
   orgApi: OrganizationApi,
   existingOrganizations: Organization[],
   organizationName: string,
@@ -571,6 +580,7 @@ async function setupGitea() {
 }
 
 // Set Gitea Functions
+// Exported for testing purposes
 export function buildTeamString(teamNames: any[]): string {
   const teamObject: groupMapping = { 'platform-admin': { otomi: [teamNameOwners] } }
   if (teamNames === undefined) return JSON.stringify(teamObject)
@@ -640,25 +650,4 @@ async function setGiteaOIDCConfig(update = false) {
     console.debug(`Error Gitea OIDC config: ${error.message}`)
     throw error
   }
-}
-
-async function checkServiceAccountSecret(serviceAccount: string): Promise<string | undefined> {
-  console.log(`Checking for secret: ${serviceAccount}!`)
-  const secret = await getSecret(serviceAccount, 'gitea')
-
-  if (secret !== undefined) return undefined
-
-  console.log(`Secret ${serviceAccount} could not be found!`)
-  console.log(`Creating secret for ${serviceAccount}`)
-  const password = generatePassword({
-    length: 16,
-    numbers: true,
-    symbols: true,
-    lowercase: true,
-    uppercase: true,
-    exclude: String(':,;"/=|%\\\''),
-  })
-  // eslint-disable-next-line object-shorthand
-  await createSecret(serviceAccount, 'gitea', { login: serviceAccount, password: password })
-  return password
 }
