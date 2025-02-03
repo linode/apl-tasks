@@ -1,5 +1,8 @@
 name: 'coverage'
 on:
+  pull_request_target:
+    branches:
+      - main
   pull_request:
     branches:
       - main
@@ -7,7 +10,7 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Set npm token
