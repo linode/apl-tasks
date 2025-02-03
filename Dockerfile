@@ -1,5 +1,5 @@
 # --------------- Dev stage for developers to override sources
-FROM node:20.18.1-alpine as dev
+FROM node:22.13.1-alpine as dev
 ARG NPM_TOKEN
 RUN test -n "$NPM_TOKEN"
 
@@ -12,7 +12,7 @@ RUN mkdir /app
 WORKDIR /app
 
 COPY package*.json ./
-COPY .npmrc ./
+RUN echo "@linode:registry=https://npm.pkg.github.com/linode" > .npmrc
 RUN echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc
 
 RUN npm ci
@@ -34,7 +34,7 @@ FROM dev as clean
 # below command removes the packages specified in devDependencies and set NODE_ENV to production
 RUN npm prune --production
 # --------------- Production stage
-FROM node:20.18.1-alpine AS prod
+FROM node:22.13.1-alpine AS prod
 
 COPY --from=dev /usr/local/bin/node /usr/bin/
 COPY --from=dev /usr/lib/libgcc* /usr/lib/
