@@ -71,7 +71,6 @@ const env = {
   oidcClientId: '',
   oidcClientSecret: '',
   oidcEndpoint: '',
-  operatorAccountExists: false,
 }
 let lastState: DependencyState = {
   giteaPassword: null,
@@ -189,8 +188,6 @@ export const createServiceAccounts = async (
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
   forEach(filteredOrganizations, async (organization) => {
     const exists = users.some((user) => user.login === `organization-${organization.name}`)
-    console.log('user exists?: ', exists)
-    console.log('for org: ', organization.name)
     if (!exists) {
       const password = generatePassword({
         length: 16,
@@ -424,7 +421,6 @@ async function createOrgsAndTeams(
   existingOrganizations: Organization[],
   teamIds: string[],
 ): Promise<Organization[]> {
-  console.log('We here now')
   await Promise.all(
     teamIds.map(async (organizationName) => {
       const organization = await upsertOrganization(orgApi, existingOrganizations, organizationName)
@@ -439,10 +435,8 @@ async function createOrgsAndTeams(
         return upsertTeam(orgApi, orgName, { ...adminTeam, name })
       })
   })
-  console.log('they got updated')
   // create org wide viewer team for otomi role "team-viewer"
   await upsertTeam(orgApi, orgName, readOnlyTeam)
-  console.log('teams upserted')
   return existingOrganizations
 }
 
@@ -526,10 +520,6 @@ async function createReposAndAddToTeam(
 }
 
 async function setupGitea() {
-  // const operatorAccountExists = await checkForOperatorAccount()
-  // if (!operatorAccountExists) await createOperatorAccount()
-  // await loadOperaterAccount()
-
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
@@ -538,13 +528,9 @@ async function setupGitea() {
 
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-  console.log('Getting organizations')
   let existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
-  console.log('Got orgs, time to check for new ones')
   existingOrganizations = await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
-  console.log('create service accounts')
   await createServiceAccounts(adminApi, existingOrganizations, orgApi)
-  console.log('gett all the repos')
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
   )
