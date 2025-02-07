@@ -1,5 +1,5 @@
 import { generate as generatePassword } from 'generate-password'
-import { getSecret, replaceSecret } from './k8s'
+import { createSecret, getSecret, replaceSecret } from './k8s'
 
 export async function checkServiceAccountSecret(
   serviceAccountSecretName: string,
@@ -8,11 +8,6 @@ export async function checkServiceAccountSecret(
 ): Promise<string | undefined> {
   console.log(`Checking for secret: ${serviceAccountSecretName}!`)
   const secret = await getSecret(serviceAccountSecretName, teamNamespace)
-
-  if (secret !== undefined) return undefined
-
-  console.log(`Secret ${serviceAccountSecretName} could not be found!`)
-  console.log(`Creating secret for ${serviceAccountSecretName}`)
   const password = generatePassword({
     length: 16,
     numbers: true,
@@ -21,7 +16,14 @@ export async function checkServiceAccountSecret(
     uppercase: true,
     exclude: String(':,;"/=|%\\\''),
   })
-  // eslint-disable-next-line object-shorthand
-  await replaceSecret(serviceAccountSecretName, teamNamespace, { login: serviceAccountLogin, password: password })
+  if (secret !== undefined) {
+    console.log(`Secret ${serviceAccountSecretName} could not be found!`)
+    console.log(`Creating secret for ${serviceAccountSecretName}`)
+    await createSecret(serviceAccountSecretName, teamNamespace, { login: serviceAccountLogin, password })
+  } else {
+    console.log(`Replacing secret for ${serviceAccountSecretName}`)
+    // eslint-disable-next-line object-shorthand
+    await replaceSecret(serviceAccountSecretName, teamNamespace, { login: serviceAccountLogin, password: password })
+  }
   return password
 }
