@@ -16,7 +16,7 @@ export async function checkServiceAccountSecret(
     uppercase: true,
     exclude: String(':,;"/=|%\\\''),
   })
-  if (secret !== undefined) {
+  if (secret === undefined) {
     console.log(`Secret ${serviceAccountSecretName} could not be found!`)
     console.log(`Creating secret for ${serviceAccountSecretName}`)
     await createSecret(serviceAccountSecretName, teamNamespace, { login: serviceAccountLogin, password })
