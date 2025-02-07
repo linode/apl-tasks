@@ -21,7 +21,7 @@ import {
 import { generate as generatePassword } from 'generate-password'
 import { forEach, isEmpty, keys } from 'lodash'
 import { checkServiceAccountSecret } from '../gitea-utils'
-import { createSecret } from '../k8s'
+import { replaceSecret } from '../k8s'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
@@ -187,6 +187,7 @@ export const createServiceAccounts = async (
   const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
   forEach(filteredOrganizations, async (organization) => {
+    const serviceAccountSecretName = 'gitea-credentials'
     const exists = users.some((user) => user.login === `organization-${organization.name}`)
     if (!exists) {
       const password = generatePassword({
@@ -212,11 +213,11 @@ export const createServiceAccounts = async (
       }
       await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
       // eslint-disable-next-line object-shorthand
-      await createSecret(serviceAccount, 'gitea', { login: serviceAccount, password: password })
+      await replaceSecret(serviceAccountSecretName, organization.name!, { login: serviceAccount, password: password })
       await addServiceAccountsToOrganizations(orgApi, createUserOption.loginName, filteredOrganizations)
     } else {
       const serviceAccount = `organization-${organization.name}`
-      const password = await checkServiceAccountSecret(serviceAccount)
+      const password = await checkServiceAccountSecret(serviceAccountSecretName, serviceAccount, organization.name!)
       if (password !== undefined) await editServiceAccount(adminApi, serviceAccount, password)
       await addServiceAccountsToOrganizations(orgApi, serviceAccount, filteredOrganizations)
     }

@@ -82,7 +82,6 @@ describe('giteaOperator', () => {
     jest.spyOn(giteaOperator, 'addServiceAccountsToOrganizations').mockImplementation(jest.fn())
 
     await giteaOperator.createServiceAccounts(adminApi, existingOrgantizations, organizationApi)
-
     expect(utils.doApiCall).toHaveBeenCalledWith([], 'Getting all users', expect.any(Function))
     expect(utils.doApiCall).toHaveBeenNthCalledWith(2, [], `Editing user: ${mockEditUserResponse.loginName} with new password`, expect.any(Function))
   })
