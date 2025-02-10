@@ -20,8 +20,7 @@ import {
 } from '@linode/gitea-client-node'
 import { generate as generatePassword } from 'generate-password'
 import { forEach, isEmpty, keys } from 'lodash'
-import { checkServiceAccountSecret } from '../gitea-utils'
-import { replaceSecret } from '../k8s'
+import { setServiceAccountSecret } from '../gitea-utils'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
@@ -189,15 +188,15 @@ export const createServiceAccounts = async (
   forEach(filteredOrganizations, async (organization) => {
     const serviceAccountSecretName = 'gitea-credentials'
     const exists = users.some((user) => user.login === `organization-${organization.name}`)
+    const password = generatePassword({
+      length: 16,
+      numbers: true,
+      symbols: true,
+      lowercase: true,
+      uppercase: true,
+      exclude: String(':,;"/=|%\\\''),
+    })
     if (!exists) {
-      const password = generatePassword({
-        length: 16,
-        numbers: true,
-        symbols: true,
-        lowercase: true,
-        uppercase: true,
-        exclude: String(':,;"/=|%\\\''),
-      })
       const serviceAccount = `organization-${organization.name}`
       const organizationEmail = `${organization.name}@mail.com`
       const createUserOption = {
@@ -213,17 +212,12 @@ export const createServiceAccounts = async (
       }
       await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
 
-      await replaceSecret(
-        serviceAccountSecretName,
-        organization.name!,
-        { username: serviceAccount, password },
-        'kubernetes.io/basic-auth',
-      )
+      await setServiceAccountSecret(serviceAccountSecretName, serviceAccount, organization.name!, password)
       await addServiceAccountsToOrganizations(orgApi, createUserOption.loginName, filteredOrganizations)
     } else {
       const serviceAccount = `organization-${organization.name}`
-      const password = await checkServiceAccountSecret(serviceAccountSecretName, serviceAccount, organization.name!)
-      if (password !== undefined) await editServiceAccount(adminApi, serviceAccount, password)
+      await setServiceAccountSecret(serviceAccountSecretName, serviceAccount, organization.name!, password)
+      await editServiceAccount(adminApi, serviceAccount, password)
       await addServiceAccountsToOrganizations(orgApi, serviceAccount, filteredOrganizations)
     }
   })

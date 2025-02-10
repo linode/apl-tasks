@@ -1,34 +1,40 @@
-import { generate as generatePassword } from 'generate-password'
-import { createSecret, getSecret, replaceSecret } from './k8s'
+import { V1Secret } from '@kubernetes/client-node'
+import { createSecret, k8s } from './k8s'
 
-export async function checkServiceAccountSecret(
+// eslint-disable-next-line import/prefer-default-export
+export async function setServiceAccountSecret(
   serviceAccountSecretName: string,
   serviceAccountLogin: string,
   teamNamespace: string,
+  password: string,
 ): Promise<string | undefined> {
   console.log(`Checking for secret: ${serviceAccountSecretName}!`)
-  const secret = await getSecret(serviceAccountSecretName, teamNamespace)
-  const password = generatePassword({
-    length: 16,
-    numbers: true,
-    symbols: true,
-    lowercase: true,
-    uppercase: true,
-    exclude: String(':,;"/=|%\\\''),
-  })
-  if (secret === undefined) {
-    console.log(`Secret ${serviceAccountSecretName} could not be found!`)
-    console.log(`Creating secret for ${serviceAccountSecretName}`)
-    await createSecret(serviceAccountSecretName, teamNamespace, { login: serviceAccountLogin, password })
-  } else {
+  try {
+    const secret = (await k8s.core().readNamespacedSecret(serviceAccountSecretName, teamNamespace)).body
     console.log(`Replacing secret for ${serviceAccountSecretName}`)
-
-    await replaceSecret(
-      serviceAccountSecretName,
-      teamNamespace,
-      { username: serviceAccountLogin, password },
-      'kubernetes.io/basic-auth',
-    )
+    const updatedSecret: V1Secret = {
+      metadata: {
+        name: secret.metadata?.name,
+        namespace: teamNamespace,
+      },
+      data: {
+        username: Buffer.from(serviceAccountLogin).toString('base64'),
+        password: Buffer.from(password).toString('base64'),
+      },
+      type: secret.type,
+    }
+    await k8s.core().replaceNamespacedSecret(serviceAccountSecretName, teamNamespace, updatedSecret)
+  } catch (error) {
+    if (error.statusCode === 404) {
+      console.log(`Secret ${serviceAccountSecretName} could not be found!`)
+      console.log(`Creating secret for ${serviceAccountSecretName}`)
+      await createSecret(
+        serviceAccountSecretName,
+        teamNamespace,
+        { username: serviceAccountLogin, password },
+        'kubernetes.io/basic-auth',
+      )
+    } else throw new Error(`Problem replacing secret ${serviceAccountSecretName} in namespace ${teamNamespace}`)
   }
   return password
 }

@@ -32,7 +32,12 @@ export const k8s = {
   },
 }
 
-export async function createSecret(name: string, namespace: string, data: Record<string, any>): Promise<void> {
+export async function createSecret(
+  name: string,
+  namespace: string,
+  data: Record<string, unknown>,
+  secretType?: string,
+): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
     ...new V1Secret(),
@@ -40,6 +45,7 @@ export async function createSecret(name: string, namespace: string, data: Record
     data: mapValues(data, b64enc) as {
       [key: string]: string
     },
+    ...(secretType ? { type: secretType } : {}),
   }
 
   await k8s.core().createNamespacedSecret(namespace, secret)
@@ -49,17 +55,18 @@ export async function createSecret(name: string, namespace: string, data: Record
 export async function replaceSecret(
   name: string,
   namespace: string,
-  data: Record<string, any>,
-  type?: string,
+  data: Record<string, unknown>,
+  existingResourceVersion: string,
+  secretType?: string,
 ): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
     ...new V1Secret(),
-    metadata: { ...new V1ObjectMeta(), name },
+    metadata: { ...new V1ObjectMeta(), name, resourceVersion: existingResourceVersion },
     data: mapValues(data, b64enc) as {
       [key: string]: string
     },
-    ...(type ? { type } : {}),
+    ...(secretType ? { type: secretType } : {}),
   }
 
   await k8s.core().replaceNamespacedSecret(name, namespace, secret)
@@ -76,7 +83,7 @@ export type ServiceAccountPromise = Promise<{
   body: V1ServiceAccount
 }>
 
-export async function getSecret(name: string, namespace: string): Promise<unknown> {
+export async function getSecret(name: string, namespace: string): Promise<V1Secret | undefined> {
   const b64dec = (val): string => Buffer.from(val, 'base64').toString()
   try {
     const response = await k8s.core().readNamespacedSecret(name, namespace)
