@@ -26,7 +26,7 @@ export async function checkServiceAccountSecret(
     await replaceSecret(
       serviceAccountSecretName,
       teamNamespace,
-      { login: serviceAccountLogin, password },
+      { username: serviceAccountLogin, password },
       'kubernetes.io/basic-auth',
     )
   }

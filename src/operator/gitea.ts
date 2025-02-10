@@ -216,7 +216,7 @@ export const createServiceAccounts = async (
       await replaceSecret(
         serviceAccountSecretName,
         organization.name!,
-        { login: serviceAccount, password },
+        { username: serviceAccount, password },
         'kubernetes.io/basic-auth',
       )
       await addServiceAccountsToOrganizations(orgApi, createUserOption.loginName, filteredOrganizations)
