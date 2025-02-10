@@ -59,7 +59,7 @@ export async function replaceSecret(
     data: mapValues(data, b64enc) as {
       [key: string]: string
     },
-    type,
+    ...(type ? { type } : {}),
   }
 
   await k8s.core().replaceNamespacedSecret(name, namespace, secret)
