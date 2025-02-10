@@ -46,7 +46,12 @@ export async function createSecret(name: string, namespace: string, data: Record
   console.info(`New secret ${name} has been created in the namespace ${namespace}`)
 }
 
-export async function replaceSecret(name: string, namespace: string, data: Record<string, any>): Promise<void> {
+export async function replaceSecret(
+  name: string,
+  namespace: string,
+  data: Record<string, any>,
+  type?: string,
+): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
     ...new V1Secret(),
@@ -54,6 +59,7 @@ export async function replaceSecret(name: string, namespace: string, data: Recor
     data: mapValues(data, b64enc) as {
       [key: string]: string
     },
+    type,
   }
 
   await k8s.core().replaceNamespacedSecret(name, namespace, secret)

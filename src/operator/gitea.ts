@@ -212,8 +212,13 @@ export const createServiceAccounts = async (
         repoAdminChangeTeamAccess: true,
       }
       await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
-      // eslint-disable-next-line object-shorthand
-      await replaceSecret(serviceAccountSecretName, organization.name!, { login: serviceAccount, password: password })
+
+      await replaceSecret(
+        serviceAccountSecretName,
+        organization.name!,
+        { login: serviceAccount, password },
+        'kubernetes.io/basic-auth',
+      )
       await addServiceAccountsToOrganizations(orgApi, createUserOption.loginName, filteredOrganizations)
     } else {
       const serviceAccount = `organization-${organization.name}`

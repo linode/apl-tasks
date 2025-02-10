@@ -22,8 +22,13 @@ export async function checkServiceAccountSecret(
     await createSecret(serviceAccountSecretName, teamNamespace, { login: serviceAccountLogin, password })
   } else {
     console.log(`Replacing secret for ${serviceAccountSecretName}`)
-    // eslint-disable-next-line object-shorthand
-    await replaceSecret(serviceAccountSecretName, teamNamespace, { login: serviceAccountLogin, password: password })
+
+    await replaceSecret(
+      serviceAccountSecretName,
+      teamNamespace,
+      { login: serviceAccountLogin, password },
+      'kubernetes.io/basic-auth',
+    )
   }
   return password
 }
