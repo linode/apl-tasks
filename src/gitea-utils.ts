@@ -11,7 +11,7 @@ export async function setServiceAccountSecret(
   console.log(`Checking for secret: ${serviceAccountSecretName}!`)
   try {
     const secret = (await k8s.core().readNamespacedSecret(serviceAccountSecretName, teamNamespace)).body
-    console.log(`Replacing secret for ${serviceAccountSecretName}`)
+    console.log(`Replacing secret for ${serviceAccountSecretName} in namespace ${teamNamespace}`)
     const updatedSecret: V1Secret = {
       metadata: {
         name: secret.metadata?.name,
@@ -26,8 +26,8 @@ export async function setServiceAccountSecret(
     await k8s.core().replaceNamespacedSecret(serviceAccountSecretName, teamNamespace, updatedSecret)
   } catch (error) {
     if (error.statusCode === 404) {
-      console.log(`Secret ${serviceAccountSecretName} could not be found!`)
-      console.log(`Creating secret for ${serviceAccountSecretName}`)
+      console.log(`Secret ${serviceAccountSecretName} could not be found in namespace ${teamNamespace}!`)
+      console.log(`Creating secret for ${serviceAccountSecretName} in namespace ${teamNamespace}`)
       await createSecret(
         serviceAccountSecretName,
         teamNamespace,
