@@ -35,7 +35,7 @@ export const k8s = {
 export async function createSecret(
   name: string,
   namespace: string,
-  data: Record<string, unknown>,
+  data: Record<string, any>,
   secretType?: string,
 ): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
@@ -56,13 +56,12 @@ export async function replaceSecret(
   name: string,
   namespace: string,
   data: Record<string, unknown>,
-  existingResourceVersion: string,
   secretType?: string,
 ): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
     ...new V1Secret(),
-    metadata: { ...new V1ObjectMeta(), name, resourceVersion: existingResourceVersion },
+    metadata: { ...new V1ObjectMeta(), name },
     data: mapValues(data, b64enc) as {
       [key: string]: string
     },
