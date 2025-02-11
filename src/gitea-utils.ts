@@ -34,7 +34,8 @@ export async function setServiceAccountSecret(
         { username: serviceAccountLogin, password },
         'kubernetes.io/basic-auth',
       )
-    } else throw new Error(`Problem replacing secret ${serviceAccountSecretName} in namespace ${teamNamespace}`)
+    }
+    console.error(`Problem replacing secret ${serviceAccountSecretName} in namespace ${teamNamespace}`)
   }
   return password
 }
