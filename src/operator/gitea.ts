@@ -212,11 +212,23 @@ export const createServiceAccounts = async (
       }
       await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
 
-      await setServiceAccountSecret(serviceAccountSecretName, serviceAccount, organization.name!, password)
+      await setServiceAccountSecret(
+        serviceAccountSecretName,
+        serviceAccount,
+        organization.name!,
+        password,
+        localEnv.GITEA_URL,
+      )
       await addServiceAccountsToOrganizations(orgApi, createUserOption.loginName, filteredOrganizations)
     } else {
       const serviceAccount = `organization-${organization.name}`
-      await setServiceAccountSecret(serviceAccountSecretName, serviceAccount, organization.name!, password)
+      await setServiceAccountSecret(
+        serviceAccountSecretName,
+        serviceAccount,
+        organization.name!,
+        password,
+        localEnv.GITEA_URL,
+      )
       await editServiceAccount(adminApi, serviceAccount, password)
       await addServiceAccountsToOrganizations(orgApi, serviceAccount, filteredOrganizations)
     }

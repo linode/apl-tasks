@@ -7,6 +7,7 @@ export async function setServiceAccountSecret(
   serviceAccountLogin: string,
   teamNamespace: string,
   password: string,
+  giteaUrl: string,
 ): Promise<string | undefined> {
   console.log(`Checking for secret: ${serviceAccountSecretName}!`)
   try {
@@ -16,6 +17,7 @@ export async function setServiceAccountSecret(
       metadata: {
         name: secret.metadata?.name,
         namespace: teamNamespace,
+        annotations: { 'tekton.dev/git-0': giteaUrl },
       },
       data: {
         username: Buffer.from(serviceAccountLogin).toString('base64'),
