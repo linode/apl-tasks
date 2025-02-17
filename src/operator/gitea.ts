@@ -420,22 +420,24 @@ async function upsertRepo(
 async function createOrgsAndTeams(
   orgApi: OrganizationApi,
   existingOrganizations: Organization[],
+  organizationNames: string[],
   teamIds: string[],
 ): Promise<Organization[]> {
   await Promise.all(
-    teamIds.map(async (organizationName) => {
+    organizationNames.map(async (organizationName) => {
       const organization = await upsertOrganization(orgApi, existingOrganizations, organizationName)
       if (existingOrganizations.find((org) => org.id === organization.id)) return
       existingOrganizations.push(organization)
     }),
-  ).then(() => {
+  )
+  await Promise.all(
     teamIds
-      .filter((id) => !id.includes('otomi'))
+      .filter((id) => id !== 'admin')
       .map((teamId) => {
         const name = `team-${teamId}`
         return upsertTeam(orgApi, orgName, { ...adminTeam, name })
-      })
-  })
+      }),
+  )
   // create org wide viewer team for otomi role "team-viewer"
   await upsertTeam(orgApi, orgName, readOnlyTeam)
   return existingOrganizations
@@ -525,12 +527,12 @@ async function setupGitea() {
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
   const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-  const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
-
+  const teamIds = Object.keys(teamConfig)
+  const orgNames = [orgName, ...teamIds]
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   let existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
-  existingOrganizations = await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
+  existingOrganizations = await createOrgsAndTeams(orgApi, existingOrganizations, orgNames, teamIds)
   await createServiceAccounts(adminApi, existingOrganizations, orgApi)
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
@@ -550,13 +552,11 @@ async function setupGitea() {
 
   // then create initial gitops repo for teams
   await Promise.all(
-    teamIds
-      .filter((id) => !id.includes('otomi'))
-      .map(async (teamId) => {
-        const name = `team-${teamId}-argocd`
-        const option = { ...repoOption, autoInit: true, name }
-        return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
-      }),
+    teamIds.map(async (teamId) => {
+      const name = `team-${teamId}-argocd`
+      const option = { ...repoOption, autoInit: true, name }
+      return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
+    }),
   )
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
