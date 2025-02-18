@@ -9,7 +9,6 @@ export async function setServiceAccountSecret(
   password: string,
   giteaUrl: string,
 ): Promise<string | undefined> {
-  console.log(`Checking for secret: ${serviceAccountSecretName}!`)
   try {
     console.log(`Replacing secret for ${serviceAccountSecretName} in namespace ${teamNamespace}`)
     const updatedSecret: V1Secret = {
