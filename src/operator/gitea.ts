@@ -8,12 +8,13 @@ import {
   CreateRepoOption,
   CreateTeamOption,
   EditRepoOption,
+  HttpError,
   Organization,
   OrganizationApi,
   Repository,
   RepositoryApi,
   Team,
-} from '@linode/gitea-client-node'
+} from "@linode/gitea-client-node";
 import { isEmpty, keys } from 'lodash'
 import { doApiCall } from '../utils'
 import {
@@ -302,47 +303,49 @@ async function upsertRepo(
   repoOption: CreateRepoOption | EditRepoOption,
   teamName?: string,
 ): Promise<void> {
-  const existingRepo = existingReposInOrg.find((repository) => repository.name === repoOption.name)
+  const repoName = repoOption.name!
+  const existingRepo = existingReposInOrg.find((repository) => repository.name === repoName)
+  let addTeam = false
   if (isEmpty(existingRepo)) {
     // org repo create
-    await doApiCall(
-      errors,
-      `Creating repo "${repoOption.name}" in org "${orgName}"`,
-      () => orgApi.createOrgRepo(orgName, repoOption as CreateRepoOption),
-      422,
-    )
+    console.info(`Creating repo "${repoName}" in org "${orgName}"`)
+    await orgApi.createOrgRepo(orgName, repoOption as CreateRepoOption)
+    addTeam = true
   } else {
     // repo update
-    await doApiCall(
-      errors,
-      `Updating repo "${repoOption.name}" in org "${orgName}"`,
-      () => repoApi.repoEdit(orgName, repoOption.name!, repoOption as EditRepoOption),
-      422,
-    )
+    console.info(`Updating repo "${repoName}" in org "${orgName}"`)
+    await repoApi.repoEdit(orgName, repoName, repoOption as EditRepoOption)
+    if (teamName) {
+      console.info(`Checking if repo "${repoName}" is assigned to team "${teamName}"`)
+      try {
+        await repoApi.repoCheckTeam(orgName, repoName, teamName)
+      } catch (error) {
+        if (error instanceof HttpError && error.statusCode === 404) {
+          addTeam = true
+        } else {
+          throw error
+        }
+      }
+    }
   }
-  // new team repo, add team
-  if (teamName)
-    await doApiCall(
-      errors,
-      `Adding repo "${repoOption.name}" to team "${teamName}"`,
-      () => repoApi.repoAddTeam(orgName, repoOption.name!, teamName),
-      422,
-    )
+  if (addTeam && teamName) {
+    console.info(`Adding repo "${repoName}" to team "${teamName}"`)
+    await repoApi.repoAddTeam(orgName, repoName, teamName)
+  }
 }
 
-async function createOrgsAndTeams(orgApi: OrganizationApi, existingOrganizations: Organization[], teamIds: string[]) {
+async function createOrgsAndTeams(orgApi: OrganizationApi, existingOrganizations: Organization[], organizationNames: string[], teamIds: string[]) {
   await Promise.all(
-    teamIds.map((organizationName) => {
+    organizationNames.map((organizationName) => {
       return upsertOrganization(orgApi, existingOrganizations, organizationName)
     }),
-  ).then(() => {
-    teamIds
-      .filter((id) => !id.includes('otomi'))
-      .map((teamId) => {
-        const name = `team-${teamId}`
-        return upsertTeam(orgApi, orgName, { ...adminTeam, name })
-      })
-  })
+  )
+  await Promise.all(
+    teamIds.map((teamId) => {
+      const name = `team-${teamId}`
+      return upsertTeam(orgApi, orgName, { ...adminTeam, name })
+    }),
+  )
   // create org wide viewer team for otomi role "team-viewer"
   await upsertTeam(orgApi, orgName, readOnlyTeam)
 }
@@ -429,7 +432,8 @@ async function createReposAndAddToTeam(
 async function setupGitea() {
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
+  const teamIds = Object.keys(teamConfig)
+  const orgNames = [orgName, ...teamIds]
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   // create the org
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
@@ -437,7 +441,7 @@ async function setupGitea() {
 
   const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
 
-  await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
+  await createOrgsAndTeams(orgApi, existingOrganizations, orgNames, teamIds)
 
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
@@ -457,13 +461,11 @@ async function setupGitea() {
 
   // then create initial gitops repo for teams
   await Promise.all(
-    teamIds
-      .filter((id) => !id.includes('otomi'))
-      .map(async (teamId) => {
-        const name = `team-${teamId}-argocd`
-        const option = { ...repoOption, autoInit: true, name }
-        return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
-      }),
+    teamIds.map(async (teamId) => {
+      const name = `team-${teamId}-argocd`
+      const option = { ...repoOption, autoInit: true, name }
+      return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
+    }),
   )
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
