@@ -11,6 +11,7 @@ import {
   CreateUserOption,
   EditRepoOption,
   EditUserOption,
+  HttpError,
   Organization,
   OrganizationApi,
   Repository,
@@ -389,32 +390,35 @@ async function upsertRepo(
   repoOption: CreateRepoOption | EditRepoOption,
   teamName?: string,
 ): Promise<void> {
-  const existingRepo = existingReposInOrg.find((repository) => repository.name === repoOption.name)
+  const repoName = repoOption.name!
+  const existingRepo = existingReposInOrg.find((repository) => repository.name === repoName)
+  let addTeam = false
   if (isEmpty(existingRepo)) {
     // org repo create
-    await doApiCall(
-      errors,
-      `Creating repo "${repoOption.name}" in org "${orgName}"`,
-      () => orgApi.createOrgRepo(orgName, repoOption as CreateRepoOption),
-      422,
-    )
+    console.info(`Creating repo "${repoName}" in org "${orgName}"`)
+    await orgApi.createOrgRepo(orgName, repoOption as CreateRepoOption)
+    addTeam = true
   } else {
     // repo update
-    await doApiCall(
-      errors,
-      `Updating repo "${repoOption.name}" in org "${orgName}"`,
-      () => repoApi.repoEdit(orgName, repoOption.name!, repoOption as EditRepoOption),
-      422,
-    )
+    console.info(`Updating repo "${repoName}" in org "${orgName}"`)
+    await repoApi.repoEdit(orgName, repoName, repoOption as EditRepoOption)
+    if (teamName) {
+      console.info(`Checking if repo "${repoName}" is assigned to team "${teamName}"`)
+      try {
+        await repoApi.repoCheckTeam(orgName, repoName, teamName)
+      } catch (error) {
+        if (error instanceof HttpError && error.statusCode === 404) {
+          addTeam = true
+        } else {
+          throw error
+        }
+      }
+    }
   }
-  // new team repo, add team
-  if (teamName && isEmpty(existingRepo))
-    await doApiCall(
-      errors,
-      `Adding repo "${repoOption.name}" to team "${teamName}"`,
-      () => repoApi.repoAddTeam(orgName, repoOption.name!, teamName),
-      422,
-    )
+  if (addTeam && teamName) {
+    console.info(`Adding repo "${repoName}" to team "${teamName}"`)
+    await repoApi.repoAddTeam(orgName, repoName, teamName)
+  }
 }
 
 async function createOrgsAndTeams(
@@ -431,12 +435,10 @@ async function createOrgsAndTeams(
     }),
   )
   await Promise.all(
-    teamIds
-      .filter((id) => id !== 'admin')
-      .map((teamId) => {
-        const name = `team-${teamId}`
-        return upsertTeam(orgApi, orgName, { ...adminTeam, name })
-      }),
+    teamIds.map((teamId) => {
+      const name = `team-${teamId}`
+      return upsertTeam(orgApi, orgName, { ...adminTeam, name })
+    }),
   )
   // create org wide viewer team for otomi role "team-viewer"
   await upsertTeam(orgApi, orgName, readOnlyTeam)
