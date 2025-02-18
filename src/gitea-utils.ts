@@ -11,11 +11,10 @@ export async function setServiceAccountSecret(
 ): Promise<string | undefined> {
   console.log(`Checking for secret: ${serviceAccountSecretName}!`)
   try {
-    const secret = (await k8s.core().readNamespacedSecret(serviceAccountSecretName, teamNamespace)).body
     console.log(`Replacing secret for ${serviceAccountSecretName} in namespace ${teamNamespace}`)
     const updatedSecret: V1Secret = {
       metadata: {
-        name: secret.metadata?.name,
+        name: serviceAccountSecretName,
         namespace: teamNamespace,
         annotations: { 'tekton.dev/git-0': giteaUrl },
       },
@@ -23,7 +22,7 @@ export async function setServiceAccountSecret(
         username: Buffer.from(serviceAccountLogin).toString('base64'),
         password: Buffer.from(password).toString('base64'),
       },
-      type: secret.type,
+      type: 'kubernetes.io/basic-auth',
     }
     await k8s.core().replaceNamespacedSecret(serviceAccountSecretName, teamNamespace, updatedSecret)
   } catch (error) {
@@ -33,7 +32,7 @@ export async function setServiceAccountSecret(
       try {
         const newSecret: V1Secret = {
           metadata: {
-            name: 'gitea-credentials',
+            name: serviceAccountSecretName,
             namespace: teamNamespace,
             annotations: { 'tekton.dev/git-0': giteaUrl },
           },

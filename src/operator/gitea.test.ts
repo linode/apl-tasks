@@ -61,7 +61,7 @@ describe('giteaOperator', () => {
     jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockedListUsersResponse)
     jest.spyOn(utils, 'doApiCall').mockResolvedValue(mockedCreateUserResponse)
     jest.spyOn(giteaUtils, 'setServiceAccountSecret').mockResolvedValue(undefined)
-    jest.spyOn(giteaOperator, 'addServiceAccountsToOrganizations').mockImplementation(jest.fn())
+    jest.spyOn(giteaOperator, 'addServiceAccountToOrganizations').mockImplementation(jest.fn())
 
     await giteaOperator.createServiceAccounts(adminApi, existingOrgantizations, organizationApi)
     
@@ -82,7 +82,7 @@ describe('giteaOperator', () => {
     jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockEditUserResponse2)
     jest.spyOn(giteaUtils, 'setServiceAccountSecret').mockResolvedValueOnce('test3')
     jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockEditUserResponse3)
-    jest.spyOn(giteaOperator, 'addServiceAccountsToOrganizations').mockImplementation(jest.fn())
+    jest.spyOn(giteaOperator, 'addServiceAccountToOrganizations').mockImplementation(jest.fn())
 
     await giteaOperator.createServiceAccounts(adminApi, existingOrgantizations, organizationApi)
     expect(utils.doApiCall).toHaveBeenCalledWith([], 'Getting all users', expect.any(Function))
@@ -99,7 +99,7 @@ describe('giteaOperator', () => {
     jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockedListUsersResponse)
     jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce({})
 
-    await giteaOperator.addServiceAccountsToOrganizations(organizationApi, loginName, existingOrgantizations)
+    await giteaOperator.addServiceAccountToOrganizations(organizationApi, loginName, existingOrgantizations)
 
     expect(utils.doApiCall).toHaveBeenCalledWith([], 'Getting teams from organization: team-demo', expect.any(Function))
     expect(utils.doApiCall).toHaveBeenNthCalledWith(3, [], 'Adding user to organization Owners team', expect.any(Function))

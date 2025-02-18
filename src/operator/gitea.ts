@@ -19,7 +19,7 @@ import {
   User,
 } from '@linode/gitea-client-node'
 import { generate as generatePassword } from 'generate-password'
-import { forEach, isEmpty, keys } from 'lodash'
+import { isEmpty, keys } from 'lodash'
 import { setServiceAccountSecret } from '../gitea-utils'
 import { doApiCall } from '../utils'
 import {
@@ -144,12 +144,12 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   }
 }
 // Exported for testing purposes
-export const addServiceAccountsToOrganizations = async (
+export const addServiceAccountToOrganizations = async (
   organizationApi: OrganizationApi,
-  loginName: string,
+  serviceAcountName: string,
   organisations: Organization[],
 ) => {
-  const organisation = organisations.find((org) => loginName === `organization-${org.name}`)
+  const organisation = organisations.find((org) => serviceAcountName === `organization-${org.name}`)
   const teams: Team[] = await doApiCall(errors, `Getting teams from organization: ${organisation?.name}`, () =>
     organizationApi.orgListTeams(organisation!.name!),
   )
@@ -158,10 +158,10 @@ export const addServiceAccountsToOrganizations = async (
     organizationApi.orgListTeamMembers(ownerTeam!.id!),
   )
   if (isEmpty(members)) return
-  const exists = members.some((member) => member.login === loginName)
+  const exists = members.some((member) => member.login === serviceAcountName)
   if (exists) return
   await doApiCall(errors, `Adding user to organization Owners team`, () =>
-    organizationApi.orgAddTeamMember(ownerTeam!.id!, loginName),
+    organizationApi.orgAddTeamMember(ownerTeam!.id!, serviceAcountName),
   )
 }
 
@@ -185,43 +185,43 @@ export const createServiceAccounts = async (
 ) => {
   const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
-  forEach(filteredOrganizations, async (organization) => {
-    const serviceAccountSecretName = 'gitea-credentials'
-    const exists = users.some((user) => user.login === `organization-${organization.name}`)
-    const password = generatePassword({
-      length: 16,
-      numbers: true,
-      symbols: true,
-      lowercase: true,
-      uppercase: true,
-      exclude: String(':,;"/=|%\\\''),
-    })
-    const giteaURL = `https://gitea.${env.domainSuffix}`
-    if (!exists) {
+  await Promise.all(
+    filteredOrganizations.map(async (organization) => {
+      const serviceAccountSecretName = 'gitea-credentials'
+      const exists = users.some((user) => user.login === `organization-${organization.name}`)
+      const password = generatePassword({
+        length: 16,
+        numbers: true,
+        symbols: true,
+        lowercase: true,
+        uppercase: true,
+        exclude: String(':,;"/=|%\\\''),
+      })
+      const giteaURL = `https://gitea.${env.domainSuffix}`
       const serviceAccount = `organization-${organization.name}`
-      const organizationEmail = `${organization.name}@mail.com`
-      const createUserOption = {
-        ...new CreateUserOption(),
-        email: organizationEmail,
-        password,
-        username: serviceAccount,
-        loginName: serviceAccount,
-        fullName: serviceAccount,
-        restricted: false,
-        mustChangePassword: false,
-        repoAdminChangeTeamAccess: true,
+
+      if (!exists) {
+        const organizationEmail = `${organization.name}@mail.com`
+        const createUserOption = {
+          ...new CreateUserOption(),
+          email: organizationEmail,
+          password,
+          username: serviceAccount,
+          loginName: serviceAccount,
+          fullName: serviceAccount,
+          restricted: false,
+          mustChangePassword: false,
+          repoAdminChangeTeamAccess: true,
+        }
+        await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
+      } else {
+        await editServiceAccount(adminApi, serviceAccount, password)
       }
-      await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
 
       await setServiceAccountSecret(serviceAccountSecretName, serviceAccount, organization.name!, password, giteaURL)
-      await addServiceAccountsToOrganizations(orgApi, createUserOption.loginName, filteredOrganizations)
-    } else {
-      const serviceAccount = `organization-${organization.name}`
-      await setServiceAccountSecret(serviceAccountSecretName, serviceAccount, organization.name!, password, giteaURL)
-      await editServiceAccount(adminApi, serviceAccount, password)
-      await addServiceAccountsToOrganizations(orgApi, serviceAccount, filteredOrganizations)
-    }
-  })
+      await addServiceAccountToOrganizations(orgApi, serviceAccount, filteredOrganizations)
+    }),
+  )
 }
 
 const createSetGiteaOIDCConfig = (() => {
