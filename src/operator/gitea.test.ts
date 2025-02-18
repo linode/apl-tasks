@@ -102,7 +102,7 @@ describe('giteaOperator', () => {
     await giteaOperator.addServiceAccountToOrganizations(organizationApi, loginName, existingOrgantizations)
 
     expect(utils.doApiCall).toHaveBeenCalledWith([], 'Getting teams from organization: team-demo', expect.any(Function))
-    expect(utils.doApiCall).toHaveBeenNthCalledWith(3, [], 'Adding user to organization Owners team', expect.any(Function))
+    expect(utils.doApiCall).toHaveBeenNthCalledWith(3, [], 'Adding user to organization Owners team in team-demo', expect.any(Function))
   })
 
   it('should create a valid group mapping string with all the teams', () => {
