@@ -154,13 +154,13 @@ export const addServiceAccountToOrganizations = async (
     organizationApi.orgListTeams(organisation!.name!),
   )
   const ownerTeam = teams.find((team) => team.name === 'Owners')
-  const members: User[] = await doApiCall(errors, `Getting members from Owners team`, () =>
+  const members: User[] = await doApiCall(errors, `Getting members from Owners team in ${organisation?.name}`, () =>
     organizationApi.orgListTeamMembers(ownerTeam!.id!),
   )
   if (isEmpty(members)) return
   const exists = members.some((member) => member.login === serviceAcountName)
   if (exists) return
-  await doApiCall(errors, `Adding user to organization Owners team`, () =>
+  await doApiCall(errors, `Adding user to organization Owners team in ${organisation?.name}`, () =>
     organizationApi.orgAddTeamMember(ownerTeam!.id!, serviceAcountName),
   )
 }
