@@ -19,7 +19,7 @@
     "aws-sdk": "2.1692.0",
     "axios": "1.7.4",
     "bluebird": "3.7.2",
-    "cookie": "0.7.0",
+    "cookie": "1.0.2",
     "dotenv": "^16.4.7",
     "envalid": "8.0.0",
     "generate-password": "^1.7.1",
