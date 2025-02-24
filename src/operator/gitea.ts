@@ -164,7 +164,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     case ResourceEventType.Added:
     case ResourceEventType.Modified: {
       try {
-        await createBuildHook()
+        // await createBuildHook()
       } catch (error) {
         console.debug(error)
       }
