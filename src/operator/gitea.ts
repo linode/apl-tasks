@@ -122,6 +122,37 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     env.teamConfig = JSON.parse(data.teamConfig)
     env.teamNames = keys(env.teamConfig).filter((teamName) => teamName !== 'admin')
     env.domainSuffix = data.domainSuffix
+  } else if (object.kind === 'Service' && (metadata.name as string).includes('el-gitea-webhook-')) {
+    const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
+    const { giteaPassword } = env
+    if (isEmpty(giteaPassword)) {
+      await new Promise((resolve) => setTimeout(resolve, 30000))
+      await secretsAndConfigmapsCallback(e)
+      return
+    }
+    const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+    // Logic to watch services in teamNamespaces which contain el-gitea-webhook in the name
+    switch (e.type) {
+      case ResourceEventType.Added: {
+        try {
+          const repoName = metadata.name.replace(/^el-gitea-webhook-/, '')
+          await createBuildHook(repoApi, repoName, metadata.namespace, object as k8s.V1Service)
+        } catch (error) {
+          console.debug(error)
+        }
+        break
+      }
+      case ResourceEventType.Modified: {
+        try {
+          await runSetupGitea()
+        } catch (error) {
+          console.debug(error)
+        }
+        break
+      }
+      default:
+        break
+    }
   } else return
 
   if (!env.giteaPassword || !env.teamConfig || !env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) {
@@ -133,7 +164,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     case ResourceEventType.Added:
     case ResourceEventType.Modified: {
       try {
-        await runSetupGitea()
+        await createBuildHook()
       } catch (error) {
         console.debug(error)
       }
@@ -143,6 +174,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
       break
   }
 }
+
 // Exported for testing purposes
 export const addServiceAccountToOrganizations = async (
   organizationApi: OrganizationApi,
@@ -255,6 +287,12 @@ export default class MyOperator extends Operator {
     // Watch apl-gitea-operator-cm
     try {
       await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
+    } catch (error) {
+      console.debug(error)
+    }
+    // Watch team namespace services that contain 'el-gitea-webhook' in the name
+    try {
+      await this.watchResource('', 'v1', 'services', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
       console.debug(error)
     }
@@ -518,6 +556,29 @@ async function createReposAndAddToTeam(
       () => repoApi.repoAddTeam(orgName, otomiChartsRepoName, teamNameViewer),
       422,
     )
+}
+
+// Logic to create a webhook for repos in a organization
+async function createBuildHook(
+  repoApi: RepositoryApi,
+  repoName: string,
+  teamName: string,
+  giteaWebhookService: k8s.V1Service,
+) {
+  const tcpPort = giteaWebhookService.spec?.ports?.find((port) => {
+    if (port.protocol === 'TCP') return port
+  })
+  const createHookOption: CreateHookOption = {
+    ...new CreateHookOption(),
+    active: true,
+    type: CreateHookOption.TypeEnum.Gitea,
+    events: ['pushOnly'],
+    config: {
+      contentType: '1',
+      url: `http://${giteaWebhookService.metadata?.name}.svc.cluster.local:${tcpPort?.port}`,
+    },
+  }
+  await repoApi.repoCreateHook(teamName, repoName, createHookOption)
 }
 
 async function setupGitea() {
