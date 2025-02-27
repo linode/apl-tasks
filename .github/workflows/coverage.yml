@@ -18,6 +18,7 @@ jobs:
           echo "@linode:registry=https://npm.pkg.github.com/linode" > .npmrc
           echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> .npmrc
           echo '::set-output name=diff::1'
+
       - name: Install Node
         run: |
           export NVM_DIR="$HOME/.nvm"
@@ -26,10 +27,7 @@ jobs:
           nvm use
           node -v
           npm install
-      - name: Run tests
-        run: |
-          npm run test -- --ci --json --coverage --testLocationInResults --outputFile=report.json
+
       - uses: ArtiomTr/jest-coverage-report-action@v2
         with:
-          coverage-file: report.json
-          base-coverage-file: report.json
+          test-script: npm run test
