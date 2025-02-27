@@ -3,18 +3,25 @@ import stream from 'stream'
 
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
+  AdminApi,
   CreateHookOption,
   CreateOrgOption,
   CreateRepoOption,
   CreateTeamOption,
+  CreateUserOption,
   EditRepoOption,
+  EditUserOption,
+  HttpError,
   Organization,
   OrganizationApi,
   Repository,
   RepositoryApi,
   Team,
+  User,
 } from '@linode/gitea-client-node'
+import { generate as generatePassword } from 'generate-password'
 import { isEmpty, keys } from 'lodash'
+import { setServiceAccountSecret } from '../gitea-utils'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
@@ -137,6 +144,86 @@ const secretsAndConfigmapsCallback = async (e: any) => {
       break
   }
 }
+// Exported for testing purposes
+export const addServiceAccountToOrganizations = async (
+  organizationApi: OrganizationApi,
+  serviceAcountName: string,
+  organisations: Organization[],
+) => {
+  const organisation = organisations.find((org) => serviceAcountName === `organization-${org.name}`)
+  const teams: Team[] = await doApiCall(errors, `Getting teams from organization: ${organisation?.name}`, () =>
+    organizationApi.orgListTeams(organisation!.name!),
+  )
+  const ownerTeam = teams.find((team) => team.name === 'Owners')
+  const members: User[] = await doApiCall(errors, `Getting members from Owners team in ${organisation?.name}`, () =>
+    organizationApi.orgListTeamMembers(ownerTeam!.id!),
+  )
+  if (isEmpty(members)) return
+  const exists = members.some((member) => member.login === serviceAcountName)
+  if (exists) return
+  await doApiCall(errors, `Adding user to organization Owners team in ${organisation?.name}`, () =>
+    organizationApi.orgAddTeamMember(ownerTeam!.id!, serviceAcountName),
+  )
+}
+
+// Exported for testing purposes
+export const editServiceAccount = async (adminApi: AdminApi, loginName: string, password: string) => {
+  const editUserOption = {
+    ...new EditUserOption(),
+    loginName,
+    password,
+  }
+  await doApiCall(errors, `Editing user: ${loginName} with new password`, () =>
+    adminApi.adminEditUser(loginName, editUserOption),
+  )
+}
+
+// Exported for testing purposes
+export const createServiceAccounts = async (
+  adminApi: AdminApi,
+  organizations: Organization[],
+  orgApi: OrganizationApi,
+) => {
+  const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
+  const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
+  await Promise.all(
+    filteredOrganizations.map(async (organization) => {
+      const serviceAccountSecretName = 'gitea-credentials'
+      const exists = users.some((user) => user.login === `organization-${organization.name}`)
+      const password = generatePassword({
+        length: 16,
+        numbers: true,
+        symbols: true,
+        lowercase: true,
+        uppercase: true,
+        exclude: String(':,;"/=|%\\\''),
+      })
+      const giteaURL = `https://gitea.${env.domainSuffix}`
+      const serviceAccount = `organization-${organization.name}`
+
+      if (!exists) {
+        const organizationEmail = `${organization.name}@mail.com`
+        const createUserOption = {
+          ...new CreateUserOption(),
+          email: organizationEmail,
+          password,
+          username: serviceAccount,
+          loginName: serviceAccount,
+          fullName: serviceAccount,
+          restricted: false,
+          mustChangePassword: false,
+          repoAdminChangeTeamAccess: true,
+        }
+        await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
+      } else {
+        await editServiceAccount(adminApi, serviceAccount, password)
+      }
+
+      await setServiceAccountSecret(serviceAccountSecretName, serviceAccount, organization.name!, password, giteaURL)
+      await addServiceAccountToOrganizations(orgApi, serviceAccount, filteredOrganizations)
+    }),
+  )
+}
 
 const createSetGiteaOIDCConfig = (() => {
   let intervalId: any = null
@@ -242,11 +329,12 @@ async function runSetupGitea() {
   }
 }
 
-async function upsertOrganization(
+// Exported for testing purposes
+export async function upsertOrganization(
   orgApi: OrganizationApi,
   existingOrganizations: Organization[],
   organizationName: string,
-): Promise<void> {
+): Promise<Organization> {
   const prefixedOrgName = !organizationName.includes('otomi') ? `team-${organizationName}` : organizationName
   const orgOption = {
     ...new CreateOrgOption(),
@@ -302,49 +390,59 @@ async function upsertRepo(
   repoOption: CreateRepoOption | EditRepoOption,
   teamName?: string,
 ): Promise<void> {
-  const existingRepo = existingReposInOrg.find((repository) => repository.name === repoOption.name)
+  const repoName = repoOption.name!
+  const existingRepo = existingReposInOrg.find((repository) => repository.name === repoName)
+  let addTeam = false
   if (isEmpty(existingRepo)) {
     // org repo create
-    await doApiCall(
-      errors,
-      `Creating repo "${repoOption.name}" in org "${orgName}"`,
-      () => orgApi.createOrgRepo(orgName, repoOption as CreateRepoOption),
-      422,
-    )
+    console.info(`Creating repo "${repoName}" in org "${orgName}"`)
+    await orgApi.createOrgRepo(orgName, repoOption as CreateRepoOption)
+    addTeam = true
   } else {
     // repo update
-    await doApiCall(
-      errors,
-      `Updating repo "${repoOption.name}" in org "${orgName}"`,
-      () => repoApi.repoEdit(orgName, repoOption.name!, repoOption as EditRepoOption),
-      422,
-    )
+    console.info(`Updating repo "${repoName}" in org "${orgName}"`)
+    await repoApi.repoEdit(orgName, repoName, repoOption as EditRepoOption)
+    if (teamName) {
+      console.info(`Checking if repo "${repoName}" is assigned to team "${teamName}"`)
+      try {
+        await repoApi.repoCheckTeam(orgName, repoName, teamName)
+      } catch (error) {
+        if (error instanceof HttpError && error.statusCode === 404) {
+          addTeam = true
+        } else {
+          throw error
+        }
+      }
+    }
   }
-  // new team repo, add team
-  if (teamName)
-    await doApiCall(
-      errors,
-      `Adding repo "${repoOption.name}" to team "${teamName}"`,
-      () => repoApi.repoAddTeam(orgName, repoOption.name!, teamName),
-      422,
-    )
+  if (addTeam && teamName) {
+    console.info(`Adding repo "${repoName}" to team "${teamName}"`)
+    await repoApi.repoAddTeam(orgName, repoName, teamName)
+  }
 }
 
-async function createOrgsAndTeams(orgApi: OrganizationApi, existingOrganizations: Organization[], teamIds: string[]) {
+async function createOrgsAndTeams(
+  orgApi: OrganizationApi,
+  existingOrganizations: Organization[],
+  organizationNames: string[],
+  teamIds: string[],
+): Promise<Organization[]> {
   await Promise.all(
-    teamIds.map((organizationName) => {
-      return upsertOrganization(orgApi, existingOrganizations, organizationName)
+    organizationNames.map(async (organizationName) => {
+      const organization = await upsertOrganization(orgApi, existingOrganizations, organizationName)
+      if (existingOrganizations.find((org) => org.id === organization.id)) return
+      existingOrganizations.push(organization)
     }),
-  ).then(() => {
-    teamIds
-      .filter((id) => !id.includes('otomi'))
-      .map((teamId) => {
-        const name = `team-${teamId}`
-        return upsertTeam(orgApi, orgName, { ...adminTeam, name })
-      })
-  })
+  )
+  await Promise.all(
+    teamIds.map((teamId) => {
+      const name = `team-${teamId}`
+      return upsertTeam(orgApi, orgName, { ...adminTeam, name })
+    }),
+  )
   // create org wide viewer team for otomi role "team-viewer"
   await upsertTeam(orgApi, orgName, readOnlyTeam)
+  return existingOrganizations
 }
 
 async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Promise<hookInfo> {
@@ -427,18 +525,17 @@ async function createReposAndAddToTeam(
 }
 
 async function setupGitea() {
+  const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const teamIds = ['otomi', ...Object.keys(teamConfig)].filter((id) => id !== 'admin')
-  const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
-  // create the org
+  const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  const teamIds = Object.keys(teamConfig)
+  const orgNames = [orgName, ...teamIds]
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-
-  const existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
-
-  await createOrgsAndTeams(orgApi, existingOrganizations, teamIds)
-
+  let existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
+  existingOrganizations = await createOrgsAndTeams(orgApi, existingOrganizations, orgNames, teamIds)
+  await createServiceAccounts(adminApi, existingOrganizations, orgApi)
   const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
     orgApi.orgListRepos(orgName),
   )
@@ -457,13 +554,11 @@ async function setupGitea() {
 
   // then create initial gitops repo for teams
   await Promise.all(
-    teamIds
-      .filter((id) => !id.includes('otomi'))
-      .map(async (teamId) => {
-        const name = `team-${teamId}-argocd`
-        const option = { ...repoOption, autoInit: true, name }
-        return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
-      }),
+    teamIds.map(async (teamId) => {
+      const name = `team-${teamId}-argocd`
+      const option = { ...repoOption, autoInit: true, name }
+      return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
+    }),
   )
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
@@ -474,6 +569,7 @@ async function setupGitea() {
 }
 
 // Set Gitea Functions
+// Exported for testing purposes
 export function buildTeamString(teamNames: any[]): string {
   const teamObject: groupMapping = { 'platform-admin': { otomi: [teamNameOwners] } }
   if (teamNames === undefined) return JSON.stringify(teamObject)
@@ -481,7 +577,7 @@ export function buildTeamString(teamNames: any[]): string {
     const team = `team-${teamName}`
     teamObject[team] = {
       otomi: [teamNameViewer, team],
-      [teamName]: ['Owners'],
+      [team]: ['Owners'],
     }
   })
   return JSON.stringify(teamObject)
@@ -495,7 +591,6 @@ async function setGiteaOIDCConfig(update = false) {
   const clientSecret = env.oidcClientSecret
   const discoveryURL = `${env.oidcEndpoint}/.well-known/openid-configuration`
   const teamNamespaceString = buildTeamString(env.teamNames)
-
   try {
     // WARNING: Dont enclose the teamNamespaceString in double quotes, this will escape the string incorrectly and breaks OIDC group mapping in gitea
     const execCommand = [
