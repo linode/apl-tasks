@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.7.0](https://github.com/linode/apl-tasks/compare/v3.6.1...v3.7.0) (2025-02-27)
+
+
+### Features
+
+* add coverage ([#191](https://github.com/linode/apl-tasks/issues/191)) ([23e662c](https://github.com/linode/apl-tasks/commit/23e662cc419c71e99ea01ad6eee1eeb980cdcc01))
+* create service accounts for gitea organizations ([#192](https://github.com/linode/apl-tasks/issues/192)) ([62a1550](https://github.com/linode/apl-tasks/commit/62a1550cc4001c0bf8dd93fb01a6d4c054f94346))
+* use Jest for test and upgrade to node 22 and use native fetch ([#188](https://github.com/linode/apl-tasks/issues/188)) ([1df9b45](https://github.com/linode/apl-tasks/commit/1df9b45744e80f865700245af7d21c3c62cccf67))
+
+
+### Bug Fixes
+
+* upsert admin team and create repo ([#196](https://github.com/linode/apl-tasks/issues/196)) ([362b9c7](https://github.com/linode/apl-tasks/commit/362b9c7155d3034618413a53e866c648de7bc4ba))
+
 ### [3.6.1](https://github.com/linode/apl-tasks/compare/v3.6.0...v3.6.1) (2025-01-27)
 
 
