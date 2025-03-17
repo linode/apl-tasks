@@ -192,6 +192,20 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     console.info('Missing required variables for Gitea setup/reconfiguration')
     return
   }
+
+  switch (e.type) {
+    case ResourceEventType.Added:
+    case ResourceEventType.Modified: {
+      try {
+        await runSetupGitea()
+      } catch (error) {
+        console.debug(error)
+      }
+      break
+    }
+    default:
+      break
+  }
 }
 // Exported for testing purposes
 export const addServiceAccountToOrganizations = async (
