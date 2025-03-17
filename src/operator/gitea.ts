@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import * as k8s from '@kubernetes/client-node'
 import stream from 'stream'
 
@@ -9,6 +10,7 @@ import {
   CreateRepoOption,
   CreateTeamOption,
   CreateUserOption,
+  EditHookOption,
   EditRepoOption,
   EditUserOption,
   HttpError,
@@ -51,6 +53,29 @@ interface DependencyState {
   oidcClientSecret: string | null
   oidcEndpoint: string | null
   teamNames: string[] | null
+}
+interface Template {
+  apiVersion: string
+  kind: string
+  metadata: any
+  spec: {
+    pipelineRef: {
+      name: string
+    }
+    taskRunTemplate: {
+      podTemplate: any
+      serviceAccountName: string
+    }
+    workspaces: any[]
+  }
+}
+interface TektonTriggerTemplate {
+  apiVersion: string
+  kind: string
+  metadata: any
+  spec: {
+    resourcetemplates: Template[]
+  }
 }
 
 // Constants
@@ -123,7 +148,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     env.teamConfig = JSON.parse(data.teamConfig)
     env.teamNames = keys(env.teamConfig).filter((teamName) => teamName !== 'admin')
     env.domainSuffix = data.domainSuffix
-  } else if (object.kind === 'Service' && (metadata.name as string).includes('el-gitea-webhook-')) {
+  } else if (object.kind === 'TriggerTemplate' && (metadata.name as string).includes('trigger-template-')) {
     const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
     const { giteaPassword } = env
     if (isEmpty(giteaPassword)) {
@@ -136,8 +161,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     switch (e.type) {
       case ResourceEventType.Added: {
         try {
-          const repoName = metadata.name.replace(/^el-gitea-webhook-/, '')
-          await createBuildHook(repoApi, repoName, metadata.namespace, object as k8s.V1Service)
+          await createBuildHook(repoApi, metadata.namespace, object as TektonTriggerTemplate)
         } catch (error) {
           console.debug(error)
         }
@@ -145,7 +169,15 @@ const secretsAndConfigmapsCallback = async (e: any) => {
       }
       case ResourceEventType.Modified: {
         try {
-          await runSetupGitea()
+          await updateBuildHook(repoApi, metadata.namespace, object as TektonTriggerTemplate)
+        } catch (error) {
+          console.debug(error)
+        }
+        break
+      }
+      case ResourceEventType.Deleted: {
+        try {
+          await deleteBuildHook(repoApi, metadata.namespace, object as TektonTriggerTemplate)
         } catch (error) {
           console.debug(error)
         }
@@ -159,20 +191,6 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   if (!env.giteaPassword || !env.teamConfig || !env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) {
     console.info('Missing required variables for Gitea setup/reconfiguration')
     return
-  }
-
-  switch (e.type) {
-    case ResourceEventType.Added:
-    case ResourceEventType.Modified: {
-      try {
-        // await createBuildHook()
-      } catch (error) {
-        console.debug(error)
-      }
-      break
-    }
-    default:
-      break
   }
 }
 // Exported for testing purposes
@@ -292,7 +310,7 @@ export default class MyOperator extends Operator {
     }
     // Watch team namespace services that contain 'el-gitea-webhook' in the name
     try {
-      await this.watchResource('', 'v1', 'services', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
+      await this.watchResource('triggers.tekton.dev', 'v1beta1', 'triggertemplates', secretsAndConfigmapsCallback)
     } catch (error) {
       console.debug(error)
     }
@@ -562,26 +580,92 @@ async function createReposAndAddToTeam(
 }
 
 // Logic to create a webhook for repos in a organization
-async function createBuildHook(
-  repoApi: RepositoryApi,
-  repoName: string,
-  teamName: string,
-  giteaWebhookService: k8s.V1Service,
-) {
-  const tcpPort = giteaWebhookService.spec?.ports?.find((port) => {
-    if (port.protocol === 'TCP') return port
-  })
-  const createHookOption: CreateHookOption = {
-    ...new CreateHookOption(),
-    active: true,
-    type: CreateHookOption.TypeEnum.Gitea,
-    events: ['pushOnly'],
-    config: {
-      contentType: '1',
-      url: `http://${giteaWebhookService.metadata?.name}.svc.cluster.local:${tcpPort?.port}`,
-    },
+async function createBuildHook(repoApi: RepositoryApi, teamName: string, tektonTriggerTemplate: TektonTriggerTemplate) {
+  try {
+    const triggerTemplate: Template = tektonTriggerTemplate.spec.resourcetemplates.find(
+      (template) => template.kind === 'PipelineRun',
+    )!
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = triggerTemplate.spec.workspaces.find(
+      (workspace: { name: string }) => workspace.name === 'build-details',
+    )
+    const repoName = buildWorkspace.repoUrl.split('/').pop()!
+    const createHookOption: CreateHookOption = {
+      ...new CreateHookOption(),
+      active: true,
+      type: CreateHookOption.TypeEnum.Gitea,
+      events: ['push'],
+      config: {
+        content_type: 'json',
+        url: `http://el-gitea-webhook-${buildWorkspace.buildName}.svc.cluster.local:8080`,
+      },
+    }
+    await repoApi.repoCreateHook(teamName, repoName, createHookOption)
+    console.info(`Gitea webhook created for repository: ${repoName} in ${teamName}`)
+  } catch (error) {
+    console.debug(`Error creating Gitea webhook: ${error.message}`)
+    throw error
   }
-  await repoApi.repoCreateHook(teamName, repoName, createHookOption)
+}
+
+// Logic to create a webhook for repos in a organization
+async function updateBuildHook(repoApi: RepositoryApi, teamName: string, tektonTriggerTemplate: TektonTriggerTemplate) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const triggerTemplate: Template = tektonTriggerTemplate.spec.resourcetemplates.find(
+      (template) => template.kind === 'PipelineRun',
+    )!
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = triggerTemplate.spec.workspaces.find(
+      (workspace: { name: string }) => workspace.name === 'build-details',
+    )
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const repoName = buildWorkspace.repoUrl.split('/').pop()!
+    const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
+    const editHookOption: EditHookOption = {
+      ...new EditHookOption(),
+      active: true,
+      events: ['push'],
+      config: {
+        content_type: 'json',
+        url: `http://el-gitea-webhook-${buildWorkspace.buildName}.svc.cluster.local:8080`,
+      },
+    }
+    await Promise.all(
+      webhooks.map(async (webhook) => {
+        await repoApi.repoEditHook(teamName, repoName, webhook.id!, editHookOption)
+      }),
+    )
+  } catch (error) {
+    console.debug(`Error updating Gitea webhook: ${error.message}`)
+    throw error
+  }
+}
+
+// Logic to create a webhook for repos in a organization
+async function deleteBuildHook(repoApi: RepositoryApi, teamName: string, tektonTriggerTemplate: TektonTriggerTemplate) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const triggerTemplate: Template = tektonTriggerTemplate.spec.resourcetemplates.find(
+      (template) => template.kind === 'PipelineRun',
+    )!
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = triggerTemplate.spec.workspaces.find(
+      (workspace: { name: string }) => workspace.name === 'build-details',
+    )
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const repoName = buildWorkspace.repoUrl.split('/').pop()!
+    const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
+
+    await Promise.all(
+      webhooks.map(async (webhook) => {
+        await repoApi.repoDeleteHook(teamName, repoName, webhook.id!)
+      }),
+    )
+  } catch (error) {
+    console.debug(`Error updating Gitea webhook: ${error.message}`)
+    throw error
+  }
 }
 
 async function setupGitea() {
