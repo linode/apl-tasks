@@ -191,6 +191,9 @@ const triggerTemplateCallback = async (e: any) => {
     const buildWorkspace: { name: string; buildName: string; repoUrl: string } = triggerTemplate.spec.workspaces.find(
       (workspace: { name: string }) => workspace.name === 'build-details',
     )
+
+    if (buildWorkspace.repoUrl.includes('.git')) buildWorkspace.repoUrl = buildWorkspace.repoUrl.replace('.git', '')
+
     // Logic to watch services in teamNamespaces which contain el-gitea-webhook in the name
     switch (e.type) {
       case ResourceEventType.Added: {
@@ -646,7 +649,11 @@ export async function updateBuildWebHook(
     const repoName = buildWorkspace.repoUrl.split('/').pop()!
     const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
 
-    if (isEmpty(webhooks)) throw new Error(`No webhooks found for ${repoName} in ${teamName}`)
+    if (isEmpty(webhooks)) {
+      console.debug(`No webhooks found for ${repoName} in ${teamName}`)
+      console.debug('Trying to create one instead...')
+      return await createBuildWebHook(repoApi, teamName, buildWorkspace)
+    }
 
     const editHookOption: EditHookOption = {
       ...new EditHookOption(),
