@@ -627,7 +627,7 @@ export async function createBuildWebHook(
       events: ['push'],
       config: {
         content_type: 'json',
-        url: `http://el-gitea-webhook-${buildWorkspace.buildName}.svc.cluster.local:8080`,
+        url: `http://el-gitea-webhook-${buildWorkspace.buildName}.${teamName}.svc.cluster.local:8080`,
       },
     }
     await repoApi.repoCreateHook(teamName, repoName, createHookOption)
@@ -661,7 +661,7 @@ export async function updateBuildWebHook(
       events: ['push'],
       config: {
         content_type: 'json',
-        url: `http://el-gitea-webhook-${buildWorkspace.buildName}.svc.cluster.local:8080`,
+        url: `http://el-gitea-webhook-${buildWorkspace.buildName}.${teamName}.svc.cluster.local:8080`,
       },
     }
     await Promise.all(

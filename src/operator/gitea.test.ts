@@ -126,7 +126,7 @@ describe('giteaOperator', () => {
       events: ['push'],
       config: {
         content_type: 'json',
-        url: `http://el-gitea-webhook-${buildWorkspace.buildName}.svc.cluster.local:8080`,
+        url: `http://el-gitea-webhook-${buildWorkspace.buildName}.${teamId}.svc.cluster.local:8080`,
       },
     }
 
