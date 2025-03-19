@@ -69,7 +69,7 @@ interface Template {
     workspaces: any[]
   }
 }
-interface TektonTriggerTemplate {
+export interface TektonTriggerTemplate {
   apiVersion: string
   kind: string
   metadata: any
@@ -148,45 +148,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     env.teamConfig = JSON.parse(data.teamConfig)
     env.teamNames = keys(env.teamConfig).filter((teamName) => teamName !== 'admin')
     env.domainSuffix = data.domainSuffix
-  } else if (object.kind === 'TriggerTemplate' && (metadata.name as string).includes('trigger-template-')) {
-    const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
-    const { giteaPassword } = env
-    if (isEmpty(giteaPassword)) {
-      await new Promise((resolve) => setTimeout(resolve, 30000))
-      await secretsAndConfigmapsCallback(e)
-      return
-    }
-    const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-    // Logic to watch services in teamNamespaces which contain el-gitea-webhook in the name
-    switch (e.type) {
-      case ResourceEventType.Added: {
-        try {
-          await createBuildHook(repoApi, metadata.namespace, object as TektonTriggerTemplate)
-        } catch (error) {
-          console.debug(error)
-        }
-        break
-      }
-      case ResourceEventType.Modified: {
-        try {
-          await updateBuildHook(repoApi, metadata.namespace, object as TektonTriggerTemplate)
-        } catch (error) {
-          console.debug(error)
-        }
-        break
-      }
-      case ResourceEventType.Deleted: {
-        try {
-          await deleteBuildHook(repoApi, metadata.namespace, object as TektonTriggerTemplate)
-        } catch (error) {
-          console.debug(error)
-        }
-        break
-      }
-      default:
-        break
-    }
-  } else return
+  }
 
   if (!env.giteaPassword || !env.teamConfig || !env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) {
     console.info('Missing required variables for Gitea setup/reconfiguration')
@@ -207,6 +169,60 @@ const secretsAndConfigmapsCallback = async (e: any) => {
       break
   }
 }
+
+const triggerTemplateCallback = async (e: any) => {
+  const { object } = e
+  const { metadata, data } = object
+
+  if (object.kind === 'TriggerTemplate' && (metadata.name as string).includes('trigger-template-')) {
+    const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
+    const { giteaPassword } = env
+    if (isEmpty(giteaPassword)) {
+      await new Promise((resolve) => setTimeout(resolve, 30000))
+      await triggerTemplateCallback(e)
+      return
+    }
+    const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+
+    const triggerTemplate: Template = (object as TektonTriggerTemplate).spec.resourcetemplates.find(
+      (template) => template.kind === 'PipelineRun',
+    )!
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = triggerTemplate.spec.workspaces.find(
+      (workspace: { name: string }) => workspace.name === 'build-details',
+    )
+    // Logic to watch services in teamNamespaces which contain el-gitea-webhook in the name
+    switch (e.type) {
+      case ResourceEventType.Added: {
+        try {
+          await createBuildWebHook(repoApi, metadata.namespace, buildWorkspace)
+        } catch (error) {
+          console.debug(error)
+        }
+        break
+      }
+      case ResourceEventType.Modified: {
+        try {
+          await updateBuildWebHook(repoApi, metadata.namespace, buildWorkspace)
+        } catch (error) {
+          console.debug(error)
+        }
+        break
+      }
+      case ResourceEventType.Deleted: {
+        try {
+          await deleteBuildWebHook(repoApi, metadata.namespace, buildWorkspace)
+        } catch (error) {
+          console.debug(error)
+        }
+        break
+      }
+      default:
+        break
+    }
+  } else return
+}
+
 // Exported for testing purposes
 export const addServiceAccountToOrganizations = async (
   organizationApi: OrganizationApi,
@@ -324,7 +340,7 @@ export default class MyOperator extends Operator {
     }
     // Watch team namespace services that contain 'el-gitea-webhook' in the name
     try {
-      await this.watchResource('triggers.tekton.dev', 'v1beta1', 'triggertemplates', secretsAndConfigmapsCallback)
+      await this.watchResource('triggers.tekton.dev', 'v1beta1', 'triggertemplates', triggerTemplateCallback)
     } catch (error) {
       console.debug(error)
     }
@@ -594,15 +610,12 @@ async function createReposAndAddToTeam(
 }
 
 // Logic to create a webhook for repos in a organization
-async function createBuildHook(repoApi: RepositoryApi, teamName: string, tektonTriggerTemplate: TektonTriggerTemplate) {
+export async function createBuildWebHook(
+  repoApi: RepositoryApi,
+  teamName: string,
+  buildWorkspace: { name: string; buildName: string; repoUrl: string },
+) {
   try {
-    const triggerTemplate: Template = tektonTriggerTemplate.spec.resourcetemplates.find(
-      (template) => template.kind === 'PipelineRun',
-    )!
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = triggerTemplate.spec.workspaces.find(
-      (workspace: { name: string }) => workspace.name === 'build-details',
-    )
     const repoName = buildWorkspace.repoUrl.split('/').pop()!
     const createHookOption: CreateHookOption = {
       ...new CreateHookOption(),
@@ -622,20 +635,19 @@ async function createBuildHook(repoApi: RepositoryApi, teamName: string, tektonT
   }
 }
 
-// Logic to create a webhook for repos in a organization
-async function updateBuildHook(repoApi: RepositoryApi, teamName: string, tektonTriggerTemplate: TektonTriggerTemplate) {
+// Logic to update a webhook for repos in a organization
+export async function updateBuildWebHook(
+  repoApi: RepositoryApi,
+  teamName: string,
+  buildWorkspace: { name: string; buildName: string; repoUrl: string },
+) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const triggerTemplate: Template = tektonTriggerTemplate.spec.resourcetemplates.find(
-      (template) => template.kind === 'PipelineRun',
-    )!
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = triggerTemplate.spec.workspaces.find(
-      (workspace: { name: string }) => workspace.name === 'build-details',
-    )
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const repoName = buildWorkspace.repoUrl.split('/').pop()!
     const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
+
+    if (isEmpty(webhooks)) throw new Error(`No webhooks found for ${repoName} in ${teamName}`)
+
     const editHookOption: EditHookOption = {
       ...new EditHookOption(),
       active: true,
@@ -650,32 +662,32 @@ async function updateBuildHook(repoApi: RepositoryApi, teamName: string, tektonT
         await repoApi.repoEditHook(teamName, repoName, webhook.id!, editHookOption)
       }),
     )
+    console.info(`Gitea webhook updated for repository: ${repoName} in ${teamName}`)
   } catch (error) {
     console.debug(`Error updating Gitea webhook: ${error.message}`)
     throw error
   }
 }
 
-// Logic to create a webhook for repos in a organization
-async function deleteBuildHook(repoApi: RepositoryApi, teamName: string, tektonTriggerTemplate: TektonTriggerTemplate) {
+// Logic to delete a webhook for repos in a organization
+export async function deleteBuildWebHook(
+  repoApi: RepositoryApi,
+  teamName: string,
+  buildWorkspace: { name: string; buildName: string; repoUrl: string },
+) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const triggerTemplate: Template = tektonTriggerTemplate.spec.resourcetemplates.find(
-      (template) => template.kind === 'PipelineRun',
-    )!
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = triggerTemplate.spec.workspaces.find(
-      (workspace: { name: string }) => workspace.name === 'build-details',
-    )
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const repoName = buildWorkspace.repoUrl.split('/').pop()!
     const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
+
+    if (isEmpty(webhooks)) throw new Error(`No webhooks found for ${repoName} in ${teamName}`)
 
     await Promise.all(
       webhooks.map(async (webhook) => {
         await repoApi.repoDeleteHook(teamName, repoName, webhook.id!)
       }),
     )
+    console.info(`Gitea webhook deleted for repository: ${repoName} in ${teamName}`)
   } catch (error) {
     console.debug(`Error updating Gitea webhook: ${error.message}`)
     throw error

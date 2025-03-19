@@ -1,4 +1,4 @@
-import { Organization, Team, User } from '@linode/gitea-client-node'
+import { EditHookOption, Organization, Team, User } from '@linode/gitea-client-node/'
 import * as giteaUtils from '../gitea-utils'
 import * as utils from '../utils'
 import * as giteaOperator from './gitea'
@@ -9,31 +9,32 @@ describe('giteaOperator', () => {
   let repositoryApi: any
   const teamNames = ['demo', 'demo2', 'demo3']
   beforeEach(() => {
-      adminApi = {
-        adminGetAllUsers: jest.fn(),
-        adminCreateUser: jest.fn(),
-        adminEditUser: jest.fn(),
-      }
-      organizationApi = {
-        orgGetAll: jest.fn(),
-        orgCreate: jest.fn(),
-        orgEdit: jest.fn(),
-        orgListTeams: jest.fn(),
-        orgCreateTeam: jest.fn(),
-        orgEditTeam: jest.fn(),
-        orgListTeamMembers: jest.fn(),
-        orgAddTeamMember: jest.fn(),
-        orgListRepos: jest.fn(),
-        createOrgRepo: jest.fn(),
-      }
-      repositoryApi = {
-        repoEdit: jest.fn(),
-        repoAddTeam: jest.fn(),
-        repoListHooks: jest.fn(),
-        repoCreateHook: jest.fn(),
-      }
+    adminApi = {
+      adminGetAllUsers: jest.fn(),
+      adminCreateUser: jest.fn(),
+      adminEditUser: jest.fn(),
+    }
+    organizationApi = {
+      orgGetAll: jest.fn(),
+      orgCreate: jest.fn(),
+      orgEdit: jest.fn(),
+      orgListTeams: jest.fn(),
+      orgCreateTeam: jest.fn(),
+      orgEditTeam: jest.fn(),
+      orgListTeamMembers: jest.fn(),
+      orgAddTeamMember: jest.fn(),
+      orgListRepos: jest.fn(),
+      createOrgRepo: jest.fn(),
+    }
+    repositoryApi = {
+      repoEdit: jest.fn(),
+      repoAddTeam: jest.fn(),
+      repoListHooks: jest.fn(),
+      repoCreateHook: jest.fn(),
+      repoEditHook: jest.fn(),
+      repoDeleteHook: jest.fn(),
+    }
   })
-
   afterEach(() => {
     // Reset all Jest mocks between tests
     jest.restoreAllMocks()
@@ -103,6 +104,49 @@ describe('giteaOperator', () => {
 
     expect(utils.doApiCall).toHaveBeenCalledWith([], 'Getting teams from organization: team-demo', expect.any(Function))
     expect(utils.doApiCall).toHaveBeenNthCalledWith(3, [], 'Adding user to organization Owners team in team-demo', expect.any(Function))
+  })
+
+  it('should create a webhook inside a repo of an organization', async () => {
+    const teamId = 'team-demo'
+    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = { name: 'build-details', buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
+
+    repositoryApi.repoCreateHook.mockResolvedValue({})
+    const response = await giteaOperator.createBuildWebHook(repositoryApi, teamId, buildWorkspace)
+
+    expect(response).toEqual(undefined)
+  })
+
+  it('should update a webhook inside a repo of an organization', async () => {
+    const teamId = 'team-demo'
+    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = { name: 'build-details', buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
+    const repoName = buildWorkspace.repoUrl.split('/').pop()!
+    const editHookOption: EditHookOption = {
+      ...new EditHookOption(),
+      active: true,
+      events: ['push'],
+      config: {
+        content_type: 'json',
+        url: `http://el-gitea-webhook-${buildWorkspace.buildName}.svc.cluster.local:8080`,
+      },
+    }
+
+    repositoryApi.repoListHooks.mockResolvedValue({ body: [ {id: 1}]})
+    repositoryApi.repoEditHook.mockResolvedValue({})
+    await giteaOperator.updateBuildWebHook(repositoryApi, teamId, buildWorkspace)
+
+    expect(repositoryApi.repoEditHook).toHaveBeenCalledWith(teamId, repoName, 1, editHookOption)
+  })
+
+  it('should delete a webhook inside a repo of an organization', async () => {
+    const teamId = 'team-demo'
+    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = { name: 'build-details', buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
+    const repoName = buildWorkspace.repoUrl.split('/').pop()!
+
+    repositoryApi.repoListHooks.mockResolvedValue({ body: [ {id: 1}]})
+    repositoryApi.repoDeleteHook.mockResolvedValue({})
+    await giteaOperator.deleteBuildWebHook(repositoryApi, teamId, buildWorkspace)
+
+    expect(repositoryApi.repoDeleteHook).toHaveBeenCalledWith(teamId, repoName, 1)
   })
 
   it('should create a valid group mapping string with all the teams', () => {
