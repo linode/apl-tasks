@@ -13,6 +13,7 @@ import {
   EditHookOption,
   EditRepoOption,
   EditUserOption,
+  Hook,
   HttpError,
   Organization,
   OrganizationApi,
@@ -176,9 +177,11 @@ const triggerTemplateCallback = async (e: any) => {
       return
     }
 
+    const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+
+    // Collect all data to create or edit a webhook
     const resourceTemplate = object.spec.resourcetemplates.find((template) => template.kind === 'PipelineRun')
     const pipelineName = resourceTemplate.spec.pipelineRef.name
-    const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
     const pipeline = await getPipeline(pipelineName, metadata.namespace)
     const task = pipeline?.spec.tasks.find((singleTask: { name: string }) => singleTask.name === 'fetch-source')
     const buildName = metadata.name.replace('trigger-template-', '')
@@ -617,6 +620,21 @@ export async function createBuildWebHook(
 ) {
   try {
     const repoName = buildWorkspace.repoUrl.split('/').pop()!
+
+    // Check to see if a webhook already exists with the same url and push event
+    const webhooks: Hook[] = (await repoApi.repoListHooks(teamName, repoName)).body
+    let webhookExists
+    if (!isEmpty(webhooks)) {
+      webhookExists = webhooks.find((hook) => {
+        return (
+          hook.config!.url ===
+            `http://el-gitea-webhook-${buildWorkspace.buildName}.${teamName}.svc.cluster.local:8080` &&
+          hook.events?.includes('push')
+        )
+      })
+    }
+
+    if (!isEmpty(webhookExists)) return
     const createHookOption: CreateHookOption = {
       ...new CreateHookOption(),
       active: true,
