@@ -1,7 +1,8 @@
 import { V1Secret } from '@kubernetes/client-node'
 import { k8s } from './k8s'
+// eslint-disable-next-line import/namespace
+import { Pipeline } from './operator/gitea'
 
-// eslint-disable-next-line import/prefer-default-export
 export async function setServiceAccountSecret(
   serviceAccountSecretName: string,
   serviceAccountLogin: string,
@@ -51,4 +52,15 @@ export async function setServiceAccountSecret(
     console.error(`Problem replacing secret ${serviceAccountSecretName} in namespace ${teamNamespace}`)
   }
   return password
+}
+
+export async function getPipeline(pipelineName: string, namespace: string): Promise<Pipeline | undefined> {
+  try {
+    const pipeline = (
+      await k8s.customObjectsApi().getNamespacedCustomObject('tekton.dev', 'v1', namespace, 'pipelines', pipelineName)
+    ).body as Pipeline
+    return pipeline
+  } catch (error) {
+    console.error(`Problem getting the pipeline: ${error}`)
+  }
 }

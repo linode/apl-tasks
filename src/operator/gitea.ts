@@ -23,7 +23,7 @@ import {
 } from '@linode/gitea-client-node'
 import { generate as generatePassword } from 'generate-password'
 import { isEmpty, keys } from 'lodash'
-import { setServiceAccountSecret } from '../gitea-utils'
+import { getPipeline, setServiceAccountSecret } from '../gitea-utils'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
@@ -62,7 +62,7 @@ interface Task {
   name: string
   params: Param[]
 }
-interface Pipeline {
+export interface Pipeline {
   apiVersion: string
   kind: string
   metadata: any
@@ -163,7 +163,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   }
 }
 
-const pipelineCallback = async (e: any) => {
+const triggerTemplateCallback = async (e: any) => {
   const { object } = e
   const { metadata, data } = object
 
@@ -172,14 +172,15 @@ const pipelineCallback = async (e: any) => {
     const { giteaPassword } = env
     if (isEmpty(giteaPassword)) {
       await new Promise((resolve) => setTimeout(resolve, 30000))
-      await pipelineCallback(e)
+      await triggerTemplateCallback(e)
       return
     }
+    const type = metadata.name.includes('docker') ? 'docker' : 'buildpacks'
+    const buildName = metadata.name.replace('trigger-template-', '')
+    const pipelineName = `${type}-build-${buildName}`
     const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-
-    const task = (object as Pipeline).spec.tasks.find(
-      (singleTask: { name: string }) => singleTask.name === 'fetch-source',
-    )
+    const pipeline = await getPipeline(pipelineName, metadata.namespace)
+    const task = pipeline?.spec.tasks.find((singleTask: { name: string }) => singleTask.name === 'fetch-source')
 
     const param = task?.params.find((singleParam) => {
       return singleParam.name === 'url'
@@ -339,7 +340,7 @@ export default class MyOperator extends Operator {
     }
     // Watch team namespace services that contain 'el-gitea-webhook' in the name
     try {
-      await this.watchResource('triggers.tekton.dev', 'v1beta1', 'triggertemplates', pipelineCallback)
+      await this.watchResource('triggers.tekton.dev', 'v1beta1', 'triggertemplates', triggerTemplateCallback)
     } catch (error) {
       console.debug(error)
     }

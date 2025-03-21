@@ -1,5 +1,6 @@
 import {
   CoreV1Api,
+  CustomObjectsApi,
   KubeConfig,
   NetworkingV1Api,
   V1ObjectMeta,
@@ -12,6 +13,7 @@ import { findIndex, mapValues } from 'lodash'
 let kc: KubeConfig
 let coreClient: CoreV1Api
 let networkingClient: NetworkingV1Api
+let customObjectsApi: CustomObjectsApi
 
 export const k8s = {
   kc: (): KubeConfig => {
@@ -29,6 +31,11 @@ export const k8s = {
     if (networkingClient) return networkingClient
     networkingClient = k8s.kc().makeApiClient(NetworkingV1Api)
     return networkingClient
+  },
+  customObjectsApi: (): CustomObjectsApi => {
+    if (customObjectsApi) return customObjectsApi
+    customObjectsApi = kc.makeApiClient(CustomObjectsApi)
+    return customObjectsApi
   },
 }
 
