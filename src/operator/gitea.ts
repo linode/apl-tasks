@@ -166,7 +166,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
 const triggerTemplateCallback = async (e: any) => {
   const { object } = e
   const { metadata, data } = object
-
+  if (!metadata.namespace.includes('team-')) return
   if (object.kind === 'TriggerTemplate') {
     const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
     const { giteaPassword } = env
@@ -175,9 +175,9 @@ const triggerTemplateCallback = async (e: any) => {
       await triggerTemplateCallback(e)
       return
     }
-    const type = metadata.name.includes('docker') ? 'docker' : 'buildpacks'
-    const buildName = metadata.name.replace('trigger-template-', '')
-    const pipelineName = `${type}-build-${buildName}`
+
+    const resourceTemplate = object.spec.resourcetemplates.find((template) => template.kind === 'PipelineRun')
+    const pipelineName = resourceTemplate.spec.pipelineRef.name
     const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
     const pipeline = await getPipeline(pipelineName, metadata.namespace)
     const task = pipeline?.spec.tasks.find((singleTask: { name: string }) => singleTask.name === 'fetch-source')
