@@ -108,7 +108,7 @@ describe('giteaOperator', () => {
 
   it('should create a webhook inside a repo of an organization', async () => {
     const teamId = 'team-demo'
-    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = { name: 'build-details', buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
+    const buildWorkspace: { buildName: string; repoUrl: string } = { buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
 
     repositoryApi.repoCreateHook.mockResolvedValue({})
     const response = await giteaOperator.createBuildWebHook(repositoryApi, teamId, buildWorkspace)
@@ -118,7 +118,7 @@ describe('giteaOperator', () => {
 
   it('should update a webhook inside a repo of an organization', async () => {
     const teamId = 'team-demo'
-    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = { name: 'build-details', buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
+    const buildWorkspace: { buildName: string; repoUrl: string } = { buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
     const repoName = buildWorkspace.repoUrl.split('/').pop()!
     const editHookOption: EditHookOption = {
       ...new EditHookOption(),
@@ -139,7 +139,7 @@ describe('giteaOperator', () => {
 
   it('should delete a webhook inside a repo of an organization', async () => {
     const teamId = 'team-demo'
-    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = { name: 'build-details', buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
+    const buildWorkspace: { buildName: string; repoUrl: string } = { buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
     const repoName = buildWorkspace.repoUrl.split('/').pop()!
 
     repositoryApi.repoListHooks.mockResolvedValue({ body: [ {id: 1}]})

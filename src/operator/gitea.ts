@@ -54,27 +54,20 @@ interface DependencyState {
   oidcEndpoint: string | null
   teamNames: string[] | null
 }
-interface Template {
-  apiVersion: string
-  kind: string
-  metadata: any
-  spec: {
-    pipelineRef: {
-      name: string
-    }
-    taskRunTemplate: {
-      podTemplate: any
-      serviceAccountName: string
-    }
-    workspaces: any[]
-  }
+interface Param {
+  name: string
+  value: string
 }
-export interface TektonTriggerTemplate {
+interface Task {
+  name: string
+  params: Param[]
+}
+interface Pipeline {
   apiVersion: string
   kind: string
   metadata: any
   spec: {
-    resourcetemplates: Template[]
+    tasks: Task[]
   }
 }
 
@@ -170,35 +163,38 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   }
 }
 
-const triggerTemplateCallback = async (e: any) => {
+const pipelineCallback = async (e: any) => {
   const { object } = e
   const { metadata, data } = object
 
-  if (object.kind === 'TriggerTemplate' && (metadata.name as string).includes('trigger-template-')) {
+  if (object.kind === 'Pipeline') {
     const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
     const { giteaPassword } = env
     if (isEmpty(giteaPassword)) {
       await new Promise((resolve) => setTimeout(resolve, 30000))
-      await triggerTemplateCallback(e)
+      await pipelineCallback(e)
       return
     }
     const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
 
-    const triggerTemplate: Template = (object as TektonTriggerTemplate).spec.resourcetemplates.find(
-      (template) => template.kind === 'PipelineRun',
-    )!
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const buildWorkspace: { name: string; buildName: string; repoUrl: string } = triggerTemplate.spec.workspaces.find(
-      (workspace: { name: string }) => workspace.name === 'build-details',
+    const task = (object as Pipeline).spec.tasks.find(
+      (singleTask: { name: string }) => singleTask.name === 'fetch-source',
     )
 
-    if (buildWorkspace.repoUrl.includes('.git')) buildWorkspace.repoUrl = buildWorkspace.repoUrl.replace('.git', '')
+    const param = task?.params.find((singleParam) => {
+      return singleParam.name === 'url'
+    })
+
+    const buildWebHookDetails: { buildName: string; repoUrl: string } = { buildName: '', repoUrl: param!.value }
+
+    if (buildWebHookDetails.repoUrl.includes('.git'))
+      buildWebHookDetails.repoUrl = buildWebHookDetails.repoUrl.replace('.git', '')
 
     // Logic to watch services in teamNamespaces which contain el-gitea-webhook in the name
     switch (e.type) {
       case ResourceEventType.Added: {
         try {
-          await createBuildWebHook(repoApi, metadata.namespace, buildWorkspace)
+          await createBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
         } catch (error) {
           console.debug(error)
         }
@@ -206,7 +202,7 @@ const triggerTemplateCallback = async (e: any) => {
       }
       case ResourceEventType.Modified: {
         try {
-          await updateBuildWebHook(repoApi, metadata.namespace, buildWorkspace)
+          await updateBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
         } catch (error) {
           console.debug(error)
         }
@@ -214,7 +210,7 @@ const triggerTemplateCallback = async (e: any) => {
       }
       case ResourceEventType.Deleted: {
         try {
-          await deleteBuildWebHook(repoApi, metadata.namespace, buildWorkspace)
+          await deleteBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
         } catch (error) {
           console.debug(error)
         }
@@ -343,7 +339,7 @@ export default class MyOperator extends Operator {
     }
     // Watch team namespace services that contain 'el-gitea-webhook' in the name
     try {
-      await this.watchResource('triggers.tekton.dev', 'v1beta1', 'triggertemplates', triggerTemplateCallback)
+      await this.watchResource('triggers.tekton.dev', 'v1beta1', 'triggertemplates', pipelineCallback)
     } catch (error) {
       console.debug(error)
     }
@@ -616,7 +612,7 @@ async function createReposAndAddToTeam(
 export async function createBuildWebHook(
   repoApi: RepositoryApi,
   teamName: string,
-  buildWorkspace: { name: string; buildName: string; repoUrl: string },
+  buildWorkspace: { buildName: string; repoUrl: string },
 ) {
   try {
     const repoName = buildWorkspace.repoUrl.split('/').pop()!
@@ -642,7 +638,7 @@ export async function createBuildWebHook(
 export async function updateBuildWebHook(
   repoApi: RepositoryApi,
   teamName: string,
-  buildWorkspace: { name: string; buildName: string; repoUrl: string },
+  buildWorkspace: { buildName: string; repoUrl: string },
 ) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -680,7 +676,7 @@ export async function updateBuildWebHook(
 export async function deleteBuildWebHook(
   repoApi: RepositoryApi,
   teamName: string,
-  buildWorkspace: { name: string; buildName: string; repoUrl: string },
+  buildWorkspace: { buildName: string; repoUrl: string },
 ) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
