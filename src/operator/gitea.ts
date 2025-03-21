@@ -167,7 +167,7 @@ const triggerTemplateCallback = async (e: any) => {
   const { object } = e
   const { metadata, data } = object
 
-  if (object.kind === 'Pipeline') {
+  if (object.kind === 'TriggerTemplate') {
     const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
     const { giteaPassword } = env
     if (isEmpty(giteaPassword)) {
