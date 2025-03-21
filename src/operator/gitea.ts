@@ -181,12 +181,12 @@ const triggerTemplateCallback = async (e: any) => {
     const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
     const pipeline = await getPipeline(pipelineName, metadata.namespace)
     const task = pipeline?.spec.tasks.find((singleTask: { name: string }) => singleTask.name === 'fetch-source')
-
+    const buildName = metadata.name.replace('trigger-template-', '')
     const param = task?.params.find((singleParam) => {
       return singleParam.name === 'url'
     })
 
-    const buildWebHookDetails: { buildName: string; repoUrl: string } = { buildName: '', repoUrl: param!.value }
+    const buildWebHookDetails: { buildName: string; repoUrl: string } = { buildName, repoUrl: param!.value }
 
     if (buildWebHookDetails.repoUrl.includes('.git'))
       buildWebHookDetails.repoUrl = buildWebHookDetails.repoUrl.replace('.git', '')
