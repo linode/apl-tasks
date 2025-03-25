@@ -1,7 +1,6 @@
 import { V1Secret } from '@kubernetes/client-node'
+import { RepositoryApi } from '@linode/gitea-client-node'
 import { k8s } from './k8s'
-// eslint-disable-next-line import/namespace
-import { Pipeline } from './operator/gitea'
 
 export async function setServiceAccountSecret(
   serviceAccountSecretName: string,
@@ -54,13 +53,17 @@ export async function setServiceAccountSecret(
   return password
 }
 
-export async function getPipeline(pipelineName: string, namespace: string): Promise<Pipeline | undefined> {
+export function getRepoNameFromUrl(url: string): string | null {
+  const parts = url.split('/')
+  return parts.length ? parts.pop() || null : null
+}
+
+export async function getRepositoryWebHooks(repoApi: RepositoryApi, team: string, repoName: string) {
   try {
-    const pipeline = (
-      await k8s.customObjectsApi().getNamespacedCustomObject('tekton.dev', 'v1', namespace, 'pipelines', pipelineName)
-    ).body as Pipeline
-    return pipeline
+    const response = await repoApi.repoListHooks(team, repoName)
+    return response.body || []
   } catch (error) {
-    console.error(`Problem getting the pipeline: ${error}`)
+    console.debug(`Failed to fetch webhooks for ${repoName} in ${team}: ${error.message}`)
+    return []
   }
 }

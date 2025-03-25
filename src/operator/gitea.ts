@@ -1,8 +1,9 @@
 /* eslint-disable no-console */
 import * as k8s from '@kubernetes/client-node'
 import stream from 'stream'
+import { getTektonPipeline } from '../k8s'
 
-import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
+import Operator, { ResourceEvent, ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   AdminApi,
   CreateHookOption,
@@ -13,7 +14,6 @@ import {
   EditHookOption,
   EditRepoOption,
   EditUserOption,
-  Hook,
   HttpError,
   Organization,
   OrganizationApi,
@@ -24,7 +24,7 @@ import {
 } from '@linode/gitea-client-node'
 import { generate as generatePassword } from 'generate-password'
 import { isEmpty, keys } from 'lodash'
-import { getPipeline, setServiceAccountSecret } from '../gitea-utils'
+import { getRepoNameFromUrl, setServiceAccountSecret } from '../gitea-utils'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
@@ -63,12 +63,19 @@ interface Task {
   name: string
   params: Param[]
 }
-export interface Pipeline {
-  apiVersion: string
-  kind: string
-  metadata: any
+
+interface PipelineTemplateObject extends k8s.KubernetesObjectWithSpec {
+  spec: {
+    pipelineRef: {
+      name: string
+    }
+  }
+}
+
+export interface PipelineKubernetesObject extends k8s.KubernetesObjectWithSpec {
   spec: {
     tasks: Task[]
+    resourcetemplates: PipelineTemplateObject[]
   }
 }
 
@@ -164,27 +171,29 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   }
 }
 
-const triggerTemplateCallback = async (e: any) => {
-  const { object } = e
-  const { metadata, data } = object
-  if (!metadata.namespace.includes('team-')) return
+async function triggerTemplateCallback(resourceEvent: ResourceEvent) {
+  const { object } = resourceEvent
+  const { metadata } = object
+  if (!metadata?.namespace?.includes('team-')) return
   if (object.kind === 'TriggerTemplate') {
     const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
     const { giteaPassword } = env
     if (isEmpty(giteaPassword)) {
       await new Promise((resolve) => setTimeout(resolve, 30000))
-      await triggerTemplateCallback(e)
+      await triggerTemplateCallback(resourceEvent)
       return
     }
 
     const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
 
     // Collect all data to create or edit a webhook
-    const resourceTemplate = object.spec.resourcetemplates.find((template) => template.kind === 'PipelineRun')
+    const resourceTemplate = (object as PipelineKubernetesObject).spec.resourcetemplates.find(
+      (template) => template.kind === 'PipelineRun',
+    )!
     const pipelineName = resourceTemplate.spec.pipelineRef.name
-    const pipeline = await getPipeline(pipelineName, metadata.namespace)
+    const pipeline = await getTektonPipeline(pipelineName, metadata.namespace)
     const task = pipeline?.spec.tasks.find((singleTask: { name: string }) => singleTask.name === 'fetch-source')
-    const buildName = metadata.name.replace('trigger-template-', '')
+    const buildName = metadata.name!.replace('trigger-template-', '')
     const param = task?.params.find((singleParam) => {
       return singleParam.name === 'url'
     })
@@ -195,7 +204,7 @@ const triggerTemplateCallback = async (e: any) => {
       buildWebHookDetails.repoUrl = buildWebHookDetails.repoUrl.replace('.git', '')
 
     // Logic to watch services in teamNamespaces which contain el-gitea-webhook in the name
-    switch (e.type) {
+    switch (resourceEvent.type) {
       case ResourceEventType.Added: {
         try {
           await createBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
@@ -612,17 +621,17 @@ async function createReposAndAddToTeam(
     )
 }
 
-// Logic to create a webhook for repos in a organization
+// Logic to create a webhook for repos in an organization
 export async function createBuildWebHook(
   repoApi: RepositoryApi,
   teamName: string,
   buildWorkspace: { buildName: string; repoUrl: string },
 ) {
   try {
-    const repoName = buildWorkspace.repoUrl.split('/').pop()!
+    const repoName = getRepoNameFromUrl(buildWorkspace.repoUrl)!
 
     // Check to see if a webhook already exists with the same url and push event
-    const webhooks: Hook[] = (await repoApi.repoListHooks(teamName, repoName)).body
+    const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
     let webhookExists
     if (!isEmpty(webhooks)) {
       webhookExists = webhooks.find((hook) => {
@@ -653,7 +662,7 @@ export async function createBuildWebHook(
   }
 }
 
-// Logic to update a webhook for repos in a organization
+// Logic to update a webhook for repos in an organization
 export async function updateBuildWebHook(
   repoApi: RepositoryApi,
   teamName: string,
@@ -661,7 +670,7 @@ export async function updateBuildWebHook(
 ) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const repoName = buildWorkspace.repoUrl.split('/').pop()!
+    const repoName = getRepoNameFromUrl(buildWorkspace.repoUrl)!
     const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
 
     if (isEmpty(webhooks)) {
