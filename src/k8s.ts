@@ -9,7 +9,7 @@ import {
 } from '@kubernetes/client-node'
 import { IncomingMessage } from 'http'
 import { findIndex, mapValues } from 'lodash'
-import { Pipeline } from './operator/gitea'
+import { PipelineKubernetesObject } from './operator/gitea'
 
 let kc: KubeConfig
 let coreClient: CoreV1Api
@@ -257,11 +257,14 @@ export async function deleteSecret(namespace: string, name: string): Promise<voi
   }
 }
 
-export async function getTektonPipeline(pipelineName: string, namespace: string): Promise<Pipeline | undefined> {
+export async function getTektonPipeline(
+  pipelineName: string,
+  namespace: string,
+): Promise<PipelineKubernetesObject | undefined> {
   try {
     const pipeline = (
       await k8s.customObjectsApi().getNamespacedCustomObject('tekton.dev', 'v1', namespace, 'pipelines', pipelineName)
-    ).body as Pipeline
+    ).body as PipelineKubernetesObject
     return pipeline
   } catch (error) {
     console.error(`Problem getting the pipeline: ${error}`)
