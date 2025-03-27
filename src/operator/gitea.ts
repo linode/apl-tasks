@@ -1,8 +1,5 @@
 /* eslint-disable no-console */
 import * as k8s from '@kubernetes/client-node'
-import stream from 'stream'
-import { getTektonPipeline } from '../k8s'
-
 import Operator, { ResourceEvent, ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   AdminApi,
@@ -22,15 +19,20 @@ import {
   Team,
   User,
 } from '@linode/gitea-client-node'
+import retry from 'async-retry'
 import { generate as generatePassword } from 'generate-password'
 import { isEmpty, keys } from 'lodash'
+import stream from 'stream'
 import { getRepoNameFromUrl, setServiceAccountSecret } from '../gitea-utils'
+import { getTektonPipeline } from '../k8s'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
   GITEA_OPERATOR_NAMESPACE,
   GITEA_URL,
   GITEA_URL_PORT,
+  MIN_TIMEOUT,
+  RETRIES,
   cleanEnv,
 } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer, username } from './common'
@@ -85,6 +87,8 @@ const localEnv = cleanEnv({
   GITEA_URL_PORT,
   GITEA_OPERATOR_NAMESPACE,
   CHECK_OIDC_CONFIG_INTERVAL,
+  RETRIES,
+  MIN_TIMEOUT,
 })
 
 const GITEA_ENDPOINT = `${localEnv.GITEA_URL}:${localEnv.GITEA_URL_PORT}`
@@ -178,11 +182,16 @@ async function triggerTemplateCallback(resourceEvent: ResourceEvent) {
   if (object.kind === 'TriggerTemplate') {
     const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
     const { giteaPassword } = env
-    if (isEmpty(giteaPassword)) {
-      await new Promise((resolve) => setTimeout(resolve, 30000))
-      await triggerTemplateCallback(resourceEvent)
-      return
-    }
+    retry(
+      async () => {
+        if (isEmpty(giteaPassword)) throw new Error('Setup missing details')
+        await triggerTemplateCallback(resourceEvent)
+        return
+      },
+      { retries: localEnv.RETRIES, minTimeout: localEnv.MIN_TIMEOUT },
+    ).catch((error) => {
+      console.error(error)
+    })
 
     const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
 
@@ -204,33 +213,22 @@ async function triggerTemplateCallback(resourceEvent: ResourceEvent) {
       buildWebHookDetails.repoUrl = buildWebHookDetails.repoUrl.replace('.git', '')
 
     // Logic to watch services in teamNamespaces which contain el-gitea-webhook in the name
-    switch (resourceEvent.type) {
-      case ResourceEventType.Added: {
-        try {
+    try {
+      switch (resourceEvent.type) {
+        case ResourceEventType.Added:
           await createBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
-        } catch (error) {
-          console.debug(error)
-        }
-        break
-      }
-      case ResourceEventType.Modified: {
-        try {
+          break
+        case ResourceEventType.Modified:
           await updateBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
-        } catch (error) {
-          console.debug(error)
-        }
-        break
-      }
-      case ResourceEventType.Deleted: {
-        try {
+          break
+        case ResourceEventType.Deleted:
           await deleteBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
-        } catch (error) {
-          console.debug(error)
-        }
-        break
+          break
+        default:
+          console.debug(`Unhandled event type: ${resourceEvent.type}`)
       }
-      default:
-        break
+    } catch (error) {
+      console.debug('Webhook operation failed:', error)
     }
   } else return
 }
@@ -657,7 +655,7 @@ export async function createBuildWebHook(
     await repoApi.repoCreateHook(teamName, repoName, createHookOption)
     console.info(`Gitea webhook created for repository: ${repoName} in ${teamName}`)
   } catch (error) {
-    console.debug(`Error creating Gitea webhook: ${error.message}`)
+    console.debug(`Error creating Gitea webhook`)
     throw error
   }
 }
@@ -695,7 +693,7 @@ export async function updateBuildWebHook(
     )
     console.info(`Gitea webhook updated for repository: ${repoName} in ${teamName}`)
   } catch (error) {
-    console.debug(`Error updating Gitea webhook: ${error.message}`)
+    console.debug(`Error updating Gitea webhook`)
     throw error
   }
 }
@@ -720,7 +718,7 @@ export async function deleteBuildWebHook(
     )
     console.info(`Gitea webhook deleted for repository: ${repoName} in ${teamName}`)
   } catch (error) {
-    console.debug(`Error updating Gitea webhook: ${error.message}`)
+    console.debug(`Error deleting Gitea webhook}`)
     throw error
   }
 }

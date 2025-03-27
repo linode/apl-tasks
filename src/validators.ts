@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
-/* eslint-disable no-return-assign */
-import { bool, cleanEnv as clean, json, num, str, ValidatorSpec } from 'envalid'
+
 import dotenv from 'dotenv'
+import { bool, cleanEnv as clean, json, num, str, ValidatorSpec } from 'envalid'
 
 const { env } = process
 
@@ -17,6 +17,8 @@ export const FEAT_EXTERNAL_IDP = bool({
 const feat = cleanEnv({ FEAT_EXTERNAL_IDP })
 // END
 
+export const RETRIES = num({ desc: 'The maximum amount of times to retry a certain function', default: 20 })
+export const MIN_TIMEOUT = num({ desc: 'The number of milliseconds before starting the first retry', default: 30000 })
 export const CERT_ROTATION_DAYS = num({ desc: 'The amount of days for the cert rotation', default: 75 })
 export const DOMAINS = json({ desc: 'A list of domains and their cert status' })
 export const HARBOR_BASE_URL = str({ desc: 'The harbor core service URL' })
@@ -39,7 +41,7 @@ export const IDP_GROUP_PLATFORM_ADMIN = str({ desc: 'APL platform admin group na
 export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url", default: undefined })
 export const IDP_USERNAME_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to username mapper string",
-  // eslint-disable-next-line no-template-curly-in-string
+
   default: '${CLAIM.upn}',
 })
 export const IDP_SUB_CLAIM_MAPPER = str({
