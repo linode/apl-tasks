@@ -175,7 +175,8 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   }
 }
 
-async function triggerTemplateCallback(resourceEvent: ResourceEvent) {
+// eslint-disable-next-line @typescript-eslint/require-await
+async function triggerTemplateCallback(resourceEvent: ResourceEvent): Promise<void> {
   const { object } = resourceEvent
   const { metadata } = object
   if (!metadata?.namespace?.includes('team-')) return
@@ -185,51 +186,49 @@ async function triggerTemplateCallback(resourceEvent: ResourceEvent) {
     retry(
       async () => {
         if (isEmpty(giteaPassword)) throw new Error('Setup missing details')
-        await triggerTemplateCallback(resourceEvent)
+        const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+
+        // Collect all data to create or edit a webhook
+        const resourceTemplate = (object as PipelineKubernetesObject).spec.resourcetemplates.find(
+          (template) => template.kind === 'PipelineRun',
+        )!
+        const pipelineName = resourceTemplate.spec.pipelineRef.name
+        const pipeline = await getTektonPipeline(pipelineName, metadata.namespace!)
+        const task = pipeline?.spec.tasks.find((singleTask: { name: string }) => singleTask.name === 'fetch-source')
+        const buildName = metadata.name!.replace('trigger-template-', '')
+        const param = task?.params.find((singleParam) => {
+          return singleParam.name === 'url'
+        })
+
+        const buildWebHookDetails: { buildName: string; repoUrl: string } = { buildName, repoUrl: param!.value }
+
+        if (buildWebHookDetails.repoUrl.includes('.git'))
+          buildWebHookDetails.repoUrl = buildWebHookDetails.repoUrl.replace('.git', '')
+        // Logic to watch services in teamNamespaces which contain el-gitea-webhook in the name
+        try {
+          switch (resourceEvent.type) {
+            case ResourceEventType.Added:
+              await createBuildWebHook(repoApi, metadata.namespace!, buildWebHookDetails)
+              break
+            case ResourceEventType.Modified:
+              await updateBuildWebHook(repoApi, metadata.namespace!, buildWebHookDetails)
+              break
+            case ResourceEventType.Deleted:
+              await deleteBuildWebHook(repoApi, metadata.namespace!, buildWebHookDetails)
+              break
+            default:
+              console.debug(`Unhandled event type: ${resourceEvent.type}`)
+          }
+        } catch (error) {
+          console.debug('Webhook operation failed:', error)
+        }
+
         return
       },
       { retries: localEnv.RETRIES, minTimeout: localEnv.MIN_TIMEOUT },
     ).catch((error) => {
       console.error(error)
     })
-
-    const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-
-    // Collect all data to create or edit a webhook
-    const resourceTemplate = (object as PipelineKubernetesObject).spec.resourcetemplates.find(
-      (template) => template.kind === 'PipelineRun',
-    )!
-    const pipelineName = resourceTemplate.spec.pipelineRef.name
-    const pipeline = await getTektonPipeline(pipelineName, metadata.namespace)
-    const task = pipeline?.spec.tasks.find((singleTask: { name: string }) => singleTask.name === 'fetch-source')
-    const buildName = metadata.name!.replace('trigger-template-', '')
-    const param = task?.params.find((singleParam) => {
-      return singleParam.name === 'url'
-    })
-
-    const buildWebHookDetails: { buildName: string; repoUrl: string } = { buildName, repoUrl: param!.value }
-
-    if (buildWebHookDetails.repoUrl.includes('.git'))
-      buildWebHookDetails.repoUrl = buildWebHookDetails.repoUrl.replace('.git', '')
-
-    // Logic to watch services in teamNamespaces which contain el-gitea-webhook in the name
-    try {
-      switch (resourceEvent.type) {
-        case ResourceEventType.Added:
-          await createBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
-          break
-        case ResourceEventType.Modified:
-          await updateBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
-          break
-        case ResourceEventType.Deleted:
-          await deleteBuildWebHook(repoApi, metadata.namespace, buildWebHookDetails)
-          break
-        default:
-          console.debug(`Unhandled event type: ${resourceEvent.type}`)
-      }
-    } catch (error) {
-      console.debug('Webhook operation failed:', error)
-    }
   } else return
 }
 
@@ -655,8 +654,7 @@ export async function createBuildWebHook(
     await repoApi.repoCreateHook(teamName, repoName, createHookOption)
     console.info(`Gitea webhook created for repository: ${repoName} in ${teamName}`)
   } catch (error) {
-    console.debug(`Error creating Gitea webhook`)
-    throw error
+    throw new Error(`Error creating Gitea webhook`)
   }
 }
 
@@ -693,8 +691,7 @@ export async function updateBuildWebHook(
     )
     console.info(`Gitea webhook updated for repository: ${repoName} in ${teamName}`)
   } catch (error) {
-    console.debug(`Error updating Gitea webhook`)
-    throw error
+    throw new Error('Error updating Gitea webhook')
   }
 }
 
@@ -718,8 +715,7 @@ export async function deleteBuildWebHook(
     )
     console.info(`Gitea webhook deleted for repository: ${repoName} in ${teamName}`)
   } catch (error) {
-    console.debug(`Error deleting Gitea webhook}`)
-    throw error
+    throw new Error('Error deleting Gitea webhook')
   }
 }
 
