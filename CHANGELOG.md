@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.8.0](https://github.com/linode/apl-tasks/compare/v3.7.0...v3.8.0) (2025-03-31)
+
+
+### Features
+
+* auto create gitea web hook ([#206](https://github.com/linode/apl-tasks/issues/206)) ([a562e11](https://github.com/linode/apl-tasks/commit/a562e11f0a7579e55010e6608f1794870867c50f))
+* updated keycloak operator env variables ([#209](https://github.com/linode/apl-tasks/issues/209)) ([751463d](https://github.com/linode/apl-tasks/commit/751463d2b5773b44c3c2933862bc6ceaa11d51b3))
+
 ## [3.7.0](https://github.com/linode/apl-tasks/compare/v3.6.1...v3.7.0) (2025-02-27)
 
 
