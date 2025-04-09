@@ -25,7 +25,7 @@ import { isEmpty, keys } from 'lodash'
 import stream from 'stream'
 import { getRepoNameFromUrl, setServiceAccountSecret } from '../gitea-utils'
 import { getTektonPipeline } from '../k8s'
-import { doApiCall } from '../utils'
+import { doApiCall, getSanitizedErrorMessage } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
   cleanEnv,
@@ -166,7 +166,7 @@ const secretsAndConfigmapsCallback = async (e: any) => {
       try {
         await runSetupGitea()
       } catch (error) {
-        const errorMessage = typeof error?.message === 'string' ? error.message.replace(env.giteaPassword, '****') : ''
+        const errorMessage = getSanitizedErrorMessage(error)
         console.debug('Error could not run setup gitea', errorMessage)
       }
       break
@@ -340,21 +340,21 @@ export default class MyOperator extends Operator {
     try {
       await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
-      const errorMessage = typeof error?.message === 'string' ? error.message.replace(env.giteaPassword, '****') : ''
+      const errorMessage = getSanitizedErrorMessage(error)
       console.debug('Error could not watch secrets', errorMessage)
     }
     // Watch apl-gitea-operator-cm
     try {
       await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
-      const errorMessage = typeof error?.message === 'string' ? error.message.replace(env.giteaPassword, '****') : ''
+      const errorMessage = getSanitizedErrorMessage(error)
       console.debug('Error could not watch configmaps', errorMessage)
     }
     // Watch team namespace services that contain 'el-gitea-webhook' in the name
     try {
       await this.watchResource('triggers.tekton.dev', 'v1beta1', 'triggertemplates', triggerTemplateCallback)
     } catch (error) {
-      const errorMessage = typeof error?.message === 'string' ? error.message.replace(env.giteaPassword, '****') : ''
+      const errorMessage = getSanitizedErrorMessage(error)
       console.debug('Error could not watch tekton triggers', errorMessage)
     }
   }
@@ -419,7 +419,7 @@ async function runSetupGitea() {
   try {
     await checkAndExecute()
   } catch (error) {
-    const sanitizedMsg = typeof error?.message === 'string' ? error.message.replace(env.giteaPassword, '****') : ''
+    const sanitizedMsg = getSanitizedErrorMessage(error)
     console.debug('Error could not run setup gitea', sanitizedMsg)
     console.debug('Retrying in 30 seconds')
     await new Promise((resolve) => setTimeout(resolve, 30000))
