@@ -28,12 +28,12 @@ import { getTektonPipeline } from '../k8s'
 import { doApiCall } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
+  cleanEnv,
   GITEA_OPERATOR_NAMESPACE,
   GITEA_URL,
   GITEA_URL_PORT,
   MIN_TIMEOUT,
   RETRIES,
-  cleanEnv,
 } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer, username } from './common'
 
@@ -66,7 +66,7 @@ interface Task {
   params: Param[]
 }
 
-interface PipelineTemplateObject extends k8s.KubernetesObjectWithSpec {
+interface PipelineTemplateObject extends k8s.KubernetesObject {
   spec: {
     pipelineRef: {
       name: string
@@ -74,7 +74,7 @@ interface PipelineTemplateObject extends k8s.KubernetesObjectWithSpec {
   }
 }
 
-export interface PipelineKubernetesObject extends k8s.KubernetesObjectWithSpec {
+export interface PipelineKubernetesObject extends k8s.KubernetesObject {
   spec: {
     tasks: Task[]
     resourcetemplates: PipelineTemplateObject[]
