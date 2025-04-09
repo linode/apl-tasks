@@ -1,5 +1,5 @@
 import * as k8s from '@kubernetes/client-node'
-import { KubeConfig } from '@kubernetes/client-node'
+import { KubeConfig, PatchStrategy, setHeaderOptions } from '@kubernetes/client-node'
 import { KubernetesObject } from '@kubernetes/client-node/dist'
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 
@@ -19,11 +19,13 @@ async function createNamespacedSecret(
   simpleSecret.type = secretType
   try {
     try {
-      simpleSecret.data = (await k8sApi.readNamespacedSecret(metadata.name!, metadata.namespace!)).body.data
+      simpleSecret.data = (
+        await k8sApi.readNamespacedSecret({ name: metadata.name!, namespace: metadata.namespace! })
+      ).data
     } catch (error) {
       console.debug(`Secret '${metadata.name!}' cannot be found in namespace '${metadata.namespace!}'`)
     }
-    await k8sApi.createNamespacedSecret(targetNamespace, simpleSecret)
+    await k8sApi.createNamespacedSecret({ namespace: targetNamespace, body: simpleSecret })
     console.debug(`Secret '${simpleSecret.metadata.name!}' successfully created in namespace '${targetNamespace}'`)
   } catch (err) {
     // we know 409 indicates that secret already exists, ignore this code because it will only happen during start of the operator
@@ -36,7 +38,6 @@ const kc = new KubeConfig()
 kc.loadFromDefault()
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 export default class MyOperator extends Operator {
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     await this.watchResource('', 'v1', 'secrets', async (e) => {
       const { object } = e
@@ -47,7 +48,10 @@ export default class MyOperator extends Operator {
       switch (e.type) {
         case ResourceEventType.Deleted: {
           try {
-            await k8sApi.deleteNamespacedSecret(`copy-${metadata?.namespace}-${metadata?.name}`, targetNamespace)
+            await k8sApi.deleteNamespacedSecret({
+              name: `copy-${metadata?.namespace}-${metadata?.name}`,
+              namespace: targetNamespace,
+            })
             console.debug(
               `Secret 'copy-${metadata?.namespace}-${metadata?.name}' successfully deleted in namespace '${targetNamespace}'`,
             )
@@ -63,22 +67,20 @@ export default class MyOperator extends Operator {
           simpleSecret.metadata = { name: `copy-${metadata?.namespace}-${metadata?.name}`, namespace: targetNamespace }
           simpleSecret.type = type
           try {
-            const headers = { 'content-type': 'application/strategic-merge-patch+json' }
             try {
-              simpleSecret.data = (await k8sApi.readNamespacedSecret(metadata!.name!, metadata!.namespace!)).body.data
+              simpleSecret.data = (
+                await k8sApi.readNamespacedSecret({ name: metadata!.name!, namespace: metadata!.namespace! })
+              ).data
             } catch (error) {
               console.debug(`Secret '${metadata!.name!}' cannot be found in namespace '${metadata!.namespace!}'`)
             }
             await k8sApi.patchNamespacedSecret(
-              simpleSecret.metadata.name!,
-              targetNamespace,
-              simpleSecret,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              { headers },
+              {
+                name: simpleSecret.metadata.name!,
+                namespace: targetNamespace,
+                body: simpleSecret,
+              },
+              setHeaderOptions('Content-Type', PatchStrategy.StrategicMergePatch),
             )
             console.debug(
               `Secret '${simpleSecret.metadata.name!}' successfully patched in namespace '${targetNamespace}'`,

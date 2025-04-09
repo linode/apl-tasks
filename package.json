@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.6",
-    "@kubernetes/client-node": "1.0.0",
+    "@kubernetes/client-node": "1.1.2",
     "@linode/apl-k8s-operator": "0.1.0",
     "@linode/gitea-client-node": "1.19.1",
     "@linode/harbor-client-node": "^2.2.1",
@@ -28,6 +28,8 @@
   },
   "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
   "devDependencies": {
+    "@babel/preset-env": "^7.26.9",
+    "@babel/preset-typescript": "^7.27.0",
     "@commitlint/cli": "19.6.1",
     "@commitlint/config-conventional": "19.6.0",
     "@eslint/compat": "^1.2.7",
@@ -104,8 +106,6 @@
     "release": "standard-version",
     "release:bump:minor": "standard-version --skip.changelog true --release-as minor",
     "run-if-changed": "run-if-changed",
-    "tasks:certs-aws-dev": "ts-node-dev ./src/tasks/otomi/certs-aws.ts",
-    "tasks:certs-aws": "node dist/src/tasks/otomi/certs-aws.js",
     "tasks:copy-certs-dev": "ts-node-dev ./src/tasks/otomi/copy-certs.ts",
     "tasks:copy-certs": "node dist/src/tasks/otomi/copy-certs.js",
     "tasks:copy-certs-argo": "node dist/src/tasks/otomi/copy-certs-argo.js",
@@ -122,7 +122,7 @@
     "operator:harbor": "node dist/src/operator/harbor.js",
     "operator:keycloak-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/keycloak.ts",
     "operator:keycloak": "node dist/src/operator/keycloak.js",
-    "test": "jest"
+    "test": "NODE_ENV=test jest"
   },
   "standard-version": {
     "skip": {

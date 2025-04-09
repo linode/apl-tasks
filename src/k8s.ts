@@ -2,6 +2,8 @@ import {
   CoreV1Api,
   KubeConfig,
   NetworkingV1Api,
+  PatchStrategy,
+  setHeaderOptions,
   V1ObjectMeta,
   V1Secret,
   V1ServiceAccount,
@@ -40,14 +42,13 @@ export async function createSecret(
 ): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
-    ...new V1Secret(),
-    metadata: { ...new V1ObjectMeta(), name },
+    metadata: { name },
     data: mapValues(data, b64enc) as {
       [key: string]: string
     },
   }
 
-  await k8s.core().createNamespacedSecret(namespace, secret)
+  await k8s.core().createNamespacedSecret({ namespace, body: secret })
   console.info(`New secret ${name} has been created in the namespace ${namespace}`)
 }
 
@@ -59,14 +60,17 @@ export async function replaceSecret(
 ): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
-    ...new V1Secret(),
-    metadata: { ...new V1ObjectMeta(), name },
+    metadata: { name },
     data: mapValues(data, b64enc) as {
       [key: string]: string
     },
   }
 
-  await k8s.core().replaceNamespacedSecret(name, namespace, secret)
+  await k8s.core().replaceNamespacedSecret({
+    name,
+    namespace,
+    body: secret,
+  })
   console.info(`Secret ${name} has been patched in the namespace ${namespace}`)
 }
 
@@ -83,10 +87,8 @@ export type ServiceAccountPromise = Promise<{
 export async function getSecret(name: string, namespace: string): Promise<unknown> {
   const b64dec = (val): string => Buffer.from(val, 'base64').toString()
   try {
-    const response = await k8s.core().readNamespacedSecret(name, namespace)
-    const {
-      body: { data },
-    } = response
+    const response = await k8s.core().readNamespacedSecret({ name, namespace })
+    const { data } = response
     const secret = mapValues(data, b64dec)
     console.debug(`Found: secret ${name} in namespace ${namespace}`)
     return secret
@@ -129,8 +131,7 @@ export async function createK8sSecret({
   }
   // create the secret
   const secret = {
-    ...new V1Secret(),
-    metadata: { ...new V1ObjectMeta(), name },
+    metadata: { name },
     type: 'kubernetes.io/dockerconfigjson',
     data: {
       '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
@@ -138,30 +139,28 @@ export async function createK8sSecret({
   }
 
   try {
-    await client.createNamespacedSecret(namespace, secret)
+    await client.createNamespacedSecret({ namespace, body: secret })
   } catch (e) {
     throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
   }
   // get service account we want to add the secret to as pull secret
-  const saRes = await client.readNamespacedServiceAccount('default', namespace)
-  const { body: sa }: { body: V1ServiceAccount } = saRes
+  const saRes = await client.readNamespacedServiceAccount({
+    name: 'default',
+    namespace,
+  })
   // add to service account if needed
-  if (!sa.imagePullSecrets) sa.imagePullSecrets = []
-  const idx = findIndex(sa.imagePullSecrets, { name })
+  if (!saRes.imagePullSecrets) saRes.imagePullSecrets = []
+  const idx = findIndex(saRes.imagePullSecrets, { name })
   if (idx === -1) {
-    sa.imagePullSecrets.push({ name })
+    saRes.imagePullSecrets.push({ name })
+
     await client.patchNamespacedServiceAccount(
-      'default',
-      namespace,
-      sa,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
       {
-        headers: { 'content-type': 'application/strategic-merge-patch+json' },
+        name: 'default',
+        namespace,
+        body: saRes,
       },
+      setHeaderOptions('Content-Type', PatchStrategy.StrategicMergePatch),
     )
   }
 }
@@ -208,7 +207,7 @@ export async function createBuildsK8sSecret({
   }
 
   try {
-    await client.createNamespacedSecret(namespace, secret)
+    await client.createNamespacedSecret({ namespace, body: secret })
   } catch (e) {
     throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
   }
@@ -216,34 +215,27 @@ export async function createBuildsK8sSecret({
 
 export async function getSecrets(namespace: string): Promise<Array<any>> {
   const client = k8s.core()
-  const saRes = await client.readNamespacedServiceAccount('default', namespace)
-  const { body: sa }: { body: V1ServiceAccount } = saRes
-  return (sa.imagePullSecrets || []) as Array<any>
+  const saRes = await client.readNamespacedServiceAccount({ name: 'default', namespace })
+  return (saRes.imagePullSecrets || []) as Array<any>
 }
 
 export async function deleteSecret(namespace: string, name: string): Promise<void> {
   const client = k8s.core()
-  const saRes = await client.readNamespacedServiceAccount('default', namespace)
-  const { body: sa }: { body: V1ServiceAccount } = saRes
-  const idx = findIndex(sa.imagePullSecrets, { name })
+  const saRes = await client.readNamespacedServiceAccount({ name: 'default', namespace })
+  const idx = findIndex(saRes.imagePullSecrets, { name })
   if (idx > -1) {
-    sa.imagePullSecrets!.splice(idx, 1)
+    saRes.imagePullSecrets!.splice(idx, 1)
     await client.patchNamespacedServiceAccount(
-      'default',
-      namespace,
-      sa,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
       {
-        headers: { 'content-type': 'application/strategic-merge-patch+json' },
+        name: 'default',
+        namespace,
+        body: saRes,
       },
+      setHeaderOptions('Content-Type', PatchStrategy.StrategicMergePatch),
     )
   }
   try {
-    await client.deleteNamespacedSecret(name, namespace)
+    await client.deleteNamespacedSecret({ name, namespace })
   } catch (e) {
     throw new Error(`Secret '${name}' does not exist in namespace '${namespace}'`)
   }

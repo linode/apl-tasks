@@ -23,7 +23,9 @@ export async function setServiceAccountSecret(
       },
       type: 'kubernetes.io/basic-auth',
     }
-    await k8s.core().replaceNamespacedSecret(serviceAccountSecretName, teamNamespace, updatedSecret)
+    await k8s
+      .core()
+      .replaceNamespacedSecret({ name: serviceAccountSecretName, namespace: teamNamespace, body: updatedSecret })
   } catch (error) {
     if (error.statusCode === 404) {
       console.log(`Secret ${serviceAccountSecretName} could not be found in namespace ${teamNamespace}!`)
@@ -41,7 +43,7 @@ export async function setServiceAccountSecret(
           },
           type: 'kubernetes.io/basic-auth',
         }
-        await k8s.core().createNamespacedSecret(teamNamespace, newSecret)
+        await k8s.core().createNamespacedSecret({ namespace: teamNamespace, body: newSecret })
       } catch (creatingError) {
         console.error(
           `Problem creating secret ${serviceAccountSecretName} in namespace ${teamNamespace}: ${creatingError}`,
