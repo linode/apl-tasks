@@ -25,15 +25,15 @@ import { isEmpty, keys } from 'lodash'
 import stream from 'stream'
 import { getRepoNameFromUrl, setServiceAccountSecret } from '../gitea-utils'
 import { getTektonPipeline } from '../k8s'
-import { doApiCall } from '../utils'
+import { doApiCall, getSanitizedErrorMessage } from '../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
+  cleanEnv,
   GITEA_OPERATOR_NAMESPACE,
   GITEA_URL,
   GITEA_URL_PORT,
   MIN_TIMEOUT,
   RETRIES,
-  cleanEnv,
 } from '../validators'
 import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer, username } from './common'
 
@@ -166,7 +166,8 @@ const secretsAndConfigmapsCallback = async (e: any) => {
       try {
         await runSetupGitea()
       } catch (error) {
-        console.debug(error)
+        const errorMessage = getSanitizedErrorMessage(error)
+        console.debug('Error could not run setup gitea', errorMessage)
       }
       break
     }
@@ -339,19 +340,22 @@ export default class MyOperator extends Operator {
     try {
       await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
-      console.debug(error)
+      const errorMessage = getSanitizedErrorMessage(error)
+      console.debug('Error could not watch secrets', errorMessage)
     }
     // Watch apl-gitea-operator-cm
     try {
       await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
-      console.debug(error)
+      const errorMessage = getSanitizedErrorMessage(error)
+      console.debug('Error could not watch configmaps', errorMessage)
     }
     // Watch team namespace services that contain 'el-gitea-webhook' in the name
     try {
       await this.watchResource('triggers.tekton.dev', 'v1beta1', 'triggertemplates', triggerTemplateCallback)
     } catch (error) {
-      console.debug(error)
+      const errorMessage = getSanitizedErrorMessage(error)
+      console.debug('Error could not watch tekton triggers', errorMessage)
     }
   }
 }
@@ -415,7 +419,8 @@ async function runSetupGitea() {
   try {
     await checkAndExecute()
   } catch (error) {
-    console.debug('Error could not run setup gitea', error)
+    const sanitizedMsg = getSanitizedErrorMessage(error)
+    console.debug('Error could not run setup gitea', sanitizedMsg)
     console.debug('Retrying in 30 seconds')
     await new Promise((resolve) => setTimeout(resolve, 30000))
     console.debug('Retrying to setup gitea')

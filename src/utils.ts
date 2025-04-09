@@ -165,3 +165,7 @@ export const waitTillAvailable = async (url: string, host?: string, opts?: WaitT
 
   console.debug(`Waiting done, ${confirmations}/${options.confirmations} found`)
 }
+
+export function getSanitizedErrorMessage(error) {
+  return typeof error?.message === 'string' ? error.message.replace(env.giteaPassword, '****') : ''
+}
