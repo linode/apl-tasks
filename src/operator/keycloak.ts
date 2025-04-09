@@ -40,9 +40,13 @@ import {
 import { isObjectSubsetDifferent } from '../utils'
 import {
   cleanEnv,
-  KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
-  KEYCLOAK_TOKEN_OFFLINE_TTL,
-  KEYCLOAK_TOKEN_TTL,
+  KC_ACCESS_TOKEN_LIFESPAN,
+  KC_ACCESS_TOKEN_LIFESPAN_FOR_IMPLICIT_FLOW,
+  KC_OFFLINE_SESSION_IDLE_TIMEOUT,
+  KC_OFFLINE_SESSION_MAX_LIFESPAN,
+  KC_OFFLINE_SESSION_MAX_LIFESPAN_ENABLED,
+  KC_SESSION_IDLE_TIMEOUT,
+  KC_SESSION_MAX_LIFESPAN,
 } from '../validators'
 
 interface KeycloakConnection {
@@ -68,7 +72,7 @@ interface RealmRole {
   name: string
 }
 
-const localEnv = cleanEnv({ KEYCLOAK_TOKEN_TTL, KEYCLOAK_TOKEN_OFFLINE_TTL, KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED })
+const localEnv = cleanEnv({ KC_SESSION_IDLE_TIMEOUT, KC_SESSION_MAX_LIFESPAN, KC_ACCESS_TOKEN_LIFESPAN, KC_ACCESS_TOKEN_LIFESPAN_FOR_IMPLICIT_FLOW, KC_OFFLINE_SESSION_MAX_LIFESPAN_ENABLED, KC_OFFLINE_SESSION_IDLE_TIMEOUT, KC_OFFLINE_SESSION_MAX_LIFESPAN })
 
 const env = {
   FIRST_RUN: false,
@@ -89,9 +93,13 @@ const env = {
   KEYCLOAK_CLIENT_SECRET: '',
   KEYCLOAK_HOSTNAME_URL: '',
   KEYCLOAK_REALM: '',
-  KEYCLOAK_TOKEN_TTL: localEnv.KEYCLOAK_TOKEN_TTL,
-  KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED: localEnv.KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED,
-  KEYCLOAK_TOKEN_OFFLINE_TTL: localEnv.KEYCLOAK_TOKEN_OFFLINE_TTL,
+  KC_SESSION_IDLE_TIMEOUT: localEnv.KC_SESSION_IDLE_TIMEOUT,
+  KC_SESSION_MAX_LIFESPAN: localEnv.KC_SESSION_MAX_LIFESPAN,
+  KC_ACCESS_TOKEN_LIFESPAN: localEnv.KC_ACCESS_TOKEN_LIFESPAN,
+  KC_ACCESS_TOKEN_LIFESPAN_FOR_IMPLICIT_FLOW: localEnv.KC_ACCESS_TOKEN_LIFESPAN_FOR_IMPLICIT_FLOW,
+  KC_OFFLINE_SESSION_MAX_LIFESPAN_ENABLED: localEnv.KC_OFFLINE_SESSION_MAX_LIFESPAN_ENABLED,
+  KC_OFFLINE_SESSION_IDLE_TIMEOUT: localEnv.KC_OFFLINE_SESSION_IDLE_TIMEOUT,
+  KC_OFFLINE_SESSION_MAX_LIFESPAN: localEnv.KC_OFFLINE_SESSION_MAX_LIFESPAN,
   REDIRECT_URIS: [] as string[],
   TEAM_IDS: [] as string[],
   WAIT_OPTIONS: {},
@@ -145,7 +153,13 @@ async function runKeycloakUpdater() {
     !env.KEYCLOAK_ADMIN ||
     !env.KEYCLOAK_ADMIN_PASSWORD ||
     !env.KEYCLOAK_REALM ||
-    !env.KEYCLOAK_TOKEN_TTL ||
+    !env.KC_SESSION_IDLE_TIMEOUT ||
+    !env.KC_SESSION_MAX_LIFESPAN ||
+    !env.KC_ACCESS_TOKEN_LIFESPAN ||
+    !env.KC_ACCESS_TOKEN_LIFESPAN_FOR_IMPLICIT_FLOW ||
+    !env.KC_OFFLINE_SESSION_MAX_LIFESPAN_ENABLED ||
+    !env.KC_OFFLINE_SESSION_IDLE_TIMEOUT ||
+    !env.KC_OFFLINE_SESSION_MAX_LIFESPAN ||
     !env.WAIT_OPTIONS
   ) {
     console.info('Missing required keycloak variables for Keycloak setup/reconfiguration')
@@ -361,13 +375,13 @@ function setupKeycloakApi(connection: KeycloakConnection) {
 async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   // Create realm 'otomi'
   const realmConf = createRealm(keycloakRealm)
-  realmConf.ssoSessionIdleTimeout = env.KEYCLOAK_TOKEN_TTL
-  realmConf.ssoSessionMaxLifespan = env.KEYCLOAK_TOKEN_TTL
-  realmConf.accessTokenLifespan = env.KEYCLOAK_TOKEN_TTL
-  realmConf.accessTokenLifespanForImplicitFlow = env.KEYCLOAK_TOKEN_TTL
-  realmConf.offlineSessionMaxLifespanEnabled = env.KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED
-  realmConf.offlineSessionIdleTimeout = env.KEYCLOAK_TOKEN_OFFLINE_TTL
-  realmConf.offlineSessionMaxLifespan = env.KEYCLOAK_TOKEN_OFFLINE_TTL
+  realmConf.ssoSessionIdleTimeout = env.KC_SESSION_IDLE_TIMEOUT
+  realmConf.ssoSessionMaxLifespan = env.KC_SESSION_MAX_LIFESPAN
+  realmConf.accessTokenLifespan = env.KC_ACCESS_TOKEN_LIFESPAN
+  realmConf.accessTokenLifespanForImplicitFlow = env.KC_ACCESS_TOKEN_LIFESPAN_FOR_IMPLICIT_FLOW
+  realmConf.offlineSessionMaxLifespanEnabled = env.KC_OFFLINE_SESSION_MAX_LIFESPAN_ENABLED
+  realmConf.offlineSessionIdleTimeout = env.KC_OFFLINE_SESSION_IDLE_TIMEOUT
+  realmConf.offlineSessionMaxLifespan = env.KC_OFFLINE_SESSION_MAX_LIFESPAN
   // the api does not offer a list method, and trying to get by id throws an error
   // which we wan to discard, so we run the next command with an empty errors array
   console.info(`Getting realm ${keycloakRealm}`)

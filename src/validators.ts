@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
-/* eslint-disable no-return-assign */
-import { bool, cleanEnv as clean, json, num, str, ValidatorSpec } from 'envalid'
+
 import dotenv from 'dotenv'
+import { bool, cleanEnv as clean, json, num, str, ValidatorSpec } from 'envalid'
 
 const { env } = process
 
@@ -17,6 +17,8 @@ export const FEAT_EXTERNAL_IDP = bool({
 const feat = cleanEnv({ FEAT_EXTERNAL_IDP })
 // END
 
+export const RETRIES = num({ desc: 'The maximum amount of times to retry a certain function', default: 20 })
+export const MIN_TIMEOUT = num({ desc: 'The number of milliseconds before starting the first retry', default: 30000 })
 export const CERT_ROTATION_DAYS = num({ desc: 'The amount of days for the cert rotation', default: 75 })
 export const DOMAINS = json({ desc: 'A list of domains and their cert status' })
 export const HARBOR_BASE_URL = str({ desc: 'The harbor core service URL' })
@@ -39,7 +41,7 @@ export const IDP_GROUP_PLATFORM_ADMIN = str({ desc: 'APL platform admin group na
 export const IDP_OIDC_URL = str({ desc: "The IDP's OIDC enpoints url", default: undefined })
 export const IDP_USERNAME_CLAIM_MAPPER = str({
   desc: "The IDP's OIDC claim to username mapper string",
-  // eslint-disable-next-line no-template-curly-in-string
+
   default: '${CLAIM.upn}',
 })
 export const IDP_SUB_CLAIM_MAPPER = str({
@@ -60,17 +62,33 @@ export const KEYCLOAK_CLIENT_ID = str({ desc: 'Default Keycloak Client', default
 export const KEYCLOAK_CLIENT_SECRET = str({ desc: 'The keycloak client secret' })
 export const KEYCLOAK_REALM = str({ desc: 'The Keycloak Realm', default: 'master' })
 export const KEYCLOAK_THEME_LOGIN = str({ desc: 'The Keycloak login theme', default: 'default' })
-export const KEYCLOAK_TOKEN_TTL = num({
-  desc: 'The Keycloak access token TTL in seconds, 28800 seconds = 8 hours',
-  default: 28800,
+export const KC_SESSION_IDLE_TIMEOUT = num({
+  desc: 'Keycloak SSO session idle timeout in seconds',
+  default: 1800, // 30 minutes
 })
-export const KEYCLOAK_TOKEN_OFFLINE_TTL = num({
-  desc: 'The Keycloak offline access token TTL in seconds, 604800 seconds = 7 days',
-  default: 604800,
+export const KC_SESSION_MAX_LIFESPAN = num({
+  desc: 'Keycloak SSO session maximum lifespan in seconds',
+  default: 86400, // 1 day
 })
-export const KEYCLOAK_TOKEN_OFFLINE_MAX_TTL_ENABLED = bool({
-  desc: 'Allows the Keycloak access token TTL to have max limit for offline use',
+export const KC_ACCESS_TOKEN_LIFESPAN = num({
+  desc: 'Keycloak access token lifespan in seconds (for standard flows)',
+  default: 60, // 1 minute
+})
+export const KC_ACCESS_TOKEN_LIFESPAN_FOR_IMPLICIT_FLOW = num({
+  desc: 'Keycloak access token lifespan for implicit flow in seconds',
+  default: 1800, // 30 minutes
+})
+export const KC_OFFLINE_SESSION_MAX_LIFESPAN_ENABLED = bool({
+  desc: 'Determines if the offline session maximum lifespan is enabled',
   default: true,
+})
+export const KC_OFFLINE_SESSION_IDLE_TIMEOUT = num({
+  desc: 'Keycloak offline session idle timeout in seconds',
+  default: 1800, // 30 minutes
+})
+export const KC_OFFLINE_SESSION_MAX_LIFESPAN = num({
+  desc: 'Keycloak offline session maximum lifespan in seconds',
+  default: 604800, // 7 days
 })
 export const NODE_EXTRA_CA_CERTS = str({ default: undefined })
 export const NODE_TLS_REJECT_UNAUTHORIZED = bool({ default: true })

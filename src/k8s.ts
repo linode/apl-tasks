@@ -1,5 +1,6 @@
 import {
   CoreV1Api,
+  CustomObjectsApi,
   KubeConfig,
   NetworkingV1Api,
   PatchStrategy,
@@ -10,10 +11,12 @@ import {
 } from '@kubernetes/client-node'
 import { IncomingMessage } from 'http'
 import { findIndex, mapValues } from 'lodash'
+import { PipelineKubernetesObject } from './operator/gitea'
 
 let kc: KubeConfig
 let coreClient: CoreV1Api
 let networkingClient: NetworkingV1Api
+let customObjectsApi: CustomObjectsApi
 
 export const k8s = {
   kc: (): KubeConfig => {
@@ -31,6 +34,11 @@ export const k8s = {
     if (networkingClient) return networkingClient
     networkingClient = k8s.kc().makeApiClient(NetworkingV1Api)
     return networkingClient
+  },
+  customObjectsApi: (): CustomObjectsApi => {
+    if (customObjectsApi) return customObjectsApi
+    customObjectsApi = kc.makeApiClient(CustomObjectsApi)
+    return customObjectsApi
   },
 }
 
@@ -238,5 +246,19 @@ export async function deleteSecret(namespace: string, name: string): Promise<voi
     await client.deleteNamespacedSecret({ name, namespace })
   } catch (e) {
     throw new Error(`Secret '${name}' does not exist in namespace '${namespace}'`)
+  }
+}
+
+export async function getTektonPipeline(
+  pipelineName: string,
+  namespace: string,
+): Promise<PipelineKubernetesObject | undefined> {
+  try {
+    const pipeline = (
+      await k8s.customObjectsApi().getNamespacedCustomObject('tekton.dev', 'v1', namespace, 'pipelines', pipelineName)
+    ).body as PipelineKubernetesObject
+    return pipeline
+  } catch (error) {
+    console.error(`Problem getting the pipeline: ${error}`)
   }
 }
