@@ -5,6 +5,7 @@ const config: Config.InitialOptions = {
   moduleDirectories: ['node_modules', __dirname],
   testEnvironment: 'node',
   transform: {
+    '^.+.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
     '^.+\\.tsx?$': 'babel-jest',
     '^.+\\.jsx?$': 'babel-jest',
   },
@@ -13,3 +14,6 @@ const config: Config.InitialOptions = {
   verbose: true,
 }
 export default config
+process.env = Object.assign(process.env, {
+  isDev: false,
+})
