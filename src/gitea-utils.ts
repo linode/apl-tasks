@@ -27,6 +27,7 @@ export async function setServiceAccountSecret(
       .core()
       .replaceNamespacedSecret({ name: serviceAccountSecretName, namespace: teamNamespace, body: updatedSecret })
   } catch (error) {
+    console.error(JSON.stringify(error))
     if (error.statusCode === 404) {
       console.log(`Secret ${serviceAccountSecretName} could not be found in namespace ${teamNamespace}!`)
       console.log(`Creating secret for ${serviceAccountSecretName} in namespace ${teamNamespace}`)
