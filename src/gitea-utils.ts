@@ -27,8 +27,8 @@ export async function setServiceAccountSecret(
       .core()
       .replaceNamespacedSecret({ name: serviceAccountSecretName, namespace: teamNamespace, body: updatedSecret })
   } catch (error) {
-    console.error(JSON.stringify(error))
-    if (error.statusCode === 404) {
+    // With upgrade of kubernetes/client-node to 1.1.2, the error object is now a FetchError with code instead of statusCode
+    if (error.code === 404) {
       console.log(`Secret ${serviceAccountSecretName} could not be found in namespace ${teamNamespace}!`)
       console.log(`Creating secret for ${serviceAccountSecretName} in namespace ${teamNamespace}`)
       try {
