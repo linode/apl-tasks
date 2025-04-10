@@ -6,14 +6,10 @@ import {
   HttpBearerAuth,
   MemberApi,
   ProjectApi,
-  // eslint-disable-next-line no-unused-vars
   ProjectMember,
-  // eslint-disable-next-line no-unused-vars
   ProjectReq,
   RobotApi,
-  // eslint-disable-next-line no-unused-vars
   RobotCreate,
-  // eslint-disable-next-line no-unused-vars
   RobotCreated,
 } from '@linode/harbor-client-node'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../k8s'
@@ -80,6 +76,27 @@ const systemRobot: any = {
   ],
 }
 
+const systemRobotTwo: any = {
+  name: 'harbor',
+  duration: -1,
+  description: 'Used by APL Harbor task runner',
+  disable: false,
+  level: 'system',
+  permissions: [
+    {
+      kind: 'system',
+      namespace: '/',
+      access: [
+        {
+          resource: '*',
+          action: '*',
+        },
+      ],
+    },
+  ],
+  secret: 'testsecret',
+}
+
 const robotPrefix = 'otomi-'
 const env = {
   harborBaseRepoUrl: '',
@@ -99,7 +116,9 @@ const env = {
 
 const systemNamespace = localEnv.HARBOR_SYSTEM_NAMESPACE
 const systemSecretName = 'harbor-robot-admin'
+const systemSecretNameTwo = 'harbor-robot-admin-two'
 const projectPullSecretName = 'harbor-pullsecret'
+const projectPullSecretNameTwo = 'harbor-pullsecret-two'
 const projectPushSecretName = 'harbor-pushsecret'
 const projectBuildPushSecretName = 'harbor-pushsecret-builds'
 const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
@@ -164,7 +183,6 @@ const secretsAndConfigmapsCallback = async (e: any) => {
 
 // Operator
 export default class MyOperator extends Operator {
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     // Watch apl-harbor-operator-secret
     try {
@@ -350,6 +368,23 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
     `Create robot account ${systemRobot.name} with system level perms`,
     () => robotApi.createRobot(systemRobot),
   )) as RobotCreated
+
+  const secondRobotAccount = (await doApiCall(
+    errors,
+    `Create robot account ${systemRobot.name}-2 with pre-defined secret`,
+    () => robotApi.createRobot(systemRobotTwo),
+  )) as RobotCreated
+
+  const { id, name, secret } = secondRobotAccount
+
+  const secondRobotAccountSecret: RobotSecret = {
+    id: id!,
+    name: name!,
+    secret: secret!,
+  }
+
+  await createSecret(systemSecretNameTwo, systemNamespace, secondRobotAccountSecret)
+
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
   await createSecret(systemSecretName, systemNamespace, robotSecret)
   return robotSecret
