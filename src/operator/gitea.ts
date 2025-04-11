@@ -66,7 +66,7 @@ interface Task {
   params: Param[]
 }
 
-interface PipelineTemplateObject extends k8s.KubernetesObjectWithSpec {
+interface PipelineTemplateObject extends k8s.KubernetesObject {
   spec: {
     pipelineRef: {
       name: string
@@ -74,7 +74,7 @@ interface PipelineTemplateObject extends k8s.KubernetesObjectWithSpec {
   }
 }
 
-export interface PipelineKubernetesObject extends k8s.KubernetesObjectWithSpec {
+export interface PipelineKubernetesObject extends k8s.KubernetesObject {
   spec: {
     tasks: Task[]
     resourcetemplates: PipelineTemplateObject[]

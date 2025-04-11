@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/require-await */
 import * as k8s from '@kubernetes/client-node'
-import { KubeConfig } from '@kubernetes/client-node'
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   ClientRepresentation,
@@ -108,7 +106,7 @@ const env = {
   USERS: [],
 }
 
-const kc = new KubeConfig()
+const kc = new k8s.KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
 if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) {
@@ -119,9 +117,7 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 
 // eslint-disable-next-line no-unused-vars
 async function retryOperation(operation: (...args: any[]) => Promise<void>, operationName: string, ...params: any[]) {
-  // eslint-disable-next-line no-constant-condition
   while (true)
-    /* eslint-disable no-await-in-loop */
     try {
       await operation(...params)
       return
@@ -183,7 +179,6 @@ async function runKeycloakUpdater() {
 }
 
 export default class MyOperator extends Operator {
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     let secretInitialized = false
     let configMapInitialized = false
@@ -372,7 +367,7 @@ function setupKeycloakApi(connection: KeycloakConnection) {
     users: new UsersApi(basePath),
     groups: new GroupsApi(basePath),
   }
-  // eslint-disable-next-line no-return-assign,no-param-reassign
+  // eslint-disable-next-line no-param-reassign
   forEach(api, (a) => (a.accessToken = String(token.access_token)))
   return api
 }

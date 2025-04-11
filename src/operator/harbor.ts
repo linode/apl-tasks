@@ -6,24 +6,20 @@ import {
   HttpBearerAuth,
   MemberApi,
   ProjectApi,
-  // eslint-disable-next-line no-unused-vars
   ProjectMember,
-  // eslint-disable-next-line no-unused-vars
   ProjectReq,
   RobotApi,
-  // eslint-disable-next-line no-unused-vars
   RobotCreate,
-  // eslint-disable-next-line no-unused-vars
   RobotCreated,
 } from '@linode/harbor-client-node'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../utils'
 import {
+  cleanEnv,
   HARBOR_BASE_URL,
   HARBOR_BASE_URL_PORT,
   HARBOR_OPERATOR_NAMESPACE,
   HARBOR_SYSTEM_NAMESPACE,
-  cleanEnv,
 } from '../validators'
 
 // Interfaces
@@ -164,7 +160,6 @@ const secretsAndConfigmapsCallback = async (e: any) => {
 
 // Operator
 export default class MyOperator extends Operator {
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   protected async init() {
     // Watch apl-harbor-operator-secret
     try {
@@ -316,7 +311,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
       // throw everything except 401, which is what we test for
       if (e.status !== 401) throw e
       // unauthenticated, so remove and recreate secret
-      await k8sApi.deleteNamespacedSecret(systemSecretName, systemNamespace)
+      await k8sApi.deleteNamespacedSecret({ name: systemSecretName, namespace: systemNamespace })
       // now, the next call might throw IF:
       // - authMode oidc was already turned on and a platform admin accidentally removed the secret
       // but that is very unlikely, an unresolvable problem and needs a manual db fix
