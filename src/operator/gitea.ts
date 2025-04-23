@@ -786,11 +786,27 @@ export function buildTeamString(teamNames: any[]): string {
 async function setGiteaOIDCConfig(update = false) {
   if (!env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) return
   const podNamespace = 'gitea'
-  const podName = 'gitea-0'
   const clientID = env.oidcClientId
   const clientSecret = env.oidcClientSecret
   const discoveryURL = `${env.oidcEndpoint}/.well-known/openid-configuration`
   const teamNamespaceString = buildTeamString(env.teamNames)
+
+  const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
+  const giteaPods = await k8sApi.listNamespacedPod({
+    namespace: podNamespace,
+    labelSelector: 'app.kubernetes.io/instance=gitea,app.kubernetes.io/name=gitea',
+    limit: 1,
+  })
+  if (giteaPods.items.length === 0) {
+    console.debug('Not ready for setting up OIDC config: Gitea pod not found.')
+    return
+  }
+  const podName = giteaPods.items[0].metadata?.name
+  if (!podName) {
+    console.debug('Not ready for setting up OIDC config: Name of Gitea pod not found.')
+    return
+  }
+
   try {
     // WARNING: Dont enclose the teamNamespaceString in double quotes, this will escape the string incorrectly and breaks OIDC group mapping in gitea
     const execCommand = [
