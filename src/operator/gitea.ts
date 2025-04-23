@@ -783,6 +783,25 @@ export function buildTeamString(teamNames: any[]): string {
   return JSON.stringify(teamObject)
 }
 
+async function getGiteaPodName(namespace: string): Promise<string | undefined> {
+  try {
+    const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
+    const giteaPods = await k8sApi.listNamespacedPod({
+      namespace,
+      labelSelector: 'app.kubernetes.io/instance=gitea,app.kubernetes.io/name=gitea',
+      limit: 1,
+    })
+    if (giteaPods.items.length === 0) {
+      console.debug('Not ready for setting up OIDC config: Gitea pod not found.')
+      return
+    }
+    return giteaPods.items[0].metadata?.name
+  } catch (error) {
+    console.debug(`Error retrieving pod for Gitea OIDC config: ${error}`)
+    throw error
+  }
+}
+
 async function setGiteaOIDCConfig(update = false) {
   if (!env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) return
   const podNamespace = 'gitea'
@@ -791,17 +810,7 @@ async function setGiteaOIDCConfig(update = false) {
   const discoveryURL = `${env.oidcEndpoint}/.well-known/openid-configuration`
   const teamNamespaceString = buildTeamString(env.teamNames)
 
-  const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
-  const giteaPods = await k8sApi.listNamespacedPod({
-    namespace: podNamespace,
-    labelSelector: 'app.kubernetes.io/instance=gitea,app.kubernetes.io/name=gitea',
-    limit: 1,
-  })
-  if (giteaPods.items.length === 0) {
-    console.debug('Not ready for setting up OIDC config: Gitea pod not found.')
-    return
-  }
-  const podName = giteaPods.items[0].metadata?.name
+  const podName = await getGiteaPodName(podNamespace)
   if (!podName) {
     console.debug('Not ready for setting up OIDC config: Name of Gitea pod not found.')
     return
