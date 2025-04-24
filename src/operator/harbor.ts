@@ -12,6 +12,7 @@ import {
   RobotCreate,
   RobotCreated,
 } from '@linode/harbor-client-node'
+import { generate as generatePassword } from 'generate-password'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../utils'
 import {
@@ -116,9 +117,7 @@ const env = {
 
 const systemNamespace = localEnv.HARBOR_SYSTEM_NAMESPACE
 const systemSecretName = 'harbor-robot-admin'
-const systemSecretNameTwo = 'harbor-robot-admin-two'
 const projectPullSecretName = 'harbor-pullsecret'
-const projectPullSecretNameTwo = 'harbor-pullsecret-two'
 const projectPushSecretName = 'harbor-pushsecret'
 const projectBuildPushSecretName = 'harbor-pushsecret-builds'
 const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
@@ -369,22 +368,6 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
     () => robotApi.createRobot(systemRobot),
   )) as RobotCreated
 
-  const secondRobotAccount = (await doApiCall(
-    errors,
-    `Create robot account ${systemRobot.name}-2 with pre-defined secret`,
-    () => robotApi.createRobot(systemRobotTwo),
-  )) as RobotCreated
-
-  const { id, name, secret } = secondRobotAccount
-
-  const secondRobotAccountSecret: RobotSecret = {
-    id: id!,
-    name: name!,
-    secret: secret!,
-  }
-
-  await createSecret(systemSecretNameTwo, systemNamespace, secondRobotAccountSecret)
-
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
   await createSecret(systemSecretName, systemNamespace, robotSecret)
   return robotSecret
@@ -467,6 +450,15 @@ async function ensureTeamPullRobotAccountSecret(namespace: string, projectName):
  * @param projectName Harbor project name
  */
 async function createTeamPullRobotAccount(projectName: string): Promise<RobotCreated> {
+  const secret = generatePassword({
+    length: 16,
+    numbers: true,
+    symbols: true,
+    lowercase: true,
+    uppercase: true,
+    exclude: String(':,;"/=|%\\\''),
+  })
+  console.log(`SECRET for ${projectName} in: `, secret)
   const projectRobot: RobotCreate = {
     name: `${projectName}-pull`,
     duration: -1,
@@ -485,6 +477,7 @@ async function createTeamPullRobotAccount(projectName: string): Promise<RobotCre
         ],
       },
     ],
+    secret,
   }
   const fullName = `${robotPrefix}${projectRobot.name}`
 
@@ -535,6 +528,15 @@ async function ensureTeamPushRobotAccountSecret(namespace: string, projectName):
  * @param projectName Harbor project name
  */
 async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
+  const secret = generatePassword({
+    length: 16,
+    numbers: true,
+    symbols: true,
+    lowercase: true,
+    uppercase: true,
+    exclude: String(':,;"/=|%\\\''),
+  })
+  console.log(`SECRET for ${projectName} in: `, secret)
   const projectRobot: RobotCreate = {
     name: `${projectName}-push`,
     duration: -1,
@@ -557,6 +559,7 @@ async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
         ],
       },
     ],
+    secret,
   }
   const fullName = `${robotPrefix}${projectRobot.name}`
 
@@ -607,6 +610,15 @@ async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectN
  * @param projectName Harbor project name
  */
 async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<any> {
+  const secret = generatePassword({
+    length: 16,
+    numbers: true,
+    symbols: true,
+    lowercase: true,
+    uppercase: true,
+    exclude: String(':,;"/=|%\\\''),
+  })
+  console.log(`SECRET for ${projectName} in: `, secret)
   const projectRobot: RobotCreate = {
     name: `${projectName}-builds`,
     duration: -1,
@@ -629,6 +641,7 @@ async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<an
         ],
       },
     ],
+    secret,
   }
   const fullName = `${robotPrefix}${projectRobot.name}`
 
