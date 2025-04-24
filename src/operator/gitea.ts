@@ -273,7 +273,7 @@ export const createServiceAccounts = async (
   organizations: Organization[],
   orgApi: OrganizationApi,
 ) => {
-  const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
+  const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminSearchUsers())
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
   await Promise.all(
     filteredOrganizations.map(async (organization) => {
