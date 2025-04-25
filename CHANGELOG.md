@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.9.0](https://github.com/linode/apl-tasks/compare/v3.8.0...v3.9.0) (2025-04-25)
+
+
+### Bug Fixes
+
+* remove coverage annotations ([#219](https://github.com/linode/apl-tasks/issues/219)) ([913a4bd](https://github.com/linode/apl-tasks/commit/913a4bddecabfc019f5528245b937a4aaba25b02))
+* replace password from git errors and logs ([#218](https://github.com/linode/apl-tasks/issues/218)) ([c284a73](https://github.com/linode/apl-tasks/commit/c284a7302b0d475f7ac05ac615d1f555c08f8088))
+
 ## [3.8.0](https://github.com/linode/apl-tasks/compare/v3.7.0...v3.8.0) (2025-03-31)
 
 
