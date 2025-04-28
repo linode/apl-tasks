@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import * as k8s from '@kubernetes/client-node'
+import { Exec, KubeConfig, KubernetesObject, V1Status } from '@kubernetes/client-node'
 import Operator, { ResourceEvent, ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   AdminApi,
@@ -66,7 +66,7 @@ interface Task {
   params: Param[]
 }
 
-interface PipelineTemplateObject extends k8s.KubernetesObject {
+interface PipelineTemplateObject extends KubernetesObject {
   spec: {
     pipelineRef: {
       name: string
@@ -74,7 +74,7 @@ interface PipelineTemplateObject extends k8s.KubernetesObject {
   }
 }
 
-export interface PipelineKubernetesObject extends k8s.KubernetesObject {
+export interface PipelineKubernetesObject extends KubernetesObject {
   spec: {
     tasks: Task[]
     resourcetemplates: PipelineTemplateObject[]
@@ -129,7 +129,7 @@ const editorTeam: CreateTeamOption = {
 
 const adminTeam: CreateTeamOption = { ...editorTeam, permission: CreateTeamOption.PermissionEnum.Admin }
 
-const kc = new k8s.KubeConfig()
+const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
 // loadFromDefault when locally connecting to cluster
 if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) {
@@ -809,7 +809,7 @@ async function setGiteaOIDCConfig(update = false) {
       fi
       `,
     ]
-    const exec = new k8s.Exec(kc)
+    const exec = new Exec(kc)
     const outputStream = new stream.PassThrough()
     let output = ''
     outputStream.on('data', (chunk) => {
@@ -826,7 +826,7 @@ async function setGiteaOIDCConfig(update = false) {
         process.stderr as stream.Writable,
         process.stdin as stream.Readable,
         false,
-        (status: k8s.V1Status) => {
+        (status: V1Status) => {
           console.info(output.trim())
           console.info('Gitea OIDC config status:', status.status)
         },

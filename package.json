@@ -24,7 +24,8 @@
     "generate-password": "^1.7.1",
     "js-yaml": "4.1.0",
     "lodash": "4.17.21",
-    "openid-client": "5.7.0"
+    "openid-client": "5.7.0",
+    "tsx": "^4.19.3"
   },
   "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
   "devDependencies": {
@@ -65,8 +66,6 @@
     "prettier": "^3.4.2",
     "standard-version": "9.5.0",
     "ts-jest": "^29.3.0",
-    "ts-node": "10.9.2",
-    "ts-node-dev": "2.0.0",
     "typescript": "^5.7.3"
   },
   "engines": {
@@ -106,21 +105,21 @@
     "release": "standard-version",
     "release:bump:minor": "standard-version --skip.changelog true --release-as minor",
     "run-if-changed": "run-if-changed",
-    "tasks:copy-certs-dev": "ts-node-dev ./src/tasks/otomi/copy-certs.ts",
+    "tasks:copy-certs-dev": "tsx ./src/tasks/otomi/copy-certs.ts",
     "tasks:copy-certs": "node dist/src/tasks/otomi/copy-certs.js",
     "tasks:copy-certs-argo": "node dist/src/tasks/otomi/copy-certs-argo.js",
-    "tasks:keycloak-users-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/keycloak/users.ts",
-    "tasks:otomi-chart-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/otomi/otomi-chart.ts",
+    "tasks:keycloak-users-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/tasks/keycloak/users.ts",
+    "tasks:otomi-chart-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/tasks/otomi/otomi-chart.ts",
     "tasks:otomi-chart": "node dist/src/tasks/otomi/otomi-chart.js",
-    "tasks:wait-for-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/tasks/otomi/wait-for.ts",
+    "tasks:wait-for-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/tasks/otomi/wait-for.ts",
     "tasks:wait-for": "node dist/src/tasks/otomi/wait-for.js",
-    "operator:secrets-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/secrets.ts",
+    "operator:secrets-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/operator/secrets.ts",
     "operator:secrets": "node dist/src/operator/secrets.js",
-    "operator:gitea-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/gitea.ts",
+    "operator:gitea-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/operator/gitea.ts",
     "operator:gitea": "node dist/src/operator/gitea.js",
-    "operator:harbor-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/harbor.ts",
+    "operator:harbor-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/operator/harbor.ts",
     "operator:harbor": "node dist/src/operator/harbor.js",
-    "operator:keycloak-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node-dev ./src/operator/keycloak.ts",
+    "operator:keycloak-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/operator/keycloak.ts",
     "operator:keycloak": "node dist/src/operator/keycloak.js",
     "test": "NODE_ENV=test jest"
   },
