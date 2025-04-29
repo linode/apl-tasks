@@ -254,16 +254,14 @@ export async function getTektonPipeline(
   namespace: string,
 ): Promise<PipelineKubernetesObject | undefined> {
   try {
-    const pipeline = (
-      await k8s.customObjectsApi().getNamespacedCustomObject({
-        group: 'tekton.dev',
-        version: 'v1',
-        namespace,
-        plural: 'pipelines',
-        name: pipelineName,
-      })
-    ).body as PipelineKubernetesObject
-    return pipeline
+    const pipeline = await k8s.customObjectsApi().getNamespacedCustomObject({
+      group: 'tekton.dev',
+      version: 'v1',
+      namespace,
+      plural: 'pipelines',
+      name: pipelineName,
+    })
+    return pipeline as PipelineKubernetesObject
   } catch (error) {
     console.error(`Problem getting the pipeline: ${error}`)
   }
