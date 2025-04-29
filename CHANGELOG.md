@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.10.0](https://github.com/linode/apl-tasks/compare/v3.9.0...v3.10.0) (2025-04-29)
+
+
+### Features
+
+* look up Gitea pod using selector ([#224](https://github.com/linode/apl-tasks/issues/224)) ([9e3ffb0](https://github.com/linode/apl-tasks/commit/9e3ffb0c3dbb5e370f0876af1d28a70e0be0f54b))
+
+
+### Bug Fixes
+
+* pipeline forwarded correctly ([#225](https://github.com/linode/apl-tasks/issues/225)) ([ad1f0aa](https://github.com/linode/apl-tasks/commit/ad1f0aa3407c146ee62c376e53215a3062352642))
+
 ## [3.9.0](https://github.com/linode/apl-tasks/compare/v3.8.0...v3.9.0) (2025-04-25)
 
 
