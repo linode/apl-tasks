@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { Exec, KubeConfig, KubernetesObject, V1Status } from '@kubernetes/client-node'
+import { CoreV1Api, Exec, KubeConfig, KubernetesObject, V1Status } from '@kubernetes/client-node'
 import Operator, { ResourceEvent, ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   AdminApi,
@@ -273,7 +273,7 @@ export const createServiceAccounts = async (
   organizations: Organization[],
   orgApi: OrganizationApi,
 ) => {
-  const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminGetAllUsers())
+  const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminSearchUsers())
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
   await Promise.all(
     filteredOrganizations.map(async (organization) => {
@@ -783,14 +783,34 @@ export function buildTeamString(teamNames: any[]): string {
   return JSON.stringify(teamObject)
 }
 
+async function getGiteaPodName(namespace: string): Promise<string | undefined> {
+  const k8sApi = kc.makeApiClient(CoreV1Api)
+  const giteaPods = await k8sApi.listNamespacedPod({
+    namespace,
+    labelSelector: 'app.kubernetes.io/instance=gitea,app.kubernetes.io/name=gitea',
+    limit: 1,
+  })
+  if (giteaPods.items.length === 0) {
+    console.debug('Not ready for setting up OIDC config: Gitea pod not found.')
+    return
+  }
+  return giteaPods.items[0].metadata?.name
+}
+
 async function setGiteaOIDCConfig(update = false) {
   if (!env.oidcClientId || !env.oidcClientSecret || !env.oidcEndpoint) return
   const podNamespace = 'gitea'
-  const podName = 'gitea-0'
   const clientID = env.oidcClientId
   const clientSecret = env.oidcClientSecret
   const discoveryURL = `${env.oidcEndpoint}/.well-known/openid-configuration`
   const teamNamespaceString = buildTeamString(env.teamNames)
+
+  const podName = await getGiteaPodName(podNamespace)
+  if (!podName) {
+    console.debug('Not ready for setting up OIDC config: Name of Gitea pod not found.')
+    return
+  }
+
   try {
     // WARNING: Dont enclose the teamNamespaceString in double quotes, this will escape the string incorrectly and breaks OIDC group mapping in gitea
     const execCommand = [
