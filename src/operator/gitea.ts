@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { Exec, KubeConfig, KubernetesObject, V1Status } from '@kubernetes/client-node'
+import { CoreV1Api, Exec, KubeConfig, KubernetesObject, V1Status } from '@kubernetes/client-node'
 import Operator, { ResourceEvent, ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   AdminApi,
@@ -784,7 +784,7 @@ export function buildTeamString(teamNames: any[]): string {
 }
 
 async function getGiteaPodName(namespace: string): Promise<string | undefined> {
-  const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
+  const k8sApi = kc.makeApiClient(CoreV1Api)
   const giteaPods = await k8sApi.listNamespacedPod({
     namespace,
     labelSelector: 'app.kubernetes.io/instance=gitea,app.kubernetes.io/name=gitea',
