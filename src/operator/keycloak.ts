@@ -5,6 +5,7 @@ import {
   ClientsApi,
   ClientScopesApi,
   GroupsApi,
+  HttpBearerAuth,
   IdentityProvidersApi,
   ProtocolMappersApi,
   RealmsAdminApi,
@@ -42,7 +43,6 @@ import {
   KC_SESSION_IDLE_TIMEOUT,
   KC_SESSION_MAX_LIFESPAN,
 } from '../validators'
-import { HttpBearerAuth } from '@linode/keycloak-client-node/model/models'
 
 interface KeycloakConnection {
   basePath: string
