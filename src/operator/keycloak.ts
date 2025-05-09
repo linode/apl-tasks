@@ -333,12 +333,11 @@ async function keycloakConfigMapChanges(api: KeycloakApi) {
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
-  const keycloakAddress = env.KEYCLOAK_HOSTNAME_URL
-  const basePath = `${keycloakAddress}/admin/realms`
+  const basePath = env.KEYCLOAK_HOSTNAME_URL
   let token: TokenSet
   try {
     custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_HOSTNAME_URL.replace('https://', '') } })
-    const keycloakIssuer = await Issuer.discover(`${keycloakAddress}/realms/${env.KEYCLOAK_REALM}/`)
+    const keycloakIssuer = await Issuer.discover(`${basePath}/realms/${env.KEYCLOAK_REALM}/`)
     const clientOptions: any = {
       client_id: 'admin-cli',
       client_secret: 'unused',
@@ -717,14 +716,14 @@ async function createUpdateUser(api: KeycloakApi, userConf: UserRepresentation):
 }
 
 async function deleteUsers(api: any, users: any[]) {
-  const { body: keycloakUsers } = await api.users.realmUsersGet(keycloakRealm)
+  const { body: keycloakUsers } = await api.users.adminRealmsRealmUsersGet(keycloakRealm)
   const filteredUsers = keycloakUsers.filter((user) => user.username !== 'otomi-admin')
   const usersToDelete = filteredUsers.filter((user) => !users.some((u) => u.email === user.email))
 
   await Promise.all(
     usersToDelete.map(async (user) => {
       try {
-        await api.users.realmUsersIdDelete(keycloakRealm, user.id)
+        await api.users.adminRealmsRealmUsersUserIdDelete(keycloakRealm, user.id)
         console.debug(`Deleted user ${user.email}`)
       } catch (error) {
         throw extractError(`deleting user ${user.email}`, error)
