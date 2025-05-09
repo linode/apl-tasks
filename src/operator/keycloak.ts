@@ -9,6 +9,7 @@ import {
   IdentityProvidersApi,
   ProtocolMappersApi,
   RealmsAdminApi,
+  RequestFile,
   RoleMapperApi,
   RoleRepresentation,
   RolesApi,
@@ -399,7 +400,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   } catch (error) {
     if (error.statusCode === 404) {
       console.info(`Creating realm ${keycloakRealm}`)
-      await api.realms.adminRealmsPost(JSON.stringify(realmConf))
+      await api.realms.adminRealmsPost(realmConf as RequestFile)
     } else {
       throw error
     }
