@@ -12,12 +12,12 @@ describe('Keycloak User Group Management', () => {
     // Create a fresh mock 'api' object for each test
     api = {
       users: {
-        realmUsersIdGroupsGet: jest.fn(),
-        realmUsersIdGroupsGroupIdDelete: jest.fn(),
-        realmUsersIdGroupsGroupIdPut: jest.fn(),
+        adminRealmsRealmUsersUserIdGroupsGet: jest.fn(),
+        adminRealmsRealmUsersUserIdGroupsGroupIdDelete: jest.fn(),
+        adminRealmsRealmUsersUserIdGroupsGroupIdPut: jest.fn(),
       },
       groups: {
-        realmGroupsGet: jest.fn(),
+        adminRealmsRealmGroupsGet: jest.fn(),
       },
     }
   })
@@ -39,18 +39,18 @@ describe('Keycloak User Group Management', () => {
       ]
 
       // Simulate a successful fetch of the user’s current groups
-      api.users.realmUsersIdGroupsGet.mockResolvedValue({ body: existingUserGroups })
+      api.users.adminRealmsRealmUsersUserIdGroupsGet.mockResolvedValue({ body: existingUserGroups })
 
       await updateUserGroups(api, existingUser, groupsById, ['group1'])
 
       // The user should be removed from 'group2-id' only
-      expect(api.users.realmUsersIdGroupsGroupIdDelete).toHaveBeenCalledWith(
+      expect(api.users.adminRealmsRealmUsersUserIdGroupsGroupIdDelete).toHaveBeenCalledWith(
         keycloakRealm,
         'user-id',
         'group2-id'
       )
       // The user should NOT be removed from 'group1-id'
-      expect(api.users.realmUsersIdGroupsGroupIdDelete).not.toHaveBeenCalledWith(
+      expect(api.users.adminRealmsRealmUsersUserIdGroupsGroupIdDelete).not.toHaveBeenCalledWith(
         keycloakRealm,
         'user-id',
         'group1-id'
@@ -69,18 +69,18 @@ describe('Keycloak User Group Management', () => {
       ]
 
       // Mock the existing user groups response
-      api.users.realmUsersIdGroupsGet.mockResolvedValue({ body: existingUserGroups })
+      api.users.adminRealmsRealmUsersUserIdGroupsGet.mockResolvedValue({ body: existingUserGroups })
 
       await updateUserGroups(api, existingUser, groupsById, ['group1', 'group2'])
 
       // The user should be added to 'group2-id'
-      expect(api.users.realmUsersIdGroupsGroupIdPut).toHaveBeenCalledWith(
+      expect(api.users.adminRealmsRealmUsersUserIdGroupsGroupIdPut).toHaveBeenCalledWith(
         keycloakRealm,
         'user-id',
         'group2-id'
       )
       // The user should NOT be re-added to 'group1-id'
-      expect(api.users.realmUsersIdGroupsGroupIdPut).not.toHaveBeenCalledWith(
+      expect(api.users.adminRealmsRealmUsersUserIdGroupsGroupIdPut).not.toHaveBeenCalledWith(
         keycloakRealm,
         'user-id',
         'group1-id'
