@@ -9,7 +9,6 @@
     }
   },
   "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "9.0.6",
     "@kubernetes/client-node": "1.1.2",
     "@linode/apl-k8s-operator": "0.1.0",
     "@linode/gitea-client-node": "1.23.6",
@@ -33,7 +32,7 @@
     "@babel/preset-typescript": "^7.27.0",
     "@commitlint/cli": "19.6.1",
     "@commitlint/config-conventional": "19.8.0",
-    "@eslint/compat": "^1.2.7",
+    "@eslint/compat": "^1.2.9",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.16.0",
     "@hkdobrev/run-if-changed": "0.6.3",
@@ -45,7 +44,6 @@
     "@typescript-eslint/eslint-plugin": "^8.19.1",
     "@typescript-eslint/parser": "^8.29.0",
     "commitizen": "4.3.1",
-    "copyfiles": "2.3.0",
     "cz-conventional-changelog": "3.3.0",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^10.0.1",
@@ -60,10 +58,10 @@
     "jsonwebtoken": "9.0.2",
     "lint-staged": "15.4.3",
     "nock": "13.0.3",
-    "node-notifier": "8.0.1",
+    "node-notifier": "10.0.1",
     "npm-run-all": "4.1.5",
     "openapi-schema-validator": "3.0.3",
-    "prettier": "^3.4.2",
+    "prettier": "^3.5.3",
     "standard-version": "9.5.0",
     "ts-jest": "^29.3.0",
     "typescript": "^5.7.3"
