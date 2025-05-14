@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.11.0](https://github.com/linode/apl-tasks/compare/v3.10.0...v3.11.0) (2025-05-14)
+
+### Chore
+
+- upgrade Keycloak API client ([#227](https://github.com/linode/apl-tasks/pull/227)) ([1d5f269](https://github.com/linode/apl-tasks/commit/1d5f269b655a4bda052adffcfbf9f6edb9ec403f))
+- package updates and removals ([#228](https://github.com/linode/apl-tasks/pull/228)) ([a34a3f1](https://github.com/linode/apl-tasks/commit/a34a3f15ccc7a232cb205e008ddc04e5802ed415))
+
+
 ## [3.10.0](https://github.com/linode/apl-tasks/compare/v3.9.0...v3.10.0) (2025-04-29)
 
 
