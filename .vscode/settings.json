@@ -31,6 +31,7 @@
   "files.associations": {
     "CODE_OF_CONDUCT": "markdown",
     "CONTRIBUTING": "markdown"
+    "CODEOWNERS": "plaintext"
   },
   "javascript.autoClosingTags": false,
   "mochaExplorer.files": "src/**/*.test.ts",
