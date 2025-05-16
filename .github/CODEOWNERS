@@ -1,2 +1,7 @@
 @linode/fullstack
 @linode/devops
+
+# Set default owner for the entire repository
+* @j-zimnowoda @ElderMatt @CasLubbers
+src/ @ElderMatt @CasLubbers
+.github/ @ElderMatt @CasLubbers
