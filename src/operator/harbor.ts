@@ -21,6 +21,7 @@ import {
   HARBOR_OPERATOR_NAMESPACE,
   HARBOR_SYSTEM_NAMESPACE,
 } from '../validators'
+import { fullRobotSystemPermissions } from './harbor-utils'
 
 // Interfaces
 interface DependencyState {
@@ -31,6 +32,26 @@ interface RobotSecret {
   id: number
   name: string
   secret: string
+}
+
+interface RobotAccess {
+  resource: string
+  action: string
+}
+
+interface RobotPermission {
+  kind: 'project' | 'system'
+  namespace: string
+  access: RobotAccess[]
+}
+
+interface RobotAccount {
+  name: string
+  duration: number
+  description: string
+  disable: boolean
+  level: 'project' | 'system'
+  permissions: RobotPermission[]
 }
 
 // Constants
@@ -58,22 +79,6 @@ let setupSuccess = false
 const errors: string[] = []
 const systemRobot: any = {
   name: 'harbor',
-  duration: -1,
-  description: 'Used by APL Harbor task runner',
-  disable: false,
-  level: 'system',
-  permissions: [
-    {
-      kind: 'system',
-      namespace: '/',
-      access: [
-        {
-          resource: '*',
-          action: '*',
-        },
-      ],
-    },
-  ],
 }
 
 const robotPrefix = 'otomi-'
@@ -273,7 +278,7 @@ async function setupHarbor() {
     configureApi.setDefaultAuthentication(bearerAuth)
     projectsApi.setDefaultAuthentication(bearerAuth)
     memberApi.setDefaultAuthentication(bearerAuth)
-    await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
+    await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.updateConfigurations(config))
     if (errors.length > 0) handleErrors(errors)
     setupSuccess = true
   } catch (error) {
@@ -343,7 +348,13 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
   const robotAccount = (await doApiCall(
     errors,
     `Create robot account ${systemRobot.name} with system level perms`,
-    () => robotApi.createRobot(systemRobot),
+    () =>
+      robotApi.createRobot(
+        generateRobotAccount(systemRobot.name, fullRobotSystemPermissions, {
+          level: 'system',
+          kind: 'system',
+        }),
+      ),
   )) as RobotCreated
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
   await createSecret(systemSecretName, systemNamespace, robotSecret)
@@ -613,4 +624,41 @@ async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<an
     )
   }
   return robotBuildsPushAccount
+}
+
+function generateRobotAccount(
+  name: string,
+  accessList: RobotAccess[],
+  options: {
+    description?: string
+    level: 'project' | 'system'
+    kind: 'project' | 'system'
+    namespace?: string
+    duration?: number
+    disable?: boolean
+  },
+): RobotAccount {
+  const {
+    description = options?.description || `Robot account for ${name}`,
+    level = options.level,
+    kind = options.kind,
+    namespace = options?.namespace || '/',
+    duration = options?.duration || -1,
+    disable = options?.disable || false,
+  } = options || {}
+
+  return {
+    name,
+    duration,
+    description,
+    disable,
+    level,
+    permissions: [
+      {
+        kind,
+        namespace,
+        access: accessList,
+      },
+    ],
+  }
 }
