@@ -76,7 +76,7 @@ const HarborGroupType = {
 }
 
 let lastState: DependencyState = {}
-const setupSuccess = false
+let setupSuccess = false
 const errors: string[] = []
 const systemRobot: any = {
   name: 'harbor',
@@ -284,6 +284,7 @@ async function setupHarbor() {
       console.info('Putting Harbor configuration')
       const response = await configureApi.updateConfigurations(config)
       console.info('Harbor configuration updated successfully:', response.body)
+      setupSuccess = true
     } catch (err) {
       console.error('Failed to update Harbor configuration:', err)
     }
