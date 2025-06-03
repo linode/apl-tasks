@@ -283,7 +283,7 @@ async function setupHarbor() {
     try {
       console.info('Putting Harbor configuration')
       const response = await configureApi.updateConfigurations(config)
-      console.info('Harbor configuration updated successfully:', response.body)
+      console.info('Harbor configuration updated successfully')
       setupSuccess = true
     } catch (err) {
       console.error('Failed to update Harbor configuration:', err)
