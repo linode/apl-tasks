@@ -21,6 +21,7 @@ import {
   HARBOR_BASE_URL_PORT,
   HARBOR_OPERATOR_NAMESPACE,
   HARBOR_SYSTEM_NAMESPACE,
+  HARBOR_SYSTEM_ROBOTNAME,
 } from '../validators'
 import { fullRobotSystemPermissions } from './harbor-utils'
 
@@ -61,6 +62,7 @@ const localEnv = cleanEnv({
   HARBOR_BASE_URL_PORT,
   HARBOR_OPERATOR_NAMESPACE,
   HARBOR_SYSTEM_NAMESPACE,
+  HARBOR_SYSTEM_ROBOTNAME,
 })
 
 const HarborRole = {
@@ -78,9 +80,6 @@ const HarborGroupType = {
 let lastState: DependencyState = {}
 let setupSuccess = false
 const errors: string[] = []
-const systemRobot: any = {
-  name: 'harbor',
-}
 
 const robotPrefix = 'otomi-'
 const env = {
@@ -295,7 +294,7 @@ async function setupHarbor() {
 }
 
 async function ensureRobotSecretHasCorrectName(robotSecret: RobotSecret) {
-  const preferredRobotName = `${robotPrefix}${systemRobot.name}`
+  const preferredRobotName = `${robotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`
   if (robotSecret.name !== preferredRobotName) {
     const updatedRobotSecret = { ...robotSecret, name: preferredRobotName }
     await replaceSecret(systemSecretName, systemNamespace, updatedRobotSecret)
@@ -345,20 +344,21 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
   // Also check for default robot prefix because it can happen that the robot account was created with the default prefix
   const existing = robotList.find(
     (robot) =>
-      robot.name === `${robotPrefix}${systemRobot.name}` || robot.name === `${defaultRobotPrefix}${systemRobot.name}`,
+      robot.name === `${robotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}` ||
+      robot.name === `${defaultRobotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`,
   )
   if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous robot account ${systemRobot.name}`, () =>
+    await doApiCall(errors, `Deleting previous robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME}`, () =>
       robotApi.deleteRobot(existingId),
     )
   }
   const robotAccount = (await doApiCall(
     errors,
-    `Create robot account ${systemRobot.name} with system level perms`,
+    `Create robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME} with system level perms`,
     () =>
       robotApi.createRobot(
-        generateRobotAccount(systemRobot.name, fullRobotSystemPermissions, {
+        generateRobotAccount(localEnv.HARBOR_SYSTEM_ROBOTNAME, fullRobotSystemPermissions, {
           level: 'system',
           kind: 'system',
         }),
