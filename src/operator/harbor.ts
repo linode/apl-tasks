@@ -282,7 +282,7 @@ async function setupHarbor() {
     memberApi.setDefaultAuthentication(bearerAuth)
     try {
       console.info('Putting Harbor configuration')
-      const response = await configureApi.updateConfigurations(config)
+      await configureApi.updateConfigurations(config)
       console.info('Harbor configuration updated successfully')
       setupSuccess = true
     } catch (err) {
