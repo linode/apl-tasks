@@ -2,6 +2,7 @@ import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
+  Configurations,
   ConfigureApi,
   HttpBearerAuth,
   MemberApi,
@@ -75,7 +76,7 @@ const HarborGroupType = {
 }
 
 let lastState: DependencyState = {}
-let setupSuccess = false
+const setupSuccess = false
 const errors: string[] = []
 const systemRobot: any = {
   name: 'harbor',
@@ -106,10 +107,10 @@ const projectBuildPushSecretName = 'harbor-pushsecret-builds'
 const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const harborOperatorNamespace = localEnv.HARBOR_OPERATOR_NAMESPACE
-let robotApi
-let configureApi
-let projectsApi
-let memberApi
+let robotApi: RobotApi
+let configureApi: ConfigureApi
+let projectsApi: ProjectApi
+let memberApi: MemberApi
 
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
@@ -255,21 +256,22 @@ async function setupHarbor() {
   projectsApi = new ProjectApi(env.harborUser, env.harborPassword, harborBaseUrl)
   memberApi = new MemberApi(env.harborUser, env.harborPassword, harborBaseUrl)
 
-  const config: any = {
-    auth_mode: 'oidc_auth',
-    oidc_admin_group: 'platform-admin',
-    oidc_client_id: 'otomi',
-    oidc_client_secret: env.oidcClientSecret,
-    oidc_endpoint: env.oidcEndpoint,
-    oidc_groups_claim: 'groups',
-    oidc_name: 'otomi',
-    oidc_scope: 'openid',
-    oidc_verify_cert: env.oidcVerifyCert,
-    oidc_user_claim: env.oidcUserClaim,
-    oidc_auto_onboard: env.oidcAutoOnboard,
-    project_creation_restriction: 'adminonly',
-    robot_name_prefix: robotPrefix,
-    self_registration: false,
+  const config: Configurations = {
+    authMode: 'oidc_auth',
+    oidcAdminGroup: 'platform-admin',
+    oidcClientId: 'otomi',
+    oidcClientSecret: env.oidcClientSecret,
+    oidcEndpoint: env.oidcEndpoint,
+    oidcGroupsClaim: 'groups',
+    oidcName: 'otomi',
+    oidcScope: 'openid',
+    oidcVerifyCert: env.oidcVerifyCert,
+    oidcUserClaim: env.oidcUserClaim,
+    oidcAutoOnboard: env.oidcAutoOnboard,
+    projectCreationRestriction: 'adminonly',
+    robotNamePrefix: robotPrefix,
+    selfRegistration: false,
+    primaryAuthMode: true,
   }
 
   try {
@@ -278,11 +280,16 @@ async function setupHarbor() {
     configureApi.setDefaultAuthentication(bearerAuth)
     projectsApi.setDefaultAuthentication(bearerAuth)
     memberApi.setDefaultAuthentication(bearerAuth)
-    await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.updateConfigurations(config))
+    try {
+      console.info('Putting Harbor configuration')
+      const response = await configureApi.updateConfigurations(config)
+      console.info('Harbor configuration updated successfully:', response.body)
+    } catch (err) {
+      console.error('Failed to update Harbor configuration:', err)
+    }
     if (errors.length > 0) handleErrors(errors)
-    setupSuccess = true
   } catch (error) {
-    console.debug('Failed to set bearer Token for Harbor Api :', error)
+    console.error('Failed to set bearer Token for Harbor Api :', error)
   }
 }
 
@@ -536,7 +543,7 @@ async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
 
   if (existing?.name) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous push robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
+    await doApiCall(errors, `Deleting previous push robot account ${fullName}`, () => robotApi.deleteRobot(existingId!))
   }
 
   const robotPushAccount = (await doApiCall(
@@ -609,7 +616,7 @@ async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<an
   if (existing?.name) {
     const existingId = existing.id
     await doApiCall(errors, `Deleting previous build push robot account ${fullName}`, () =>
-      robotApi.deleteRobot(existingId),
+      robotApi.deleteRobot(existingId!),
     )
   }
 
