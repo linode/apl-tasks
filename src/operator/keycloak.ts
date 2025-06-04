@@ -175,6 +175,8 @@ async function runKeycloakUpdater() {
     const api = setupKeycloakApi(connection)
     await keycloakConfigMapChanges(api)
     await manageGroups(api)
+    if (env.FEAT_EXTERNAL_IDP === 'true') await externalIDP(api)
+    else await internalIdp(api)
     if (!JSON.parse(env.FEAT_EXTERNAL_IDP)) {
       await manageUsers(api, env.USERS as Record<string, any>[])
     }
@@ -329,8 +331,6 @@ if (typeof require !== 'undefined' && require.main === module) {
 }
 async function keycloakConfigMapChanges(api: KeycloakApi) {
   await keycloakRealmProviderConfigurer(api)
-  if (env.FEAT_EXTERNAL_IDP === 'true') await externalIDP(api)
-  else await internalIdp(api)
 }
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
@@ -461,7 +461,8 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   }
 
   console.info('Getting client email claim mapper')
-  const allClaims = (await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsGet(keycloakRealm, client.id!)).body ||
+  const allClaims =
+    (await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsGet(keycloakRealm, client.id!)).body ||
     []
   if (!allClaims.some((el) => el.name === 'email')) {
     const mapper = createClientEmailClaimMapper()
@@ -509,9 +510,7 @@ async function externalIDP(api: KeycloakApi) {
   try {
     await Promise.all(
       idpMappers.map((idpMapper) => {
-        const existingMapper = existingMappers.find(
-          (m) => m.name === idpMapper.name,
-        )
+        const existingMapper = existingMappers.find((m) => m.name === idpMapper.name)
         if (existingMapper) {
           console.info(`Updating mapper ${idpMapper.name!}`)
           return api.providers.adminRealmsRealmIdentityProviderInstancesAliasMappersIdPut(
@@ -525,7 +524,11 @@ async function externalIDP(api: KeycloakApi) {
           )
         }
         console.info(`Creating mapper ${idpMapper.name!}`)
-        return api.providers.adminRealmsRealmIdentityProviderInstancesAliasMappersPost(keycloakRealm, env.IDP_ALIAS, idpMapper)
+        return api.providers.adminRealmsRealmIdentityProviderInstancesAliasMappersPost(
+          keycloakRealm,
+          env.IDP_ALIAS,
+          idpMapper,
+        )
       }),
     )
     console.info('Finished external IDP')
@@ -546,9 +549,7 @@ async function internalIdp(api: KeycloakApi) {
   // get clients for access roles
   console.info(`Getting client realm-management from realm ${keycloakRealm}`)
   const realmManagementClients = (await api.clients.adminRealmsRealmClientsGet(keycloakRealm, 'realm-management')).body
-  const realmManagementClient = realmManagementClients.find(
-    (el) => el.clientId === 'realm-management',
-  )!
+  const realmManagementClient = realmManagementClients.find((el) => el.clientId === 'realm-management')!
 
   console.info(`Getting realm-management roles from realm ${keycloakRealm}`)
   const realmManagementRoles = (
