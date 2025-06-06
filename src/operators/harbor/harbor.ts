@@ -13,8 +13,10 @@ import {
   RobotCreate,
   RobotCreated,
 } from '@linode/harbor-client-node'
-import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../k8s'
-import { doApiCall, handleErrors, waitTillAvailable } from '../utils'
+import fs from 'fs'
+import path from 'path'
+import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../../k8s'
+import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
   cleanEnv,
   HARBOR_BASE_URL,
@@ -22,8 +24,7 @@ import {
   HARBOR_OPERATOR_NAMESPACE,
   HARBOR_SYSTEM_NAMESPACE,
   HARBOR_SYSTEM_ROBOTNAME,
-} from '../validators'
-import { fullRobotSystemPermissions } from './harbor-utils'
+} from '../../validators'
 
 // Interfaces
 interface DependencyState {
@@ -353,12 +354,14 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
       robotApi.deleteRobot(existingId),
     )
   }
+  const permissionsPath = path.resolve(__dirname, './harbor-full-robot-system-permissions.json')
+  const robotPermissions = JSON.parse(fs.readFileSync(permissionsPath, 'utf-8'))
   const robotAccount = (await doApiCall(
     errors,
     `Create robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME} with system level perms`,
     () =>
       robotApi.createRobot(
-        generateRobotAccount(localEnv.HARBOR_SYSTEM_ROBOTNAME, fullRobotSystemPermissions, {
+        generateRobotAccount(localEnv.HARBOR_SYSTEM_ROBOTNAME, robotPermissions, {
           level: 'system',
           kind: 'system',
         }),
@@ -542,9 +545,9 @@ async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
   const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
 
-  if (existing?.name) {
+  if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous push robot account ${fullName}`, () => robotApi.deleteRobot(existingId!))
+    await doApiCall(errors, `Deleting previous push robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
   }
 
   const robotPushAccount = (await doApiCall(
@@ -614,10 +617,10 @@ async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<an
   const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
 
-  if (existing?.name) {
+  if (existing?.id) {
     const existingId = existing.id
     await doApiCall(errors, `Deleting previous build push robot account ${fullName}`, () =>
-      robotApi.deleteRobot(existingId!),
+      robotApi.deleteRobot(existingId),
     )
   }
 
