@@ -11,7 +11,7 @@ import {
 } from '@kubernetes/client-node'
 import { IncomingMessage } from 'http'
 import { findIndex, mapValues } from 'lodash'
-import { PipelineKubernetesObject } from './operator/gitea'
+import { PipelineKubernetesObject } from './operators/gitea/gitea'
 
 let kc: KubeConfig
 let coreClient: CoreV1Api
