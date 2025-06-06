@@ -16,6 +16,7 @@ import {
   adminUserCfgTpl,
   clientEmailClaimMapper,
   clientScopeCfgTpl,
+  clientSubClaimMapper,
   defaultsIdpMapperTpl,
   idpMapperTpl,
   idpProviderCfgTpl,
@@ -114,6 +115,11 @@ export function createClientEmailClaimMapper(): ProtocolMapperRepresentation {
   return emailClaimMapper
 }
 
+export function createClientSubClaimMapper(): ProtocolMapperRepresentation {
+  const subClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientSubClaimMapper())
+  return subClaimMapper
+}
+
 export function createAdminUser(username: string, password: string): UserRepresentation {
   const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(username, password))
   return userRepresentation
@@ -158,7 +164,6 @@ export function mapTeamsToRoles(
   const teams =
     idpGroupMappings ??
     teamIds.reduce((memo: any, name) => {
-      // eslint-disable-next-line no-param-reassign
       memo[`team-${name}`] = undefined
       return memo
     }, {})
