@@ -175,11 +175,7 @@ async function runKeycloakUpdater() {
     const api = setupKeycloakApi(connection)
     await keycloakConfigMapChanges(api)
     await manageGroups(api)
-    if (env.FEAT_EXTERNAL_IDP === 'true') await externalIDP(api)
-    else await internalIdp(api)
-    if (!JSON.parse(env.FEAT_EXTERNAL_IDP)) {
-      await manageUsers(api, env.USERS as Record<string, any>[])
-    }
+    await IDPManager(api)
   }, 'update from config')
   console.info('Updated Config')
 }
@@ -613,6 +609,14 @@ async function internalIdp(api: KeycloakApi) {
 
   // Create default admin user in realm 'otomi'
   await createUpdateUser(api, createAdminUser(env.KEYCLOAK_ADMIN, env.KEYCLOAK_ADMIN_PASSWORD))
+}
+
+async function IDPManager(api: KeycloakApi) {
+  if (env.FEAT_EXTERNAL_IDP === 'true') await externalIDP(api)
+  else {
+    await internalIdp(api)
+    await manageUsers(api, env.USERS as Record<string, any>[])
+  }
 }
 
 async function manageGroups(api: KeycloakApi) {
