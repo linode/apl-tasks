@@ -227,7 +227,7 @@ export const clientSubClaimMapper = (): Record<string, unknown> => ({
     'introspection.token.claim': 'true',
     'jsonType.label': 'String',
     'lightweight.claim': 'true',
-    'user.attribute': 'email',
+    'user.attribute': 'id',
     'userinfo.token.claim': 'true',
   },
 })
