@@ -1,5 +1,3 @@
-/* eslint-disable no-template-curly-in-string */
-/* eslint-disable camelcase */
 import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
 import axios from 'axios'
 
@@ -214,6 +212,23 @@ export const clientEmailClaimMapper = (): Record<string, unknown> => ({
     'access.token.claim': 'true',
     'claim.name': 'email',
     'jsonType.label': 'String',
+  },
+})
+
+export const clientSubClaimMapper = (): Record<string, unknown> => ({
+  name: 'sub',
+  protocol: 'openid-connect',
+  protocolMapper: 'oidc-usermodel-property-mapper',
+  consentRequired: false,
+  config: {
+    'access.token.claim': 'true',
+    'claim.name': 'sub',
+    'id.token.claim': 'true',
+    'introspection.token.claim': 'true',
+    'jsonType.label': 'String',
+    'lightweight.claim': 'true',
+    'user.attribute': 'email',
+    'userinfo.token.claim': 'true',
   },
 })
 
