@@ -91,7 +91,7 @@
     "package-lock.json": "npm install --prefer-offline --no-audit"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp src/operators/harbor/harbor-full-robot-system-permissions.json dist/src/operators/harbor/",
     "cz:retry": "git-cz --retry",
     "cz": "git-cz",
     "lint-staged": "lint-staged",
