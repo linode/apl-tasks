@@ -25,6 +25,7 @@ import {
   createClient,
   createClientEmailClaimMapper,
   createClientScopes,
+  createClientSubClaimMapper,
   createGroups,
   createIdpMappers,
   createIdProvider,
@@ -460,14 +461,23 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     await api.clients.adminRealmsRealmClientsPost(keycloakRealm, client)
   }
 
-  console.info('Getting client email claim mapper')
+  console.info('Getting client claim mappers')
   const allClaims =
     (await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsGet(keycloakRealm, client.id!)).body ||
     []
   if (!allClaims.some((el) => el.name === 'email')) {
-    const mapper = createClientEmailClaimMapper()
+    const emailMapper = createClientEmailClaimMapper()
     console.info('Creating client email claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, mapper)
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(
+      keycloakRealm,
+      client.id!,
+      emailMapper,
+    )
+  }
+  if (!allClaims.some((el) => el.name === 'sub')) {
+    const subMapper = createClientSubClaimMapper()
+    console.info('Creating client sub claim mapper')
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
 
   // set login theme for master realm
