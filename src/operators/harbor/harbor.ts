@@ -13,8 +13,6 @@ import {
   RobotCreate,
   RobotCreated,
 } from '@linode/harbor-client-node'
-import fs from 'fs'
-import path from 'path'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../../k8s'
 import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
@@ -25,6 +23,7 @@ import {
   HARBOR_SYSTEM_NAMESPACE,
   HARBOR_SYSTEM_ROBOTNAME,
 } from '../../validators'
+import fullRobotPermissions from './harbor-full-robot-system-permissions.json'
 
 // Interfaces
 interface DependencyState {
@@ -354,14 +353,12 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
       robotApi.deleteRobot(existingId),
     )
   }
-  const permissionsPath = path.resolve(__dirname, './harbor-full-robot-system-permissions.json')
-  const robotPermissions = JSON.parse(fs.readFileSync(permissionsPath, 'utf-8'))
   const robotAccount = (await doApiCall(
     errors,
     `Create robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME} with system level perms`,
     () =>
       robotApi.createRobot(
-        generateRobotAccount(localEnv.HARBOR_SYSTEM_ROBOTNAME, robotPermissions, {
+        generateRobotAccount(localEnv.HARBOR_SYSTEM_ROBOTNAME, fullRobotPermissions, {
           level: 'system',
           kind: 'system',
         }),
