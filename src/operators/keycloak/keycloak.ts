@@ -18,8 +18,8 @@ import {
 } from '@linode/keycloak-client-node'
 import { forEach, omit } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
-import { keycloakRealm } from '../tasks/keycloak/config'
-import { extractError } from '../tasks/keycloak/errors'
+import { keycloakRealm } from '../../tasks/keycloak/config'
+import { extractError } from '../../tasks/keycloak/errors'
 import {
   createAdminUser,
   createClient,
@@ -33,8 +33,8 @@ import {
   createRealm,
   createTeamUser,
   mapTeamsToRoles,
-} from '../tasks/keycloak/realm-factory'
-import { isObjectSubsetDifferent } from '../utils'
+} from '../../tasks/keycloak/realm-factory'
+import { isObjectSubsetDifferent } from '../../utils'
 import {
   cleanEnv,
   KC_ACCESS_TOKEN_LIFESPAN,
@@ -44,7 +44,7 @@ import {
   KC_OFFLINE_SESSION_MAX_LIFESPAN_ENABLED,
   KC_SESSION_IDLE_TIMEOUT,
   KC_SESSION_MAX_LIFESPAN,
-} from '../validators'
+} from '../../validators'
 
 interface KeycloakConnection {
   basePath: string
