@@ -23,9 +23,9 @@ import retry from 'async-retry'
 import { generate as generatePassword } from 'generate-password'
 import { isEmpty, keys } from 'lodash'
 import stream from 'stream'
-import { getRepoNameFromUrl, setServiceAccountSecret } from '../gitea-utils'
-import { getTektonPipeline } from '../k8s'
-import { doApiCall, getSanitizedErrorMessage } from '../utils'
+import { getRepoNameFromUrl, setServiceAccountSecret } from '../../gitea-utils'
+import { getTektonPipeline } from '../../k8s'
+import { doApiCall, getSanitizedErrorMessage } from '../../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
   cleanEnv,
@@ -34,8 +34,8 @@ import {
   GITEA_URL_PORT,
   MIN_TIMEOUT,
   RETRIES,
-} from '../validators'
-import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer, username } from './common'
+} from '../../validators'
+import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer, username } from '../common'
 
 // Interfaces
 interface hookInfo {

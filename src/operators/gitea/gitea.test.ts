@@ -1,7 +1,7 @@
 import { EditHookOption, Organization, Team, User } from '@linode/gitea-client-node/'
-import * as giteaUtils from '../gitea-utils'
-import { getRepoNameFromUrl } from '../gitea-utils'
-import * as utils from '../utils'
+import * as giteaUtils from '../../gitea-utils'
+import { getRepoNameFromUrl } from '../../gitea-utils'
+import * as utils from '../../utils'
 import * as giteaOperator from './gitea'
 
 describe('giteaOperator', () => {

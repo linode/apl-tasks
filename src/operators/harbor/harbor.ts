@@ -2,6 +2,7 @@ import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
+  Configurations,
   ConfigureApi,
   HttpBearerAuth,
   MemberApi,
@@ -12,15 +13,18 @@ import {
   RobotCreate,
   RobotCreated,
 } from '@linode/harbor-client-node'
-import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../k8s'
-import { doApiCall, handleErrors, waitTillAvailable } from '../utils'
+import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../../k8s'
+import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
 import {
   cleanEnv,
   HARBOR_BASE_URL,
   HARBOR_BASE_URL_PORT,
   HARBOR_OPERATOR_NAMESPACE,
   HARBOR_SYSTEM_NAMESPACE,
-} from '../validators'
+  HARBOR_SYSTEM_ROBOTNAME,
+} from '../../validators'
+// full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
+import fullRobotPermissions from './harbor-full-robot-system-permissions.json'
 
 // Interfaces
 interface DependencyState {
@@ -33,12 +37,33 @@ interface RobotSecret {
   secret: string
 }
 
+interface RobotAccess {
+  resource: string
+  action: string
+}
+
+interface RobotPermission {
+  kind: 'project' | 'system'
+  namespace: string
+  access: RobotAccess[]
+}
+
+interface RobotAccount {
+  name: string
+  duration: number
+  description: string
+  disable: boolean
+  level: 'project' | 'system'
+  permissions: RobotPermission[]
+}
+
 // Constants
 const localEnv = cleanEnv({
   HARBOR_BASE_URL,
   HARBOR_BASE_URL_PORT,
   HARBOR_OPERATOR_NAMESPACE,
   HARBOR_SYSTEM_NAMESPACE,
+  HARBOR_SYSTEM_ROBOTNAME,
 })
 
 const HarborRole = {
@@ -56,25 +81,6 @@ const HarborGroupType = {
 let lastState: DependencyState = {}
 let setupSuccess = false
 const errors: string[] = []
-const systemRobot: any = {
-  name: 'harbor',
-  duration: -1,
-  description: 'Used by APL Harbor task runner',
-  disable: false,
-  level: 'system',
-  permissions: [
-    {
-      kind: 'system',
-      namespace: '/',
-      access: [
-        {
-          resource: '*',
-          action: '*',
-        },
-      ],
-    },
-  ],
-}
 
 const robotPrefix = 'otomi-'
 const env = {
@@ -101,10 +107,10 @@ const projectBuildPushSecretName = 'harbor-pushsecret-builds'
 const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const harborOperatorNamespace = localEnv.HARBOR_OPERATOR_NAMESPACE
-let robotApi
-let configureApi
-let projectsApi
-let memberApi
+let robotApi: RobotApi
+let configureApi: ConfigureApi
+let projectsApi: ProjectApi
+let memberApi: MemberApi
 
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
@@ -250,21 +256,22 @@ async function setupHarbor() {
   projectsApi = new ProjectApi(env.harborUser, env.harborPassword, harborBaseUrl)
   memberApi = new MemberApi(env.harborUser, env.harborPassword, harborBaseUrl)
 
-  const config: any = {
-    auth_mode: 'oidc_auth',
-    oidc_admin_group: 'platform-admin',
-    oidc_client_id: 'otomi',
-    oidc_client_secret: env.oidcClientSecret,
-    oidc_endpoint: env.oidcEndpoint,
-    oidc_groups_claim: 'groups',
-    oidc_name: 'otomi',
-    oidc_scope: 'openid',
-    oidc_verify_cert: env.oidcVerifyCert,
-    oidc_user_claim: env.oidcUserClaim,
-    oidc_auto_onboard: env.oidcAutoOnboard,
-    project_creation_restriction: 'adminonly',
-    robot_name_prefix: robotPrefix,
-    self_registration: false,
+  const config: Configurations = {
+    authMode: 'oidc_auth',
+    oidcAdminGroup: 'platform-admin',
+    oidcClientId: 'otomi',
+    oidcClientSecret: env.oidcClientSecret,
+    oidcEndpoint: env.oidcEndpoint,
+    oidcGroupsClaim: 'groups',
+    oidcName: 'otomi',
+    oidcScope: 'openid',
+    oidcVerifyCert: env.oidcVerifyCert,
+    oidcUserClaim: env.oidcUserClaim,
+    oidcAutoOnboard: env.oidcAutoOnboard,
+    projectCreationRestriction: 'adminonly',
+    robotNamePrefix: robotPrefix,
+    selfRegistration: false,
+    primaryAuthMode: true,
   }
 
   try {
@@ -273,16 +280,22 @@ async function setupHarbor() {
     configureApi.setDefaultAuthentication(bearerAuth)
     projectsApi.setDefaultAuthentication(bearerAuth)
     memberApi.setDefaultAuthentication(bearerAuth)
-    await doApiCall(errors, 'Putting Harbor configuration', () => configureApi.configurationsPut(config))
+    try {
+      console.info('Putting Harbor configuration')
+      await configureApi.updateConfigurations(config)
+      console.info('Harbor configuration updated successfully')
+      setupSuccess = true
+    } catch (err) {
+      console.error('Failed to update Harbor configuration:', err)
+    }
     if (errors.length > 0) handleErrors(errors)
-    setupSuccess = true
   } catch (error) {
-    console.debug('Failed to set bearer Token for Harbor Api :', error)
+    console.error('Failed to set bearer Token for Harbor Api :', error)
   }
 }
 
 async function ensureRobotSecretHasCorrectName(robotSecret: RobotSecret) {
-  const preferredRobotName = `${robotPrefix}${systemRobot.name}`
+  const preferredRobotName = `${robotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`
   if (robotSecret.name !== preferredRobotName) {
     const updatedRobotSecret = { ...robotSecret, name: preferredRobotName }
     await replaceSecret(systemSecretName, systemNamespace, updatedRobotSecret)
@@ -332,18 +345,25 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
   // Also check for default robot prefix because it can happen that the robot account was created with the default prefix
   const existing = robotList.find(
     (robot) =>
-      robot.name === `${robotPrefix}${systemRobot.name}` || robot.name === `${defaultRobotPrefix}${systemRobot.name}`,
+      robot.name === `${robotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}` ||
+      robot.name === `${defaultRobotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`,
   )
   if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous robot account ${systemRobot.name}`, () =>
+    await doApiCall(errors, `Deleting previous robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME}`, () =>
       robotApi.deleteRobot(existingId),
     )
   }
   const robotAccount = (await doApiCall(
     errors,
-    `Create robot account ${systemRobot.name} with system level perms`,
-    () => robotApi.createRobot(systemRobot),
+    `Create robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME} with system level perms`,
+    () =>
+      robotApi.createRobot(
+        generateRobotAccount(localEnv.HARBOR_SYSTEM_ROBOTNAME, fullRobotPermissions, {
+          level: 'system',
+          kind: 'system',
+        }),
+      ),
   )) as RobotCreated
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
   await createSecret(systemSecretName, systemNamespace, robotSecret)
@@ -523,7 +543,7 @@ async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
   const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
 
-  if (existing?.name) {
+  if (existing?.id) {
     const existingId = existing.id
     await doApiCall(errors, `Deleting previous push robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
   }
@@ -595,7 +615,7 @@ async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<an
   const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
 
-  if (existing?.name) {
+  if (existing?.id) {
     const existingId = existing.id
     await doApiCall(errors, `Deleting previous build push robot account ${fullName}`, () =>
       robotApi.deleteRobot(existingId),
@@ -613,4 +633,41 @@ async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<an
     )
   }
   return robotBuildsPushAccount
+}
+
+function generateRobotAccount(
+  name: string,
+  accessList: RobotAccess[],
+  options: {
+    description?: string
+    level: 'project' | 'system'
+    kind: 'project' | 'system'
+    namespace?: string
+    duration?: number
+    disable?: boolean
+  },
+): RobotAccount {
+  const {
+    description = options?.description || `Robot account for ${name}`,
+    level = options.level,
+    kind = options.kind,
+    namespace = options?.namespace || '/',
+    duration = options?.duration || -1,
+    disable = options?.disable || false,
+  } = options || {}
+
+  return {
+    name,
+    duration,
+    description,
+    disable,
+    level,
+    permissions: [
+      {
+        kind,
+        namespace,
+        access: accessList,
+      },
+    ],
+  }
 }

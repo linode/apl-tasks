@@ -18,13 +18,14 @@ import {
 } from '@linode/keycloak-client-node'
 import { forEach, omit } from 'lodash'
 import { custom, Issuer, TokenSet } from 'openid-client'
-import { keycloakRealm } from '../tasks/keycloak/config'
-import { extractError } from '../tasks/keycloak/errors'
+import { keycloakRealm } from '../../tasks/keycloak/config'
+import { extractError } from '../../tasks/keycloak/errors'
 import {
   createAdminUser,
   createClient,
   createClientEmailClaimMapper,
   createClientScopes,
+  createClientSubClaimMapper,
   createGroups,
   createIdpMappers,
   createIdProvider,
@@ -32,8 +33,8 @@ import {
   createRealm,
   createTeamUser,
   mapTeamsToRoles,
-} from '../tasks/keycloak/realm-factory'
-import { isObjectSubsetDifferent } from '../utils'
+} from '../../tasks/keycloak/realm-factory'
+import { isObjectSubsetDifferent } from '../../utils'
 import {
   cleanEnv,
   KC_ACCESS_TOKEN_LIFESPAN,
@@ -43,7 +44,7 @@ import {
   KC_OFFLINE_SESSION_MAX_LIFESPAN_ENABLED,
   KC_SESSION_IDLE_TIMEOUT,
   KC_SESSION_MAX_LIFESPAN,
-} from '../validators'
+} from '../../validators'
 
 interface KeycloakConnection {
   basePath: string
@@ -456,14 +457,23 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     await api.clients.adminRealmsRealmClientsPost(keycloakRealm, client)
   }
 
-  console.info('Getting client email claim mapper')
+  console.info('Getting client claim mappers')
   const allClaims =
     (await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsGet(keycloakRealm, client.id!)).body ||
     []
   if (!allClaims.some((el) => el.name === 'email')) {
-    const mapper = createClientEmailClaimMapper()
+    const emailMapper = createClientEmailClaimMapper()
     console.info('Creating client email claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, mapper)
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(
+      keycloakRealm,
+      client.id!,
+      emailMapper,
+    )
+  }
+  if (!allClaims.some((el) => el.name === 'sub')) {
+    const subMapper = createClientSubClaimMapper()
+    console.info('Creating client sub claim mapper')
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
 
   // set login theme for master realm
