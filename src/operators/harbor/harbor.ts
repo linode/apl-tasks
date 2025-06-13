@@ -23,6 +23,7 @@ import {
   HARBOR_SYSTEM_NAMESPACE,
   HARBOR_SYSTEM_ROBOTNAME,
 } from '../../validators'
+// full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
 import fullRobotPermissions from './harbor-full-robot-system-permissions.json'
 
 // Interfaces
