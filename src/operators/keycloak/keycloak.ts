@@ -176,7 +176,7 @@ async function runKeycloakUpdater() {
     const api = setupKeycloakApi(connection)
     await keycloakConfigMapChanges(api)
     await manageGroups(api)
-    await IDPManager(api)
+    await IDPManager(api, env.FEAT_EXTERNAL_IDP === 'true')
   }, 'update from config')
   console.info('Updated Config')
 }
@@ -481,7 +481,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   await api.realms.adminRealmsRealmPut(env.KEYCLOAK_REALM, createLoginThemeConfig('APL'))
 }
 
-async function externalIDP(api: KeycloakApi) {
+export async function externalIDP(api: KeycloakApi) {
   // Keycloak acts as broker
   // Create Identity Provider
   const idp = await createIdProvider(env.IDP_CLIENT_ID, env.IDP_ALIAS, env.IDP_CLIENT_SECRET, env.IDP_OIDC_URL)
@@ -543,7 +543,7 @@ async function externalIDP(api: KeycloakApi) {
   }
 }
 
-async function internalIdp(api: KeycloakApi) {
+export async function internalIDP(api: KeycloakApi) {
   // IDP instead of broker
   console.info('Getting realm groups')
   const updatedExistingGroups = (await api.groups.adminRealmsRealmGroupsGet(keycloakRealm)).body
@@ -621,15 +621,15 @@ async function internalIdp(api: KeycloakApi) {
   await createUpdateUser(api, createAdminUser(env.KEYCLOAK_ADMIN, env.KEYCLOAK_ADMIN_PASSWORD))
 }
 
-async function IDPManager(api: KeycloakApi) {
-  if (env.FEAT_EXTERNAL_IDP === 'true') await externalIDP(api)
+export async function IDPManager(api: KeycloakApi, isExternalIdp: boolean) {
+  if (isExternalIdp) await externalIDP(api)
   else {
-    await internalIdp(api)
+    await internalIDP(api)
     await manageUsers(api, env.USERS as Record<string, any>[])
   }
 }
 
-async function manageGroups(api: KeycloakApi) {
+export async function manageGroups(api: KeycloakApi) {
   const teamGroups = createGroups(env.TEAM_IDS)
   console.info('Getting realm groups')
   try {
@@ -748,7 +748,7 @@ async function deleteUsers(api: any, users: any[]) {
   )
 }
 
-async function manageUsers(api: KeycloakApi, users: Record<string, any>[]) {
+export async function manageUsers(api: KeycloakApi, users: Record<string, any>[]) {
   // Create/Update users in realm 'otomi'
   await Promise.all(
     users.map((user) =>
