@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.12.0](https://github.com/linode/apl-tasks/compare/v3.11.0...v3.12.0) (2025-06-17)
+
+
+### Bug Fixes
+
+* add sub claim mapper to admin realm ([#239](https://github.com/linode/apl-tasks/issues/239)) ([a30c16a](https://github.com/linode/apl-tasks/commit/a30c16a4766f9c1a5002ded4834ffc1fae00dcab))
+* change order of managing groups and rolemapping ([#240](https://github.com/linode/apl-tasks/issues/240)) ([50128e0](https://github.com/linode/apl-tasks/commit/50128e0ff88d86080f97aa74e072f70bd066df42))
+* client sub claim mapper ([#241](https://github.com/linode/apl-tasks/issues/241)) ([3f571b8](https://github.com/linode/apl-tasks/commit/3f571b8758fddbf8b8f5ffdc2fcb5e8cb583abae))
+* only run coverage report on changes in src ([#237](https://github.com/linode/apl-tasks/issues/237)) ([ae1902a](https://github.com/linode/apl-tasks/commit/ae1902a38988b4dc9f62dba5a72252d37f483d3b))
+
 ## [3.11.0](https://github.com/linode/apl-tasks/compare/v3.10.0...v3.11.0) (2025-05-14)
 
 ### Chore
