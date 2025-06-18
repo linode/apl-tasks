@@ -12,6 +12,7 @@ import {
   EditRepoOption,
   EditUserOption,
   HttpError,
+  MiscellaneousApi,
   Organization,
   OrganizationApi,
   Repository,
@@ -370,10 +371,10 @@ export default class MyOperator extends Operator {
     await retry(
       async () => {
         try {
-          // We can use a dummy password here since we are only checking availability
-          const adminApi = new AdminApi(username, 'dummy-password', `${formattedGiteaUrl}/api/v1`)
-          await adminApi.adminSearchUsers()
-          console.info('Gitea API is available and responding')
+          // Use the Gitea client library to check if the API is available
+          const miscApi = new MiscellaneousApi(`${formattedGiteaUrl}/api/v1`)
+          const versionResult = await miscApi.getVersion()
+          console.info(`Gitea API is available, version: ${versionResult.body.version}`)
         } catch (error) {
           const errorMessage = getSanitizedErrorMessage(error)
           console.debug(`Gitea not ready yet: ${errorMessage}`)
