@@ -334,6 +334,9 @@ const createSetGiteaOIDCConfig = (() => {
 // Operator
 export default class MyOperator extends Operator {
   protected async init() {
+    // Wait for Gitea to be available before starting resource watching
+    await this.waitForGiteaAvailability()
+
     // Run setGiteaOIDCConfig every 30 seconds
     createSetGiteaOIDCConfig()
     // Watch apl-gitea-operator-secrets
@@ -357,6 +360,35 @@ export default class MyOperator extends Operator {
       const errorMessage = getSanitizedErrorMessage(error)
       console.debug('Error could not watch tekton triggers', errorMessage)
     }
+  }
+
+  private async waitForGiteaAvailability(): Promise<void> {
+    console.info('Waiting for Gitea to be available...')
+
+    const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
+
+    await retry(
+      async () => {
+        try {
+          // We can use a dummy password here since we are only checking availability
+          const adminApi = new AdminApi(username, 'dummy-password', `${formattedGiteaUrl}/api/v1`)
+          await adminApi.adminSearchUsers()
+          console.info('Gitea API is available and responding')
+        } catch (error) {
+          const errorMessage = getSanitizedErrorMessage(error)
+          console.debug(`Gitea not ready yet: ${errorMessage}`)
+          throw error
+        }
+      },
+      {
+        retries: 30,
+        minTimeout: 10000,
+        maxTimeout: 10000,
+        onRetry: (error, attempt) => {
+          console.debug(`Gitea availability check failed (attempt ${attempt}/30), retrying...`)
+        },
+      },
+    )
   }
 }
 
