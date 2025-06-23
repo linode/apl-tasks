@@ -1,5 +1,4 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
 
 # Prevent errors on shallow clones
 if git rev-parse --verify HEAD@{1} >/dev/null 2>&1; then
