@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.13.0](https://github.com/linode/apl-tasks/compare/v3.12.0...v3.13.0) (2025-06-24)
+
+
+### Features
+
+* add waitForGitea ([#245](https://github.com/linode/apl-tasks/issues/245)) ([136fca7](https://github.com/linode/apl-tasks/commit/136fca771b2dacb7bbdfac5e1c737b444eb3a0c3))
+
+
+### Bug Fixes
+
+* group dependabot PRs and auto approve ([#249](https://github.com/linode/apl-tasks/issues/249)) ([d666e59](https://github.com/linode/apl-tasks/commit/d666e59ea86a0c80112fab83d91822fa10ace398))
+
 ## [3.12.0](https://github.com/linode/apl-tasks/compare/v3.11.0...v3.12.0) (2025-06-17)
 
 
