@@ -232,6 +232,19 @@ export const clientSubClaimMapper = (): Record<string, unknown> => ({
   },
 })
 
+export const clientAudClaimMapper = (): Record<string, unknown> => ({
+  name: 'aud-mapper-otomi',
+  protocol: 'openid-connect',
+  protocolMapper: 'oidc-audience-mapper',
+  config: {
+    'access.token.claim': 'true',
+    'id.token.claim': 'true',
+    'included.client.audience': 'otomi',
+    'introspection.token.claim': 'true',
+    'lightweight.claim': 'true',
+  },
+})
+
 export const oidcCfg = (
   providerCfg: OidcProviderCfg,
   clientId: string,
