@@ -23,6 +23,7 @@ import { extractError } from '../../tasks/keycloak/errors'
 import {
   createAdminUser,
   createClient,
+  createClientAudClaimMapper,
   createClientEmailClaimMapper,
   createClientScopes,
   createClientSubClaimMapper,
@@ -473,6 +474,13 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   if (!allClaims.some((el) => el.name === 'sub')) {
     const subMapper = createClientSubClaimMapper()
     console.info('Creating client sub claim mapper')
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
+  }
+
+  // Needed for oauth2-proxy OIDC configuration
+  if (!allClaims.some((el) => el.name === 'aud')) {
+    const subMapper = createClientAudClaimMapper()
+    console.info('Creating client aud claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
 

@@ -14,6 +14,7 @@ import * as utils from '../../utils'
 import {
   TeamMapping,
   adminUserCfgTpl,
+  clientAudClaimMapper,
   clientEmailClaimMapper,
   clientScopeCfgTpl,
   clientSubClaimMapper,
@@ -117,6 +118,11 @@ export function createClientEmailClaimMapper(): ProtocolMapperRepresentation {
 
 export function createClientSubClaimMapper(): ProtocolMapperRepresentation {
   const subClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientSubClaimMapper())
+  return subClaimMapper
+}
+
+export function createClientAudClaimMapper(): ProtocolMapperRepresentation {
+  const subClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientAudClaimMapper())
   return subClaimMapper
 }
 
