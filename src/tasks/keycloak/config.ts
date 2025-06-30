@@ -238,15 +238,16 @@ export const clientSubClaimMapper = (): Record<string, unknown> => ({
 export const clientNicknameClaimMapper = (): Record<string, unknown> => ({
   name: 'nickname',
   protocol: 'openid-connect',
-  protocolMapper: 'oidc-usermodel-property-mapper',
-  consentRequired: false,
+  protocolMapper: 'oidc-usermodel-attribute-mapper',
   config: {
-    'userinfo.token.claim': 'true',
-    'user.attribute': 'nickname',
-    'id.token.claim': 'true',
     'access.token.claim': 'true',
     'claim.name': 'nickname',
+    'id.token.claim': 'true',
+    'introspection.token.claim': 'true',
     'jsonType.label': 'String',
+    'lightweight.claim': 'true',
+    'user.attribute': 'nickname',
+    'userinfo.token.claim': 'true',
   },
 })
 
