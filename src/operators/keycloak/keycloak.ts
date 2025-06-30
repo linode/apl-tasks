@@ -24,6 +24,7 @@ import {
   createAdminUser,
   createClient,
   createClientEmailClaimMapper,
+  createClientNicknameClaimMapper,
   createClientScopes,
   createClientSubClaimMapper,
   createGroups,
@@ -473,6 +474,11 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   if (!allClaims.some((el) => el.name === 'sub')) {
     const subMapper = createClientSubClaimMapper()
     console.info('Creating client sub claim mapper')
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
+  }
+  if (!allClaims.some((el) => el.name === 'nickname')) {
+    const subMapper = createClientNicknameClaimMapper()
+    console.info('Creating client nickname claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
 

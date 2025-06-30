@@ -91,6 +91,9 @@ export const teamUserCfgTpl = (
     },
   ],
   requiredActions: [],
+  attributes: {
+    nickname: email.replace(/@/g, '-').replace(/\./g, '-'),
+  },
 })
 
 export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
@@ -229,6 +232,21 @@ export const clientSubClaimMapper = (): Record<string, unknown> => ({
     'lightweight.claim': 'true',
     'user.attribute': 'id',
     'userinfo.token.claim': 'true',
+  },
+})
+
+export const clientNicknameClaimMapper = (): Record<string, unknown> => ({
+  name: 'nickname',
+  protocol: 'openid-connect',
+  protocolMapper: 'oidc-usermodel-property-mapper',
+  consentRequired: false,
+  config: {
+    'userinfo.token.claim': 'true',
+    'user.attribute': 'nickname',
+    'id.token.claim': 'true',
+    'access.token.claim': 'true',
+    'claim.name': 'nickname',
+    'jsonType.label': 'String',
   },
 })
 
