@@ -30,11 +30,13 @@ export function isArrayDifferent(arr: any[], ref: any[]): boolean {
 
 export function isObjectSubsetDifferent(obj: any, ref: any): boolean {
   return !Object.entries(obj).every(([key, value]) => {
-    const refValue = ref[key]
+    const refValue = ref?.[key]
     if (Array.isArray(value)) {
       if (isArrayDifferent(value, refValue)) return false
     } else if (typeof value === 'object') {
       if (isObjectSubsetDifferent(value, refValue)) return false
+    } else if (obj !== undefined && refValue === undefined) {
+      return false
     } else if (refValue !== value) return false
     return true
   })
