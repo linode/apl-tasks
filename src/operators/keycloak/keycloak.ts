@@ -13,6 +13,7 @@ import {
   RoleMapperApi,
   RoleRepresentation,
   RolesApi,
+  UnmanagedAttributePolicy,
   UserRepresentation,
   UsersApi,
 } from '@linode/keycloak-client-node'
@@ -416,6 +417,16 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   } else {
     console.info('Creating openid client scope')
     await api.clientScope.adminRealmsRealmClientScopesPost(keycloakRealm, scope)
+  }
+
+  // set unmanaged attribute policy for use of nickname attribute and mapper
+  const currentUnmanagedAttributePolicy = (await api.users.adminRealmsRealmUsersProfileGet(keycloakRealm)).body
+
+  if (currentUnmanagedAttributePolicy.unmanagedAttributePolicy !== UnmanagedAttributePolicy.AdminEdit) {
+    await api.users.adminRealmsRealmUsersProfilePut(keycloakRealm, {
+      unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
+    })
+    console.info('Setting unmanaged attribute policy to AdminEdit')
   }
 
   const teamRoles = mapTeamsToRoles(
