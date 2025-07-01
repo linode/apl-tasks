@@ -1,5 +1,6 @@
+import { UnmanagedAttributePolicy } from '@linode/keycloak-client-node'
 import * as keycloak from './keycloak'
-import { updateUserGroups } from './keycloak'
+import { manageUserProfile, updateUserGroups } from './keycloak'
 
 describe('Keycloak User Group Management', () => {
   let api: any
@@ -16,6 +17,8 @@ describe('Keycloak User Group Management', () => {
         adminRealmsRealmUsersUserIdGroupsGet: jest.fn(),
         adminRealmsRealmUsersUserIdGroupsGroupIdDelete: jest.fn(),
         adminRealmsRealmUsersUserIdGroupsGroupIdPut: jest.fn(),
+        adminRealmsRealmUsersProfileGet: jest.fn(),
+        adminRealmsRealmUsersProfilePut: jest.fn(),
       },
       groups: {
         adminRealmsRealmGroupsGet: jest.fn(),
@@ -56,6 +59,24 @@ describe('Keycloak User Group Management', () => {
         'user-id',
         'group1-id'
       )
+    })
+  })
+
+  describe('updateRealmUserProfile', () => {
+    it('should update realm user profile', async () => {
+      api.users.adminRealmsRealmUsersProfileGet.mockResolvedValue({ body: { unmanagedAttributePolicy: undefined } })
+      await manageUserProfile(api)
+
+      // The realm user profile should be updated
+      expect(api.users.adminRealmsRealmUsersProfilePut).toHaveBeenCalled()
+    })
+
+    it('should not update realm user profile', async () => {
+      api.users.adminRealmsRealmUsersProfileGet.mockResolvedValue({ body: { unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit } })
+      await manageUserProfile(api)
+
+      // The realm user profile should not be updated
+      expect(api.users.adminRealmsRealmUsersProfilePut).not.toHaveBeenCalled()
     })
   })
 

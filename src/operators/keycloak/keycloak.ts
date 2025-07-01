@@ -419,15 +419,8 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     await api.clientScope.adminRealmsRealmClientScopesPost(keycloakRealm, scope)
   }
 
-  // set unmanaged attribute policy for use of nickname attribute and mapper
-  const currentUnmanagedAttributePolicy = (await api.users.adminRealmsRealmUsersProfileGet(keycloakRealm)).body
-
-  if (currentUnmanagedAttributePolicy.unmanagedAttributePolicy !== UnmanagedAttributePolicy.AdminEdit) {
-    await api.users.adminRealmsRealmUsersProfilePut(keycloakRealm, {
-      unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
-    })
-    console.info('Setting unmanaged attribute policy to AdminEdit')
-  }
+  // manage user profile
+  await manageUserProfile(api)
 
   const teamRoles = mapTeamsToRoles(
     env.TEAM_IDS,
@@ -496,6 +489,18 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   // set login theme for master realm
   console.info('adding theme for login page')
   await api.realms.adminRealmsRealmPut(env.KEYCLOAK_REALM, createLoginThemeConfig('APL'))
+}
+
+export async function manageUserProfile(api: KeycloakApi) {
+  // set unmanaged attribute policy for use of nickname attribute and mapper
+  const currentUnmanagedAttributePolicy = (await api.users.adminRealmsRealmUsersProfileGet(keycloakRealm)).body
+
+  if (currentUnmanagedAttributePolicy.unmanagedAttributePolicy !== UnmanagedAttributePolicy.AdminEdit) {
+    await api.users.adminRealmsRealmUsersProfilePut(keycloakRealm, {
+      unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
+    })
+    console.info('Setting unmanaged attribute policy to AdminEdit')
+  }
 }
 
 export async function externalIDP(api: KeycloakApi) {
