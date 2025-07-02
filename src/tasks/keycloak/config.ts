@@ -1,7 +1,12 @@
 import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
 import axios from 'axios'
+import { cleanEnv, KEYCLOAK_CLIENT_ID } from '../../validators'
 
 export const keycloakRealm = 'otomi'
+
+const localEnv = cleanEnv({
+  KEYCLOAK_CLIENT_ID,
+})
 
 export const defaultsIdpMapperTpl = (
   idpAlias: string,
@@ -229,6 +234,19 @@ export const clientSubClaimMapper = (): Record<string, unknown> => ({
     'lightweight.claim': 'true',
     'user.attribute': 'id',
     'userinfo.token.claim': 'true',
+  },
+})
+
+export const clientAudClaimMapper = (): Record<string, unknown> => ({
+  name: 'aud-mapper-otomi',
+  protocol: 'openid-connect',
+  protocolMapper: 'oidc-audience-mapper',
+  config: {
+    'access.token.claim': 'true',
+    'id.token.claim': 'true',
+    'included.client.audience': localEnv.KEYCLOAK_CLIENT_ID,
+    'introspection.token.claim': 'true',
+    'lightweight.claim': 'true',
   },
 })
 
