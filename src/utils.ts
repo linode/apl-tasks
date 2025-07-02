@@ -28,6 +28,10 @@ export function isArrayDifferent(arr: any[], ref: any[]): boolean {
   return !arr.every((item) => ref.includes(item))
 }
 
+export function emailTransformer(email: string): string {
+  return email.replace(/@/g, '-').replace(/\./g, '-')
+}
+
 export function isObjectSubsetDifferent(obj: any, ref: any): boolean {
   return !Object.entries(obj).every(([key, value]) => {
     const refValue = ref?.[key]

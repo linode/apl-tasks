@@ -1,5 +1,6 @@
 import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
 import axios from 'axios'
+import { emailTransformer } from '../../utils'
 
 export const keycloakRealm = 'otomi'
 
@@ -92,7 +93,7 @@ export const teamUserCfgTpl = (
   ],
   requiredActions: [],
   attributes: {
-    nickname: [email.replace(/@/g, '-').replace(/\./g, '-')],
+    nickname: [emailTransformer(email)],
   },
 })
 
