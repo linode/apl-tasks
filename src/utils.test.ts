@@ -123,8 +123,8 @@ describe('utils', () => {
   })
 
   it('should transform email to nickname', () => {
-    const email = 'demo@test.com'
+    const email = 'deMo@@@@[[tEst.123]].com'
     const transformed = emailTransformer(email)
-    expect(transformed).toBe('demo-test-com')
+    expect(transformed).toBe('demo-test-123-com')
   })
 })
