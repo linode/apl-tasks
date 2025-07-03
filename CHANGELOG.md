@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.13.1](https://github.com/linode/apl-tasks/compare/v3.12.0...v3.13.1) (2025-07-03)
+
+
+### Features
+
+* add the aud claim for oauth2proxy ([#253](https://github.com/linode/apl-tasks/issues/253)) ([7a68834](https://github.com/linode/apl-tasks/commit/7a688345b435ed7de6f16c95ba96a02b5454530a))
+
 ## [3.13.0](https://github.com/linode/apl-tasks/compare/v3.12.0...v3.13.0) (2025-06-24)
 
 
