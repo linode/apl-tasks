@@ -459,10 +459,10 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   }
 
   console.info('Getting client claim mappers')
-  const allClaims =
+  const allClientClaimMappers =
     (await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsGet(keycloakRealm, client.id!)).body ||
     []
-  if (!allClaims.some((el) => el.name === 'email')) {
+  if (!allClientClaimMappers.some((el) => el.name === 'email')) {
     const emailMapper = createClientEmailClaimMapper()
     console.info('Creating client email claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(
@@ -471,14 +471,14 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
       emailMapper,
     )
   }
-  if (!allClaims.some((el) => el.name === 'sub')) {
+  if (!allClientClaimMappers.some((el) => el.name === 'sub')) {
     const subMapper = createClientSubClaimMapper()
     console.info('Creating client sub claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
 
   // Needed for oauth2-proxy OIDC configuration
-  if (!allClaims.some((el) => el.name === 'aud-mapper-otomi')) {
+  if (!allClientClaimMappers.some((el) => el.name === 'aud-mapper-otomi')) {
     const subMapper = createClientAudClaimMapper()
     console.info('Creating client aud claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
