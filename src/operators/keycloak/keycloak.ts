@@ -488,7 +488,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   }
 
   // Needed for oauth2-proxy OIDC configuration
-  if (!allClaims.some((el) => el.name === 'aud')) {
+  if (!allClaims.some((el) => el.name === 'aud-mapper-otomi')) {
     const subMapper = createClientAudClaimMapper()
     console.info('Creating client aud claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
