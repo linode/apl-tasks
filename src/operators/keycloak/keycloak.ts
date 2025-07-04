@@ -479,9 +479,9 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
 
   // Needed for oauth2-proxy OIDC configuration
   if (!allClientClaimMappers.some((el) => el.name === 'aud-mapper-otomi')) {
-    const subMapper = createClientAudClaimMapper()
+    const audMapper = createClientAudClaimMapper()
     console.info('Creating client aud claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, audMapper)
   }
 
   // set login theme for master realm
