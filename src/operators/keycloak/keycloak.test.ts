@@ -1,5 +1,6 @@
+import { UnmanagedAttributePolicy } from '@linode/keycloak-client-node'
 import * as keycloak from './keycloak'
-import { updateUserGroups } from './keycloak'
+import { manageUserProfile, updateUserGroups } from './keycloak'
 
 describe('Keycloak User Group Management', () => {
   let api: any
@@ -16,6 +17,8 @@ describe('Keycloak User Group Management', () => {
         adminRealmsRealmUsersUserIdGroupsGet: jest.fn(),
         adminRealmsRealmUsersUserIdGroupsGroupIdDelete: jest.fn(),
         adminRealmsRealmUsersUserIdGroupsGroupIdPut: jest.fn(),
+        adminRealmsRealmUsersProfileGet: jest.fn(),
+        adminRealmsRealmUsersProfilePut: jest.fn(),
       },
       groups: {
         adminRealmsRealmGroupsGet: jest.fn(),
@@ -59,6 +62,24 @@ describe('Keycloak User Group Management', () => {
     })
   })
 
+  describe('updateRealmUserProfile', () => {
+    it('should update realm user profile', async () => {
+      api.users.adminRealmsRealmUsersProfileGet.mockResolvedValue({ body: { unmanagedAttributePolicy: undefined } })
+      await manageUserProfile(api)
+
+      // The realm user profile should be updated
+      expect(api.users.adminRealmsRealmUsersProfilePut).toHaveBeenCalled()
+    })
+
+    it('should not update realm user profile', async () => {
+      api.users.adminRealmsRealmUsersProfileGet.mockResolvedValue({ body: { unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit } })
+      await manageUserProfile(api)
+
+      // The realm user profile should not be updated
+      expect(api.users.adminRealmsRealmUsersProfilePut).not.toHaveBeenCalled()
+    })
+  })
+
   describe('addUserGroups', () => {
     it('should add user to groups in teamGroups if not already present', async () => {
       const groupsById = {
@@ -88,62 +109,62 @@ describe('Keycloak User Group Management', () => {
       )
     })
   })
-describe('IDPManager', () => {
-  let api: any
+  describe('IDPManager', () => {
+    let api: any
 
-  beforeEach(() => {
-    jest.mock('./keycloak', () => ({
-      internalIDP: jest.fn(),
-      externalIDP: jest.fn(),
-      manageUsers: jest.fn(),
-      IDPManager: jest.fn(async (api, externalIdp) => {
-        if (externalIdp) {
-          await keycloak.externalIDP(api)
-        } else {
-          await keycloak.internalIDP(api)
-          await keycloak.manageUsers(api, [])
-        }
-      },
-    )}))
-    
-    api = {
-      providers: {},
-      clientScope: {},
-      roles: {},
-      clientRoleMappings: {},
-      roleMapper: {},
-      clients: {},
-      protocols: {},
-      realms: {},
-      users: {},
-      groups: {},
-    }
+    beforeEach(() => {
+      jest.mock('./keycloak', () => ({
+        internalIDP: jest.fn(),
+        externalIDP: jest.fn(),
+        manageUsers: jest.fn(),
+        IDPManager: jest.fn(async (api, externalIdp) => {
+          if (externalIdp) {
+            await keycloak.externalIDP(api)
+          } else {
+            await keycloak.internalIDP(api)
+            await keycloak.manageUsers(api, [])
+          }
+        },
+      )}))
+      
+      api = {
+        providers: {},
+        clientScope: {},
+        roles: {},
+        clientRoleMappings: {},
+        roleMapper: {},
+        clients: {},
+        protocols: {},
+        realms: {},
+        users: {},
+        groups: {},
+      }
+    })
+
+    afterEach(() => {
+      jest.restoreAllMocks()
+    })
+
+    it('should call externalIDP when FEAT_EXTERNAL_IDP is "true"', async () => {
+      const { IDPManager } = await import('./keycloak')
+
+      jest.spyOn(keycloak, 'externalIDP').mockImplementation(jest.fn())
+      
+      await IDPManager(api, true)
+
+      expect(keycloak.externalIDP).toHaveBeenCalled()
+    })
+
+    it('should call internalIdp and manageUsers when FEAT_EXTERNAL_IDP is not "true"', async () => {
+      const { IDPManager } = await import('./keycloak')
+
+      jest.spyOn(keycloak, 'internalIDP').mockImplementation(jest.fn())
+      jest.spyOn(keycloak, 'manageUsers').mockImplementation(jest.fn())
+      
+      await IDPManager(api, false)
+
+      expect(keycloak.internalIDP).toHaveBeenCalled()
+      expect(keycloak.manageUsers).toHaveBeenCalled()
+    })
   })
-
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
-  it('should call externalIDP when FEAT_EXTERNAL_IDP is "true"', async () => {
-    const { IDPManager } = await import('./keycloak')
-
-    jest.spyOn(keycloak, 'externalIDP').mockImplementation(jest.fn())
-    
-    await IDPManager(api, true)
-
-    expect(keycloak.externalIDP).toHaveBeenCalled()
-  })
-
-  it('should call internalIdp and manageUsers when FEAT_EXTERNAL_IDP is not "true"', async () => {
-    const { IDPManager } = await import('./keycloak')
-
-    jest.spyOn(keycloak, 'internalIDP').mockImplementation(jest.fn())
-    jest.spyOn(keycloak, 'manageUsers').mockImplementation(jest.fn())
-    
-    await IDPManager(api, false)
-
-    expect(keycloak.internalIDP).toHaveBeenCalled()
-    expect(keycloak.manageUsers).toHaveBeenCalled()
-  })
-})
 })

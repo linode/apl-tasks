@@ -28,13 +28,26 @@ export function isArrayDifferent(arr: any[], ref: any[]): boolean {
   return !arr.every((item) => ref.includes(item))
 }
 
+// To comply with Gitea username specifications and return a readable nickname
+// https://github.com/go-gitea/gitea/blob/main/modules/validation/helpers.go#L28
+export function emailTransformer(email: string): string {
+  return email
+    .replace(/@|\./g, '-') // Replace "@" and "." with "-"
+    .replace(/[^A-Za-z0-9._-]/g, '') // Remove all invalid characters (only allow letters, digits, ., _, -)
+    .replace(/[-_.]{2,}/g, '-') // Replace consecutive special characters with a single "-"
+    .replace(/^[-_.]+|[-_.]+$/g, '') // Trim special characters from the start and end
+    .toLocaleLowerCase()
+}
+
 export function isObjectSubsetDifferent(obj: any, ref: any): boolean {
   return !Object.entries(obj).every(([key, value]) => {
-    const refValue = ref[key]
+    const refValue = ref?.[key]
     if (Array.isArray(value)) {
       if (isArrayDifferent(value, refValue)) return false
     } else if (typeof value === 'object') {
       if (isObjectSubsetDifferent(value, refValue)) return false
+    } else if (obj !== undefined && refValue === undefined) {
+      return false
     } else if (refValue !== value) return false
     return true
   })
