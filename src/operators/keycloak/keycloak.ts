@@ -480,7 +480,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     console.info('Creating client sub claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
-  if (!allClaims.some((claim) => claim.name === 'nickname')) {
+  if (!allClientClaimMappers.some((claim) => claim.name === 'nickname')) {
     const subMapper = createClientNicknameClaimMapper()
     console.info('Creating client nickname claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
