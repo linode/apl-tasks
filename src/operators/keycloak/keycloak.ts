@@ -481,9 +481,9 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
   if (!allClientClaimMappers.some((claim) => claim.name === 'nickname')) {
-    const subMapper = createClientNicknameClaimMapper()
+    const nicknameMapper = createClientNicknameClaimMapper()
     console.info('Creating client nickname claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, nicknameMapper)
   }
 
   // Needed for oauth2-proxy OIDC configuration
