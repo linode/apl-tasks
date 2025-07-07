@@ -13,6 +13,7 @@ import {
   RoleMapperApi,
   RoleRepresentation,
   RolesApi,
+  UnmanagedAttributePolicy,
   UserRepresentation,
   UsersApi,
 } from '@linode/keycloak-client-node'
@@ -25,6 +26,7 @@ import {
   createClient,
   createClientAudClaimMapper,
   createClientEmailClaimMapper,
+  createClientNicknameClaimMapper,
   createClientScopes,
   createClientSubClaimMapper,
   createGroups,
@@ -418,6 +420,8 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     await api.clientScope.adminRealmsRealmClientScopesPost(keycloakRealm, scope)
   }
 
+  await manageUserProfile(api)
+
   const teamRoles = mapTeamsToRoles(
     env.TEAM_IDS,
     env.IDP_GROUP_MAPPINGS_TEAMS,
@@ -476,6 +480,11 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     console.info('Creating client sub claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
+  if (!allClientClaimMappers.some((claim) => claim.name === 'nickname')) {
+    const nicknameMapper = createClientNicknameClaimMapper()
+    console.info('Creating client nickname claim mapper')
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, nicknameMapper)
+  }
 
   // Needed for oauth2-proxy OIDC configuration
   if (!allClientClaimMappers.some((el) => el.name === 'aud-mapper-otomi')) {
@@ -487,6 +496,19 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   // set login theme for master realm
   console.info('adding theme for login page')
   await api.realms.adminRealmsRealmPut(env.KEYCLOAK_REALM, createLoginThemeConfig('APL'))
+}
+
+// manage global user profiles
+export async function manageUserProfile(api: KeycloakApi) {
+  const currentUserProfile = (await api.users.adminRealmsRealmUsersProfileGet(keycloakRealm)).body
+
+  // set unmanaged attribute policy for use of nickname attribute and mapper
+  if (currentUserProfile.unmanagedAttributePolicy !== UnmanagedAttributePolicy.AdminEdit) {
+    await api.users.adminRealmsRealmUsersProfilePut(keycloakRealm, {
+      unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
+    })
+    console.info('Setting unmanaged attribute policy to AdminEdit')
+  }
 }
 
 export async function externalIDP(api: KeycloakApi) {
