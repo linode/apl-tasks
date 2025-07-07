@@ -1,5 +1,6 @@
 import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
 import axios from 'axios'
+import { emailTransformer } from '../../utils'
 import { cleanEnv, KEYCLOAK_CLIENT_ID } from '../../validators'
 
 export const keycloakRealm = 'otomi'
@@ -96,6 +97,9 @@ export const teamUserCfgTpl = (
     },
   ],
   requiredActions: [],
+  attributes: {
+    nickname: [emailTransformer(email)],
+  },
 })
 
 export const realmCfgTpl = (realm: string): Record<string, unknown> => ({
@@ -235,6 +239,23 @@ export const clientSubClaimMapper = (): Record<string, unknown> => ({
     'user.attribute': 'id',
     'userinfo.token.claim': 'true',
   },
+})
+
+
+export const clientNicknameClaimMapper = (): Record<string, unknown> => ({
+  name: 'nickname',
+  protocol: 'openid-connect',
+  protocolMapper: 'oidc-usermodel-attribute-mapper',
+  config: {
+    'access.token.claim': 'true',
+    'claim.name': 'nickname',
+    'id.token.claim': 'true',
+    'introspection.token.claim': 'true',
+    'jsonType.label': 'String',
+    'lightweight.claim': 'true',
+    'user.attribute': 'nickname',
+    'userinfo.token.claim': 'true',
+   },
 })
 
 export const clientAudClaimMapper = (): Record<string, unknown> => ({
