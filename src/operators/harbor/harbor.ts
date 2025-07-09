@@ -364,11 +364,8 @@ export async function createSystemRobotSecret(): Promise<RobotSecret> {
   const defaultRobotPrefix = 'robot$'
   const existing = robotList.find(
     (robot) =>
-      typeof robot === 'object' &&
-      robot !== null &&
-      'name' in robot &&
-      (robot.name === `${robotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}` ||
-        robot.name === `${defaultRobotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`),
+      robot.name === `${robotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}` ||
+      robot.name === `${defaultRobotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`,
   )
   if (existing?.id) {
     const existingId = existing.id
