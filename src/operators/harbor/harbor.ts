@@ -413,7 +413,8 @@ export async function processNamespace(namespace: string): Promise<string | null
       console.info(`Creating project for team ${namespace}`)
       await projectsApi.createProject(projectReq)
     } catch (e) {
-      errors.push(`Error creating project for team ${namespace}: ${e}`)
+      if (!e.body.errors[0]?.message?.includes('already exists'))
+        errors.push(`Error creating project for team ${namespace}: ${e}`)
     }
 
     let project
@@ -443,13 +444,15 @@ export async function processNamespace(namespace: string): Promise<string | null
       console.info(`Associating "developer" role for team "${namespace}" with harbor project "${projectName}"`)
       await memberApi.createProjectMember(projectId, undefined, undefined, projMember)
     } catch (e) {
-      errors.push(`Error associating developer role for team ${namespace}: ${e}`)
+      if (!e.body.errors[0]?.message?.includes('already exists'))
+        errors.push(`Error associating developer role for team ${namespace}: ${e}`)
     }
     try {
       console.info(`Associating "project-admin" role for "all-teams-admin" with harbor project "${projectName}"`)
       await memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember)
     } catch (e) {
-      errors.push(`Error associating project-admin role for all-teams-admin: ${e}`)
+      if (!e.body.errors[0]?.message?.includes('already exists'))
+        errors.push(`Error associating project-admin role for all-teams-admin: ${e}`)
     }
 
     await ensureTeamPullRobotAccountSecret(namespace, projectName)
