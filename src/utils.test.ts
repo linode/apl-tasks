@@ -1,4 +1,4 @@
-import { isObjectSubsetDifferent, objectToArray, waitTillAvailable } from './utils'
+import { emailTransformer, isObjectSubsetDifferent, objectToArray, waitTillAvailable } from './utils'
 
 describe('utils', () => {
   describe('isObjectSubsetDifferent', () => {
@@ -120,5 +120,11 @@ describe('utils', () => {
 
       await expect(res).resolves.toBeUndefined()
     })
+  })
+
+  it('should transform email to nickname', () => {
+    const email = 'deMo@@@@[[tEst.123]].com'
+    const transformed = emailTransformer(email)
+    expect(transformed).toBe('demo-test-123-com')
   })
 })

@@ -13,6 +13,7 @@ import {
   RoleMapperApi,
   RoleRepresentation,
   RolesApi,
+  UnmanagedAttributePolicy,
   UserRepresentation,
   UsersApi,
 } from '@linode/keycloak-client-node'
@@ -25,6 +26,7 @@ import {
   createClient,
   createClientAudClaimMapper,
   createClientEmailClaimMapper,
+  createClientNicknameClaimMapper,
   createClientScopes,
   createClientSubClaimMapper,
   createGroups,
@@ -418,6 +420,8 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     await api.clientScope.adminRealmsRealmClientScopesPost(keycloakRealm, scope)
   }
 
+  await manageUserProfile(api)
+
   const teamRoles = mapTeamsToRoles(
     env.TEAM_IDS,
     env.IDP_GROUP_MAPPINGS_TEAMS,
@@ -459,10 +463,10 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   }
 
   console.info('Getting client claim mappers')
-  const allClaims =
+  const allClientClaimMappers =
     (await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsGet(keycloakRealm, client.id!)).body ||
     []
-  if (!allClaims.some((el) => el.name === 'email')) {
+  if (!allClientClaimMappers.some((el) => el.name === 'email')) {
     const emailMapper = createClientEmailClaimMapper()
     console.info('Creating client email claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(
@@ -471,22 +475,40 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
       emailMapper,
     )
   }
-  if (!allClaims.some((el) => el.name === 'sub')) {
+  if (!allClientClaimMappers.some((el) => el.name === 'sub')) {
     const subMapper = createClientSubClaimMapper()
     console.info('Creating client sub claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
+  if (!allClientClaimMappers.some((claim) => claim.name === 'nickname')) {
+    const nicknameMapper = createClientNicknameClaimMapper()
+    console.info('Creating client nickname claim mapper')
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, nicknameMapper)
+  }
 
   // Needed for oauth2-proxy OIDC configuration
-  if (!allClaims.some((el) => el.name === 'aud')) {
-    const subMapper = createClientAudClaimMapper()
+  if (!allClientClaimMappers.some((el) => el.name === 'aud-mapper-otomi')) {
+    const audMapper = createClientAudClaimMapper()
     console.info('Creating client aud claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, audMapper)
   }
 
   // set login theme for master realm
   console.info('adding theme for login page')
   await api.realms.adminRealmsRealmPut(env.KEYCLOAK_REALM, createLoginThemeConfig('APL'))
+}
+
+// manage global user profiles
+export async function manageUserProfile(api: KeycloakApi) {
+  const currentUserProfile = (await api.users.adminRealmsRealmUsersProfileGet(keycloakRealm)).body
+
+  // set unmanaged attribute policy for use of nickname attribute and mapper
+  if (currentUserProfile.unmanagedAttributePolicy !== UnmanagedAttributePolicy.AdminEdit) {
+    await api.users.adminRealmsRealmUsersProfilePut(keycloakRealm, {
+      unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
+    })
+    console.info('Setting unmanaged attribute policy to AdminEdit')
+  }
 }
 
 export async function externalIDP(api: KeycloakApi) {

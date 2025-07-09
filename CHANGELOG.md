@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.13.2](https://github.com/linode/apl-tasks/compare/v3.13.0...v3.13.2) (2025-07-04)
+
+
+### Bug Fixes
+
+* aud mapper claim check ([#263](https://github.com/linode/apl-tasks/issues/263)) ([0f12e7b](https://github.com/linode/apl-tasks/commit/0f12e7bc762106ff971a52be76996ab040535050))
+
 ### [3.13.1](https://github.com/linode/apl-tasks/compare/v3.12.0...v3.13.1) (2025-07-03)
 
 
