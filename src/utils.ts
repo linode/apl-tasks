@@ -58,33 +58,6 @@ export type openapiResponse = {
   body?: any
 }
 
-export async function doApiCall(
-  errors: string[],
-  action: string,
-  fn: () => Promise<openapiResponse>,
-  statusCodeExists = 409,
-): Promise<any | undefined> {
-  console.info(action)
-  try {
-    const res = await fn()
-    const { body } = res
-    return body
-  } catch (e: any) {
-    // e might not always have the same shape that node-fetch had; adapt as needed:
-    console.warn(e.body ?? `${String(e)}`)
-    if (e.statusCode) {
-      if (e.statusCode === statusCodeExists) {
-        console.warn(`${action} > already exists.`)
-      } else {
-        errors.push(`${action} > HTTP error ${e.statusCode}: ${e.message}`)
-      }
-    } else {
-      errors.push(`${action} > Unknown error: ${e.message}`)
-    }
-    return undefined
-  }
-}
-
 export function handleErrors(errors: string[]): void {
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
