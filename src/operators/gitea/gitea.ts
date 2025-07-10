@@ -238,34 +238,34 @@ async function triggerTemplateCallback(resourceEvent: ResourceEvent): Promise<vo
 export const addServiceAccountToOrganizations = async (
   organizationApi: OrganizationApi,
   serviceAcountName: string,
-  organisations: Organization[],
+  organizations: Organization[],
 ) => {
-  const organisation = organisations.find((org) => serviceAcountName === `organization-${org.name}`)
+  const organization = organizations.find((org) => serviceAcountName === `organization-${org.name}`)
   let teams: Team[]
   try {
-    console.info(`Getting teams from organization: ${organisation?.name}`)
-    teams = (await organizationApi.orgListTeams(organisation!.name!)).body
+    console.info(`Getting teams from organization: ${organization?.name}`)
+    teams = (await organizationApi.orgListTeams(organization!.name!)).body
   } catch (e) {
-    errors.push(`Error getting teams from organization ${organisation?.name}: ${e}`)
+    errors.push(`Error getting teams from organization ${organization?.name}: ${e}`)
     return
   }
   const ownerTeam = teams.find((team) => team.name === 'Owners')
   let members: User[]
   try {
-    console.info(`Getting members from Owners team in ${organisation?.name}`)
+    console.info(`Getting members from Owners team in ${organization?.name}`)
     members = (await organizationApi.orgListTeamMembers(ownerTeam!.id!)).body
   } catch (e) {
-    errors.push(`Error getting members from Owners team in ${organisation?.name}: ${e}`)
+    errors.push(`Error getting members from Owners team in ${organization?.name}: ${e}`)
     return
   }
   if (isEmpty(members)) return
   const exists = members.some((member) => member.login === serviceAcountName)
   if (exists) return
   try {
-    console.info(`Adding user to organization Owners team in ${organisation?.name}`)
+    console.info(`Adding user to organization Owners team in ${organization?.name}`)
     await organizationApi.orgAddTeamMember(ownerTeam!.id!, serviceAcountName)
   } catch (e) {
-    errors.push(`Error adding user to organization Owners team in ${organisation?.name}: ${e}`)
+    errors.push(`Error adding user to organization Owners team in ${organization?.name}: ${e}`)
   }
 }
 
@@ -509,7 +509,7 @@ export async function upsertOrganization(
       const { body } = await orgApi.orgCreate(orgOption)
       return body
     } catch (e) {
-      if (e.statusCode !== 422) {
+      if (e?.statusCode !== 422) {
         errors.push(`Error creating organization "${orgOption.fullName}": ${e}`)
       }
       throw e
@@ -521,7 +521,7 @@ export async function upsertOrganization(
     const { body } = await orgApi.orgEdit(prefixedOrgName, orgOption)
     return body
   } catch (e) {
-    if (e.statusCode !== 422) {
+    if (e?.statusCode !== 422) {
       errors.push(`Error updating organization "${orgOption.fullName}": ${e}`)
     }
     throw e
@@ -537,7 +537,7 @@ async function upsertTeam(
   const getErrors: string[] = []
   let existingTeams: Team[]
   try {
-    console.info(`Getting all teams in orginazation "${organizationName}"`)
+    console.info(`Getting all teams in organization "${organizationName}"`)
     existingTeams = (await orgApi.orgListTeams(organizationName)).body
   } catch (e) {
     getErrors.push(`Error getting all teams in organization "${organizationName}": ${e}`)
@@ -550,7 +550,7 @@ async function upsertTeam(
       console.info(`Creating team "${teamOption.name}" in organization "${organizationName}"`)
       await orgApi.orgCreateTeam(organizationName, teamOption)
     } catch (e) {
-      if (e.statusCode !== 422) {
+      if (e?.statusCode !== 422) {
         errors.push(`Error creating team "${teamOption.name}" in organization "${organizationName}": ${e}`)
       }
     }
@@ -559,7 +559,7 @@ async function upsertTeam(
       console.info(`Updating team "${teamOption.name}" in organization "${organizationName}"`)
       await orgApi.orgEditTeam(existingTeam.id!, teamOption)
     } catch (e) {
-      if (e.statusCode !== 422) {
+      if (e?.statusCode !== 422) {
         errors.push(`Error updating team "${teamOption.name}" in organization "${organizationName}": ${e}`)
       }
     }
@@ -634,7 +634,7 @@ async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Prom
     console.debug(`Getting hooks in repo "otomi/values"`)
     hooks = (await repoApi.repoListHooks(orgName, 'values')).body
   } catch (e) {
-    if (e.statusCode !== 400) {
+    if (e?.statusCode !== 400) {
       errors.push(`Error getting hooks in repo "otomi/values": ${e}`)
     }
     console.debug(`No hooks were found in repo "otomi/values"`)
@@ -675,7 +675,7 @@ async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
         events: ['push'],
       } as CreateHookOption)
     } catch (e) {
-      if (e.statusCode !== 304) {
+      if (e?.statusCode !== 304) {
         errors.push(`Error adding hook "tekton" to repo otomi/values: ${e}`)
       }
     }
@@ -701,7 +701,7 @@ async function createReposAndAddToTeam(
       console.info(`Adding repo "${otomiValuesRepoName}" to team "${teamNameViewer}"`)
       await repoApi.repoAddTeam(orgName, otomiValuesRepoName, teamNameViewer)
     } catch (e) {
-      if (e.statusCode !== 422) {
+      if (e?.statusCode !== 422) {
         errors.push(`Error adding repo ${otomiValuesRepoName} to team ${teamNameViewer}: ${e}`)
       }
     }
@@ -712,7 +712,7 @@ async function createReposAndAddToTeam(
       console.info(`Adding repo "${otomiChartsRepoName}" to team "${teamNameViewer}"`)
       await repoApi.repoAddTeam(orgName, otomiChartsRepoName, teamNameViewer)
     } catch (e) {
-      if (e.statusCode !== 422) {
+      if (e?.statusCode !== 422) {
         errors.push(`Error adding repo ${otomiChartsRepoName} to team ${teamNameViewer}: ${e}`)
       }
     }

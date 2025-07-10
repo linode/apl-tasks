@@ -424,7 +424,7 @@ describe('harborOperator', () => {
 
       const result = await processNamespace(namespace)
 
-      expect(result).toBe(null)
+      expect(result).toBe('')
     })
 
     it('should handle project member creation errors gracefully', async () => {

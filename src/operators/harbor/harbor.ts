@@ -399,6 +399,13 @@ export async function createSystemRobotSecret(): Promise<RobotSecret> {
   return robotSecret
 }
 
+function alreadyExistsError(e): boolean {
+  if (e && e.body && e.body.errors && e.body.errors.length > 0) {
+    return e.body.errors[0].message.includes('already exists')
+  }
+  return false
+}
+
 // Process Namespace
 export async function processNamespace(namespace: string): Promise<string | null> {
   try {
@@ -410,8 +417,7 @@ export async function processNamespace(namespace: string): Promise<string | null
       console.info(`Creating project for team ${namespace}`)
       await projectsApi.createProject(projectReq)
     } catch (e) {
-      if (!e.body.errors[0]?.message?.includes('already exists'))
-        errors.push(`Error creating project for team ${namespace}: ${e}`)
+      if (!alreadyExistsError(e)) errors.push(`Error creating project for team ${namespace}: ${e}`)
     }
 
     let project
@@ -441,15 +447,13 @@ export async function processNamespace(namespace: string): Promise<string | null
       console.info(`Associating "developer" role for team "${namespace}" with harbor project "${projectName}"`)
       await memberApi.createProjectMember(projectId, undefined, undefined, projMember)
     } catch (e) {
-      if (!e.body.errors[0]?.message?.includes('already exists'))
-        errors.push(`Error associating developer role for team ${namespace}: ${e}`)
+      if (!alreadyExistsError(e)) errors.push(`Error associating developer role for team ${namespace}: ${e}`)
     }
     try {
       console.info(`Associating "project-admin" role for "all-teams-admin" with harbor project "${projectName}"`)
       await memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember)
     } catch (e) {
-      if (!e.body.errors[0]?.message?.includes('already exists'))
-        errors.push(`Error associating project-admin role for all-teams-admin: ${e}`)
+      if (!alreadyExistsError(e)) errors.push(`Error associating project-admin role for all-teams-admin: ${e}`)
     }
 
     await ensureTeamPullRobotAccountSecret(namespace, projectName)
