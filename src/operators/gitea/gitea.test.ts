@@ -1,7 +1,6 @@
-import { EditHookOption, Organization, Team, User } from '@linode/gitea-client-node/'
+import { EditHookOption, Organization, User } from '@linode/gitea-client-node/'
 import * as giteaUtils from '../../gitea-utils'
-import { getRepoNameFromUrl } from '../../gitea-utils'
-import * as utils from '../../utils'
+import { getRepoNameFromUrl, setServiceAccountSecret } from '../../gitea-utils'
 import * as giteaOperator from './gitea'
 
 describe('giteaOperator', () => {
@@ -14,6 +13,7 @@ describe('giteaOperator', () => {
       adminGetAllUsers: jest.fn(),
       adminCreateUser: jest.fn(),
       adminEditUser: jest.fn(),
+      adminSearchUsers: jest.fn(),
     }
     organizationApi = {
       orgGetAll: jest.fn(),
@@ -45,66 +45,70 @@ describe('giteaOperator', () => {
     const existingOrgantizations: Organization[] = [{ name: 'team-demo' }, { name: 'team-demo2' }]
     const organizationName = 'team-demo3'
     const prefixedOrgName = `team-demo3`
-    const mockedResponse = { id: 3, fullName: prefixedOrgName, repoAdminChangeTeamAccess: true, username: prefixedOrgName } as Organization
-    
-    jest.spyOn(utils, 'doApiCall').mockResolvedValue(mockedResponse)
+    const mockedResponse = { body: { id: 3, fullName: prefixedOrgName, repoAdminChangeTeamAccess: true, username: prefixedOrgName }}
+    const expectedResult = { id: 3, fullName: prefixedOrgName, repoAdminChangeTeamAccess: true, username: prefixedOrgName }
+
+    jest.spyOn(organizationApi, 'orgCreate').mockResolvedValue(mockedResponse)
     const result = await giteaOperator.upsertOrganization(organizationApi, existingOrgantizations, organizationName)
     
-    expect(utils.doApiCall).toHaveBeenCalledTimes(1)
-    expect(result).toEqual(mockedResponse)
+    expect(organizationApi.orgCreate).toHaveBeenCalledTimes(1)
+    expect(result).toEqual(expectedResult)
   })
   
   it('should create service account for organization if it doesnt exist', async () => {
     const existingOrgantizations: Organization[] = [{ name: 'team-demo' }, { name: 'team-demo2' }, { name: 'team-demo3'}]
     const organizationName = 'team-demo3'
-    const mockedListUsersResponse: User[] = [{ login: 'organization-team-demo' }, { login: 'organization-team-demo2' }]
+    const mockedListUsersResponse = { body: [{ login: 'organization-team-demo' }, { login: 'organization-team-demo2' }]}
     const mockedCreateUserResponse: User = { id: 3, email: 'organization-team-demo3@test.com', loginName: organizationName, fullName: organizationName, restricted: false }
 
-    jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockedListUsersResponse)
-    jest.spyOn(utils, 'doApiCall').mockResolvedValue(mockedCreateUserResponse)
+    jest.spyOn(adminApi, 'adminSearchUsers').mockResolvedValue(mockedListUsersResponse)
+    jest.spyOn(adminApi, 'adminCreateUser').mockResolvedValue(mockedCreateUserResponse)
     jest.spyOn(giteaUtils, 'setServiceAccountSecret').mockResolvedValue(undefined)
     jest.spyOn(giteaOperator, 'addServiceAccountToOrganizations').mockImplementation(jest.fn())
 
     await giteaOperator.createServiceAccounts(adminApi, existingOrgantizations, organizationApi)
-    
-    expect(utils.doApiCall).toHaveBeenCalledTimes(4)
+    expect(adminApi.adminCreateUser).toHaveBeenCalledTimes(1)
   })
 
   it('should recreate a service account secret if it does not exists anymore and update the service account', async () => {
-    const existingOrgantizations: Organization[] = [{ name: 'team-demo' }, { name: 'team-demo2' }, { name: 'team-demo3'}]
-    const mockedListUsersResponse: User[] = [{ id: 1, login: 'organization-team-demo' }, { id: 2, login: 'organization-team-demo2' }, { id: 3, login: 'organization-team-demo3', loginName: 'organization-team-demo3' }]
+    const existingOrgantizations: Organization[] = [{ name: 'team-demo3'}]
+    const mockedListUsersResponse = { body: [{ id: 1, login: 'organization-team-demo' }, { id: 2, login: 'organization-team-demo2' }, { id: 3, login: 'organization-team-demo3', loginName: 'organization-team-demo3' }]}
     const mockEditUserResponse1: User = { id: 1, login: 'organization-team-demo1', loginName: 'organization-team-demo1' }
     const mockEditUserResponse2: User = { id: 2, login: 'organization-team-demo2', loginName: 'organization-team-demo2' }
     const mockEditUserResponse3: User = { id: 3, login: 'organization-team-demo3', loginName: 'organization-team-demo3' }
 
-    jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockedListUsersResponse)
+    jest.spyOn(adminApi, 'adminSearchUsers').mockResolvedValue(mockedListUsersResponse)
+
+    jest.spyOn(adminApi, 'adminEditUser').mockResolvedValueOnce(mockEditUserResponse1)
     jest.spyOn(giteaUtils, 'setServiceAccountSecret').mockResolvedValueOnce(undefined)
-    jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockEditUserResponse1)
+    
+    jest.spyOn(adminApi, 'adminEditUser').mockResolvedValueOnce(mockEditUserResponse2)
     jest.spyOn(giteaUtils, 'setServiceAccountSecret').mockResolvedValueOnce(undefined)
-    jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockEditUserResponse2)
-    jest.spyOn(giteaUtils, 'setServiceAccountSecret').mockResolvedValueOnce('test3')
-    jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockEditUserResponse3)
+
+    jest.spyOn(adminApi, 'adminEditUser').mockResolvedValueOnce(mockEditUserResponse3)
+    jest.spyOn(giteaUtils, 'setServiceAccountSecret').mockResolvedValueOnce(undefined)
+
+
     jest.spyOn(giteaOperator, 'addServiceAccountToOrganizations').mockImplementation(jest.fn())
 
     await giteaOperator.createServiceAccounts(adminApi, existingOrgantizations, organizationApi)
-    expect(utils.doApiCall).toHaveBeenCalledWith([], 'Getting all users', expect.any(Function))
-    expect(utils.doApiCall).toHaveBeenNthCalledWith(4, [], `Editing user: ${mockEditUserResponse3.loginName} with new password`, expect.any(Function))
+    expect(adminApi.adminEditUser).toHaveBeenCalledWith('organization-team-demo3', { loginName: 'organization-team-demo3', password: expect.any(String) })
+    expect(setServiceAccountSecret).toHaveBeenCalled()
   })
 
   it('should add service accounts to organizations', async () => {
     const existingOrgantizations: Organization[] = [{ name: 'team-demo' }, { name: 'team-demo2' }, { name: 'team-demo3'}]
     const loginName = 'organization-team-demo'
-    const mockedListTeamsResponse: Team[] = [{ name: 'team-demo' }, { name: 'team-demo2' }, { name: 'team-demo3' }]
-    const mockedListUsersResponse: User[] = [{ login: 'test-user' }, { login: 'test-user-2' }]
+    const mockedListTeamsResponse = { body: [{ name: 'Owners', id: 1 }, { name: 'team-demo' }, { name: 'team-demo2' }, { name: 'team-demo3' }]}
+    const mockedListUsersResponse = { body: [{ login: 'test-user' }, { login: 'test-user-2' }]}
 
-    jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockedListTeamsResponse)
-    jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce(mockedListUsersResponse)
-    jest.spyOn(utils, 'doApiCall').mockResolvedValueOnce({})
+    jest.spyOn(organizationApi, 'orgListTeams').mockResolvedValueOnce(mockedListTeamsResponse)
+    jest.spyOn(organizationApi, 'orgListTeamMembers').mockResolvedValueOnce(mockedListUsersResponse)
+    jest.spyOn(organizationApi, 'orgAddTeamMember').mockResolvedValueOnce({})
 
     await giteaOperator.addServiceAccountToOrganizations(organizationApi, loginName, existingOrgantizations)
 
-    expect(utils.doApiCall).toHaveBeenCalledWith([], 'Getting teams from organization: team-demo', expect.any(Function))
-    expect(utils.doApiCall).toHaveBeenNthCalledWith(3, [], 'Adding user to organization Owners team in team-demo', expect.any(Function))
+    expect(organizationApi.orgAddTeamMember).toHaveBeenCalledWith(1, 'organization-team-demo')
   })
 
   it('should create a webhook inside a repo of an organization', async () => {
