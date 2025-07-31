@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.14.0](https://github.com/linode/apl-tasks/compare/v3.13.2...v3.14.0) (2025-07-31)
+
+
+### Features
+
+* add nickname for users ([#260](https://github.com/linode/apl-tasks/issues/260)) ([12d09cf](https://github.com/linode/apl-tasks/commit/12d09cf957a4e8812d5b335d99d28790ebe924d6))
+* removed doapicall function ([#267](https://github.com/linode/apl-tasks/issues/267)) ([980ec63](https://github.com/linode/apl-tasks/commit/980ec6339896c15c3670ccb2ef9116d6f316e084))
+
 ### [3.13.2](https://github.com/linode/apl-tasks/compare/v3.13.0...v3.13.2) (2025-07-04)
 
 
