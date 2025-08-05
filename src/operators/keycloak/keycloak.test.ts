@@ -1,3 +1,18 @@
+// Mock @kubernetes/client-node before any imports
+jest.mock('@kubernetes/client-node', () => ({
+  KubeConfig: jest.fn().mockImplementation(() => ({
+    loadFromDefault: jest.fn(),
+    makeApiClient: jest.fn(),
+  })),
+  CoreV1Api: jest.fn(),
+  Exec: jest.fn(),
+  KubernetesObject: jest.fn(),
+  V1Status: jest.fn(),
+  PatchStrategy: {
+    Apply: 'Apply',
+  },
+}))
+
 import { UnmanagedAttributePolicy } from '@linode/keycloak-client-node'
 import * as keycloak from './keycloak'
 import { manageUserProfile, updateUserGroups } from './keycloak'
