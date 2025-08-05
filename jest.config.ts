@@ -2,18 +2,23 @@ import type { Config } from '@jest/types'
 
 const config: Config.InitialOptions = {
   roots: ['<rootDir>/src'],
-  moduleDirectories: ['node_modules', __dirname],
   testEnvironment: 'node',
+  preset: 'ts-jest',
   transform: {
-    '^.+.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
-    '^.+\\.tsx?$': 'babel-jest',
-    '^.+\\.jsx?$': 'babel-jest',
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
   },
-  transformIgnorePatterns: ['node_modules/(?!(@kubernetes/client-node|openid-client|oauth4webapi)/)'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(@kubernetes/client-node|@linode/apl-k8s-operator|jose|uuid|openid-client|oauth4webapi)/)',
+  ],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
   silent: false,
   verbose: true,
 }
+
 export default config
+
 process.env = Object.assign(process.env, {
   isDev: false,
 })

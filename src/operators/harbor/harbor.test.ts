@@ -1,3 +1,21 @@
+// Mock @kubernetes/client-node to avoid ES module loading issues
+jest.mock('@kubernetes/client-node', () => ({
+  KubeConfig: jest.fn().mockImplementation(() => ({
+    loadFromDefault: jest.fn(),
+    loadFromFile: jest.fn(),
+    makeApiClient: jest.fn().mockReturnValue({
+      createNamespacedSecret: jest.fn(),
+      readNamespacedSecret: jest.fn(),
+      replaceNamespacedSecret: jest.fn(),
+      deleteNamespacedSecret: jest.fn(),
+    }),
+  })),
+  CoreV1Api: jest.fn(),
+  CustomObjectsApi: jest.fn(),
+  V1Secret: jest.fn(),
+  V1ObjectMeta: jest.fn(),
+}))
+
 import { ProjectReq, RobotCreated } from '@linode/harbor-client-node'
 import * as k8s from '../../k8s'
 import {
