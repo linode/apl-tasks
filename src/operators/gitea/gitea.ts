@@ -26,7 +26,7 @@ import { isEmpty, keys } from 'lodash'
 import stream from 'stream'
 import { getRepoNameFromUrl, setServiceAccountSecret } from '../../gitea-utils'
 import { getTektonPipeline } from '../../k8s'
-import { doApiCall, getSanitizedErrorMessage } from '../../utils'
+import { getSanitizedErrorMessage } from '../../utils'
 import {
   CHECK_OIDC_CONFIG_INTERVAL,
   cleanEnv,
@@ -238,22 +238,35 @@ async function triggerTemplateCallback(resourceEvent: ResourceEvent): Promise<vo
 export const addServiceAccountToOrganizations = async (
   organizationApi: OrganizationApi,
   serviceAcountName: string,
-  organisations: Organization[],
+  organizations: Organization[],
 ) => {
-  const organisation = organisations.find((org) => serviceAcountName === `organization-${org.name}`)
-  const teams: Team[] = await doApiCall(errors, `Getting teams from organization: ${organisation?.name}`, () =>
-    organizationApi.orgListTeams(organisation!.name!),
-  )
+  const organization = organizations.find((org) => serviceAcountName === `organization-${org.name}`)
+  let teams: Team[]
+  try {
+    console.info(`Getting teams from organization: ${organization?.name}`)
+    teams = (await organizationApi.orgListTeams(organization!.name!)).body
+  } catch (e) {
+    errors.push(`Error getting teams from organization ${organization?.name}: ${e}`)
+    return
+  }
   const ownerTeam = teams.find((team) => team.name === 'Owners')
-  const members: User[] = await doApiCall(errors, `Getting members from Owners team in ${organisation?.name}`, () =>
-    organizationApi.orgListTeamMembers(ownerTeam!.id!),
-  )
+  let members: User[]
+  try {
+    console.info(`Getting members from Owners team in ${organization?.name}`)
+    members = (await organizationApi.orgListTeamMembers(ownerTeam!.id!)).body
+  } catch (e) {
+    errors.push(`Error getting members from Owners team in ${organization?.name}: ${e}`)
+    return
+  }
   if (isEmpty(members)) return
   const exists = members.some((member) => member.login === serviceAcountName)
   if (exists) return
-  await doApiCall(errors, `Adding user to organization Owners team in ${organisation?.name}`, () =>
-    organizationApi.orgAddTeamMember(ownerTeam!.id!, serviceAcountName),
-  )
+  try {
+    console.info(`Adding user to organization Owners team in ${organization?.name}`)
+    await organizationApi.orgAddTeamMember(ownerTeam!.id!, serviceAcountName)
+  } catch (e) {
+    errors.push(`Error adding user to organization Owners team in ${organization?.name}: ${e}`)
+  }
 }
 
 // Exported for testing purposes
@@ -263,9 +276,12 @@ export const editServiceAccount = async (adminApi: AdminApi, loginName: string, 
     loginName,
     password,
   }
-  await doApiCall(errors, `Editing user: ${loginName} with new password`, () =>
-    adminApi.adminEditUser(loginName, editUserOption),
-  )
+  try {
+    console.info(`Editing user: ${loginName} with new password`)
+    await adminApi.adminEditUser(loginName, editUserOption)
+  } catch (e) {
+    errors.push(`Error editing user ${loginName}: ${e}`)
+  }
 }
 
 // Exported for testing purposes
@@ -274,7 +290,14 @@ export const createServiceAccounts = async (
   organizations: Organization[],
   orgApi: OrganizationApi,
 ) => {
-  const users: User[] = await doApiCall(errors, `Getting all users`, () => adminApi.adminSearchUsers())
+  let users: User[]
+  try {
+    console.info('Getting all users')
+    users = (await adminApi.adminSearchUsers()).body
+  } catch (e) {
+    errors.push(`Error getting all users: ${e}`)
+    return
+  }
   const filteredOrganizations = organizations.filter((org) => org.name !== 'otomi')
   await Promise.all(
     filteredOrganizations.map(async (organization) => {
@@ -304,7 +327,12 @@ export const createServiceAccounts = async (
           mustChangePassword: false,
           repoAdminChangeTeamAccess: true,
         }
-        await doApiCall(errors, `Creating user: ${serviceAccount}`, () => adminApi.adminCreateUser(createUserOption))
+        try {
+          console.info(`Creating user: ${serviceAccount}`)
+          await adminApi.adminCreateUser(createUserOption)
+        } catch (e) {
+          errors.push(`Error creating user ${serviceAccount}: ${e}`)
+        }
       } else {
         await editServiceAccount(adminApi, serviceAccount, password)
       }
@@ -475,15 +503,29 @@ export async function upsertOrganization(
     repoAdminChangeTeamAccess: true,
   }
   const existingOrg = existingOrganizations.find((organization) => organization.name === prefixedOrgName)
-  if (isEmpty(existingOrg))
-    return doApiCall(errors, `Creating org "${orgOption.fullName}"`, () => orgApi.orgCreate(orgOption), 422)
+  if (isEmpty(existingOrg)) {
+    try {
+      console.info(`Creating organization "${orgOption.fullName}"`)
+      const { body } = await orgApi.orgCreate(orgOption)
+      return body
+    } catch (e) {
+      if (e?.statusCode !== 422) {
+        errors.push(`Error creating organization "${orgOption.fullName}": ${e}`)
+      }
+      throw e
+    }
+  }
 
-  return doApiCall(
-    errors,
-    `Updating org "${orgOption.fullName}"`,
-    () => orgApi.orgEdit(prefixedOrgName, orgOption),
-    422,
-  )
+  try {
+    console.info(`Updating organization "${orgOption.fullName}"`)
+    const { body } = await orgApi.orgEdit(prefixedOrgName, orgOption)
+    return body
+  } catch (e) {
+    if (e?.statusCode !== 422) {
+      errors.push(`Error updating organization "${orgOption.fullName}": ${e}`)
+    }
+    throw e
+  }
 }
 
 // Setup Gitea Functions
@@ -493,25 +535,34 @@ async function upsertTeam(
   teamOption: CreateTeamOption,
 ): Promise<void> {
   const getErrors: string[] = []
-  const existingTeams: Team[] = await doApiCall(getErrors, `Getting all teams in org "${organizationName}"`, () =>
-    orgApi.orgListTeams(organizationName),
-  )
-  if (!isEmpty(getErrors)) console.error('Errors when gettings teams.', getErrors)
+  let existingTeams: Team[]
+  try {
+    console.info(`Getting all teams in organization "${organizationName}"`)
+    existingTeams = (await orgApi.orgListTeams(organizationName)).body
+  } catch (e) {
+    getErrors.push(`Error getting all teams in organization "${organizationName}": ${e}`)
+    console.error('Errors when getting teams.', getErrors)
+    return
+  }
   const existingTeam = existingTeams?.find((team) => team.name === teamOption.name)
   if (existingTeam === undefined) {
-    return doApiCall(
-      errors,
-      `Creating team "${teamOption.name}" in org "${organizationName}"`,
-      () => orgApi.orgCreateTeam(organizationName, teamOption),
-      422,
-    )
+    try {
+      console.info(`Creating team "${teamOption.name}" in organization "${organizationName}"`)
+      await orgApi.orgCreateTeam(organizationName, teamOption)
+    } catch (e) {
+      if (e?.statusCode !== 422) {
+        errors.push(`Error creating team "${teamOption.name}" in organization "${organizationName}": ${e}`)
+      }
+    }
   } else {
-    return doApiCall(
-      errors,
-      `Updating team "${teamOption.name}" in org "${organizationName}"`,
-      () => orgApi.orgEditTeam(existingTeam.id!, teamOption),
-      422,
-    )
+    try {
+      console.info(`Updating team "${teamOption.name}" in organization "${organizationName}"`)
+      await orgApi.orgEditTeam(existingTeam.id!, teamOption)
+    } catch (e) {
+      if (e?.statusCode !== 422) {
+        errors.push(`Error updating team "${teamOption.name}" in organization "${organizationName}": ${e}`)
+      }
+    }
   }
 }
 
@@ -526,13 +577,13 @@ async function upsertRepo(
   const existingRepo = existingReposInOrg.find((repository) => repository.name === repoName)
   let addTeam = false
   if (isEmpty(existingRepo)) {
-    // org repo create
-    console.info(`Creating repo "${repoName}" in org "${orgName}"`)
+    // organization repo create
+    console.info(`Creating repo "${repoName}" in organization "${orgName}"`)
     await orgApi.createOrgRepo(orgName, repoOption as CreateRepoOption)
     addTeam = true
   } else {
     // repo update
-    console.info(`Updating repo "${repoName}" in org "${orgName}"`)
+    console.info(`Updating repo "${repoName}" in organization "${orgName}"`)
     await repoApi.repoEdit(orgName, repoName, repoOption as EditRepoOption)
     if (teamName) {
       console.info(`Checking if repo "${repoName}" is assigned to team "${teamName}"`)
@@ -572,20 +623,25 @@ async function createOrgsAndTeams(
       return upsertTeam(orgApi, orgName, { ...adminTeam, name })
     }),
   )
-  // create org wide viewer team for otomi role "team-viewer"
+  // create organization wide viewer team for otomi role "team-viewer"
   await upsertTeam(orgApi, orgName, readOnlyTeam)
   return existingOrganizations
 }
 
 async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Promise<hookInfo> {
-  const hooks: any[] = await doApiCall(
-    errors,
-    `Getting hooks in repo "otomi/values"`,
-    () => repoApi.repoListHooks(orgName, 'values'),
-    400,
-  )
+  let hooks: any[]
+  try {
+    console.debug(`Getting hooks in repo "otomi/values"`)
+    hooks = (await repoApi.repoListHooks(orgName, 'values')).body
+  } catch (e) {
+    if (e?.statusCode !== 400) {
+      errors.push(`Error getting hooks in repo "otomi/values": ${e}`)
+    }
+    console.debug(`No hooks were found in repo "otomi/values"`)
+    return { hasHook: false }
+  }
   if (!hooks) {
-    console.debug(`No hooks were found in repo "values"`)
+    console.debug(`No hooks were found in repo "otomi/values"`)
     return { hasHook: false }
   }
 
@@ -606,22 +662,23 @@ async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
   const hasTektonHook = await hasSpecificHook(repoApi, 'el-otomi-tekton-listener')
   if (!hasTektonHook.hasHook) {
     console.debug('Tekton Hook needs to be created')
-    await doApiCall(
-      errors,
-      `Adding hook "tekton" to repo otomi/values`,
-      () =>
-        repoApi.repoCreateHook(orgName, 'values', {
-          type: CreateHookOption.TypeEnum.Gitea,
-          active: true,
-          config: {
-            url: clusterIP,
-            http_method: 'post',
-            content_type: 'json',
-          },
-          events: ['push'],
-        } as CreateHookOption),
-      304,
-    )
+    try {
+      console.debug(`Adding hook "tekton" to repo otomi/values`)
+      await repoApi.repoCreateHook(orgName, 'values', {
+        type: CreateHookOption.TypeEnum.Gitea,
+        active: true,
+        config: {
+          url: clusterIP,
+          http_method: 'post',
+          content_type: 'json',
+        },
+        events: ['push'],
+      } as CreateHookOption)
+    } catch (e) {
+      if (e?.statusCode !== 304) {
+        errors.push(`Error adding hook "tekton" to repo otomi/values: ${e}`)
+      }
+    }
   }
 }
 
@@ -631,7 +688,7 @@ async function createReposAndAddToTeam(
   existingRepos: Repository[],
   repoOption: CreateRepoOption,
 ) {
-  // create main org repo: otomi/values
+  // create main organization repo: otomi/values
   await upsertRepo(existingRepos, orgApi, repoApi, repoOption)
   // create otomi/charts repo for auto image updates
   await upsertRepo(existingRepos, orgApi, repoApi, { ...repoOption, name: otomiChartsRepoName })
@@ -639,21 +696,27 @@ async function createReposAndAddToTeam(
   // add repo: otomi/values to the team: otomi-viewer
   const existingValuesRepo = existingRepos.find((repo) => repo.name === otomiValuesRepoName)
   const existingChartsRepo = existingRepos.find((repo) => repo.name === otomiChartsRepoName)
-  if (!existingValuesRepo)
-    await doApiCall(
-      errors,
-      `Adding repo ${otomiValuesRepoName} to team ${teamNameViewer}`,
-      () => repoApi.repoAddTeam(orgName, otomiValuesRepoName, teamNameViewer),
-      422,
-    )
-  if (!existingChartsRepo)
+  if (!existingValuesRepo) {
+    try {
+      console.info(`Adding repo "${otomiValuesRepoName}" to team "${teamNameViewer}"`)
+      await repoApi.repoAddTeam(orgName, otomiValuesRepoName, teamNameViewer)
+    } catch (e) {
+      if (e?.statusCode !== 422) {
+        errors.push(`Error adding repo ${otomiValuesRepoName} to team ${teamNameViewer}: ${e}`)
+      }
+    }
+  }
+  if (!existingChartsRepo) {
     // add repo: otomi/charts to the team: otomi-viewer
-    await doApiCall(
-      errors,
-      `Adding repo ${otomiChartsRepoName} to team ${teamNameViewer}`,
-      () => repoApi.repoAddTeam(orgName, otomiChartsRepoName, teamNameViewer),
-      422,
-    )
+    try {
+      console.info(`Adding repo "${otomiChartsRepoName}" to team "${teamNameViewer}"`)
+      await repoApi.repoAddTeam(orgName, otomiChartsRepoName, teamNameViewer)
+    } catch (e) {
+      if (e?.statusCode !== 422) {
+        errors.push(`Error adding repo ${otomiChartsRepoName} to team ${teamNameViewer}: ${e}`)
+      }
+    }
+  }
 }
 
 // Logic to create a webhook for repos in an organization
@@ -766,12 +829,24 @@ async function setupGitea() {
   const orgNames = [orgName, ...teamIds]
   const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
   const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-  let existingOrganizations = await doApiCall(errors, 'Getting all organizations', () => orgApi.orgGetAll())
+  let existingOrganizations: Organization[]
+  try {
+    console.info('Getting all organizations')
+    existingOrganizations = (await orgApi.orgGetAll()).body
+  } catch (e) {
+    errors.push(`Error getting all organizations: ${e}`)
+    return
+  }
   existingOrganizations = await createOrgsAndTeams(orgApi, existingOrganizations, orgNames, teamIds)
   await createServiceAccounts(adminApi, existingOrganizations, orgApi)
-  const existingRepos: Repository[] = await doApiCall(errors, `Getting all repos in org "${orgName}"`, () =>
-    orgApi.orgListRepos(orgName),
-  )
+  let existingRepos: Repository[]
+  try {
+    console.info(`Getting all repos in organization "${orgName}"`)
+    existingRepos = (await orgApi.orgListRepos(orgName)).body
+  } catch (e) {
+    errors.push(`Error getting all repos in organization "${orgName}": ${e}`)
+    return
+  }
   const repoOption: CreateRepoOption = {
     ...new CreateRepoOption(),
     autoInit: false,
