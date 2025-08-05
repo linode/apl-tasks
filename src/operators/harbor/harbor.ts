@@ -14,7 +14,7 @@ import {
   RobotCreated,
 } from '@linode/harbor-client-node'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../../k8s'
-import { doApiCall, handleErrors, waitTillAvailable } from '../../utils'
+import { handleErrors, waitTillAvailable } from '../../utils'
 import {
   cleanEnv,
   HARBOR_BASE_URL,
@@ -111,6 +111,22 @@ let robotApi: RobotApi
 let configureApi: ConfigureApi
 let projectsApi: ProjectApi
 let memberApi: MemberApi
+
+// Test helper function to inject mocked API clients (for testing only)
+// Needed because we dont use the api's as function parameters
+export function __setApiClients(
+  robot: RobotApi,
+  configure: ConfigureApi,
+  projects: ProjectApi,
+  member: MemberApi,
+): void {
+  if (process.env.NODE_ENV === 'test') {
+    robotApi = robot
+    configureApi = configure
+    projectsApi = projects
+    memberApi = member
+  }
+}
 
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
@@ -335,14 +351,17 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
   return bearerAuth
 }
 
+function isRobotCreated(obj: unknown): obj is RobotCreated {
+  return typeof obj === 'object' && obj !== null && 'id' in obj && 'name' in obj && 'secret' in obj
+}
+
 /**
  * Create Harbor robot account that is used by APL tasks
  * @note assumes OIDC is not yet configured, otherwise this operation is NOT possible
  */
-async function createSystemRobotSecret(): Promise<RobotSecret> {
+export async function createSystemRobotSecret(): Promise<RobotSecret> {
   const { body: robotList } = await robotApi.listRobot()
   const defaultRobotPrefix = 'robot$'
-  // Also check for default robot prefix because it can happen that the robot account was created with the default prefix
   const existing = robotList.find(
     (robot) =>
       robot.name === `${robotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}` ||
@@ -350,38 +369,63 @@ async function createSystemRobotSecret(): Promise<RobotSecret> {
   )
   if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME}`, () =>
-      robotApi.deleteRobot(existingId),
-    )
+    try {
+      console.info(`Deleting previous robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME} with id ${existingId}`)
+      await robotApi.deleteRobot(existingId)
+    } catch (e) {
+      errors.push(`Error deleting previous robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME}: ${e}`)
+    }
   }
-  const robotAccount = (await doApiCall(
-    errors,
-    `Create robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME} with system level perms`,
-    () =>
-      robotApi.createRobot(
+  let robotAccount: RobotCreated
+  try {
+    console.info(`Creating robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME} with system level permsissions`)
+    robotAccount = (
+      await robotApi.createRobot(
         generateRobotAccount(localEnv.HARBOR_SYSTEM_ROBOTNAME, fullRobotPermissions, {
           level: 'system',
           kind: 'system',
         }),
-      ),
-  )) as RobotCreated
+      )
+    ).body
+  } catch (e) {
+    errors.push(`Error creating robot account ${localEnv.HARBOR_SYSTEM_ROBOTNAME}: ${e}`)
+    throw e
+  }
+  if (!isRobotCreated(robotAccount)) {
+    throw new Error('Robot account creation failed: missing id, name, or secret')
+  }
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
   await createSecret(systemSecretName, systemNamespace, robotSecret)
   return robotSecret
 }
 
+function alreadyExistsError(e): boolean {
+  if (e && e.body && e.body.errors && e.body.errors.length > 0) {
+    return e.body.errors[0].message.includes('already exists')
+  }
+  return false
+}
+
 // Process Namespace
-async function processNamespace(namespace: string) {
+export async function processNamespace(namespace: string): Promise<string | null> {
   try {
     const projectName = namespace
     const projectReq: ProjectReq = {
       projectName,
     }
-    await doApiCall(errors, `Creating project for team ${namespace}`, () => projectsApi.createProject(projectReq))
+    try {
+      console.info(`Creating project for team ${namespace}`)
+      await projectsApi.createProject(projectReq)
+    } catch (e) {
+      if (!alreadyExistsError(e)) errors.push(`Error creating project for team ${namespace}: ${e}`)
+    }
 
-    const project = await doApiCall(errors, `Get project for team ${namespace}`, () =>
-      projectsApi.getProject(projectName),
-    )
+    let project
+    try {
+      project = (await projectsApi.getProject(projectName)).body
+    } catch (e) {
+      errors.push(`Error getting project for team ${namespace}: ${e}`)
+    }
     if (!project) return ''
     const projectId = `${project.projectId}`
 
@@ -399,16 +443,18 @@ async function processNamespace(namespace: string) {
         groupType: HarborGroupType.http,
       },
     }
-    await doApiCall(
-      errors,
-      `Associating "developer" role for team "${namespace}" with harbor project "${projectName}"`,
-      () => memberApi.createProjectMember(projectId, undefined, undefined, projMember),
-    )
-    await doApiCall(
-      errors,
-      `Associating "project-admin" role for "all-teams-admin" with harbor project "${projectName}"`,
-      () => memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember),
-    )
+    try {
+      console.info(`Associating "developer" role for team "${namespace}" with harbor project "${projectName}"`)
+      await memberApi.createProjectMember(projectId, undefined, undefined, projMember)
+    } catch (e) {
+      if (!alreadyExistsError(e)) errors.push(`Error associating developer role for team ${namespace}: ${e}`)
+    }
+    try {
+      console.info(`Associating "project-admin" role for "all-teams-admin" with harbor project "${projectName}"`)
+      await memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember)
+    } catch (e) {
+      if (!alreadyExistsError(e)) errors.push(`Error associating project-admin role for all-teams-admin: ${e}`)
+    }
 
     await ensureTeamPullRobotAccountSecret(namespace, projectName)
     await ensureTeamPushRobotAccountSecret(namespace, projectName)
@@ -446,7 +492,7 @@ async function ensureTeamPullRobotAccountSecret(namespace: string, projectName):
  * Create Harbor system robot account that is scoped to a given Harbor project with pull access only.
  * @param projectName Harbor project name
  */
-async function createTeamPullRobotAccount(projectName: string): Promise<RobotCreated> {
+export async function createTeamPullRobotAccount(projectName: string): Promise<RobotCreated> {
   const projectRobot: RobotCreate = {
     name: `${projectName}-pull`,
     duration: -1,
@@ -473,14 +519,22 @@ async function createTeamPullRobotAccount(projectName: string): Promise<RobotCre
 
   if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous pull robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
+    try {
+      console.info(`Deleting previous pull robot account ${fullName} with id ${existingId}`)
+      await robotApi.deleteRobot(existingId)
+    } catch (e) {
+      errors.push(`Error deleting previous pull robot account ${fullName}: ${e}`)
+    }
   }
-
-  const robotPullAccount = (await doApiCall(
-    errors,
-    `Creating pull robot account ${fullName} with project level perms`,
-    () => robotApi.createRobot(projectRobot),
-  )) as RobotCreated
+  let robotPullAccount: RobotCreated
+  try {
+    console.info(`Creating pull robot account ${fullName} with project level permsissions`)
+    const { body } = await robotApi.createRobot(projectRobot)
+    robotPullAccount = body
+  } catch (e) {
+    errors.push(`Error creating pull robot account ${fullName}: ${e}`)
+    throw e
+  }
   if (!robotPullAccount?.id) {
     throw new Error(
       `RobotPullAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.`,
@@ -514,7 +568,7 @@ async function ensureTeamPushRobotAccountSecret(namespace: string, projectName):
  * to offer team members the option to download the kubeconfig.
  * @param projectName Harbor project name
  */
-async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
+export async function ensureTeamPushRobotAccount(projectName: string): Promise<RobotCreated> {
   const projectRobot: RobotCreate = {
     name: `${projectName}-push`,
     duration: -1,
@@ -545,14 +599,22 @@ async function ensureTeamPushRobotAccount(projectName: string): Promise<any> {
 
   if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous push robot account ${fullName}`, () => robotApi.deleteRobot(existingId))
+    try {
+      console.info(`Deleting previous push robot account ${fullName} with id ${existingId}`)
+      await robotApi.deleteRobot(existingId)
+    } catch (e) {
+      errors.push(`Error deleting previous push robot account ${fullName}: ${e}`)
+    }
   }
 
-  const robotPushAccount = (await doApiCall(
-    errors,
-    `Creating push robot account ${fullName} with project level perms`,
-    () => robotApi.createRobot(projectRobot),
-  )) as RobotCreated
+  let robotPushAccount: RobotCreated
+  try {
+    console.info(`Creating push robot account ${fullName} with project level permsissions`)
+    robotPushAccount = (await robotApi.createRobot(projectRobot)).body
+  } catch (e) {
+    errors.push(`Error creating push robot account ${fullName}: ${e}`)
+    throw e
+  }
   if (!robotPushAccount?.id) {
     throw new Error(
       `RobotPushAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.`,
@@ -586,7 +648,7 @@ async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectN
  * for Kaniko (used for builds) task to push images.
  * @param projectName Harbor project name
  */
-async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<any> {
+export async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<RobotCreated> {
   const projectRobot: RobotCreate = {
     name: `${projectName}-builds`,
     duration: -1,
@@ -617,16 +679,22 @@ async function ensureTeamBuildsPushRobotAccount(projectName: string): Promise<an
 
   if (existing?.id) {
     const existingId = existing.id
-    await doApiCall(errors, `Deleting previous build push robot account ${fullName}`, () =>
-      robotApi.deleteRobot(existingId),
-    )
+    try {
+      console.info(`Deleting previous build push robot account ${fullName} with id ${existingId}`)
+      await robotApi.deleteRobot(existingId)
+    } catch (e) {
+      errors.push(`Error deleting previous build push robot account ${fullName}: ${e}`)
+    }
   }
 
-  const robotBuildsPushAccount = (await doApiCall(
-    errors,
-    `Creating push robot account ${fullName} with project level perms`,
-    () => robotApi.createRobot(projectRobot),
-  )) as RobotCreated
+  let robotBuildsPushAccount: RobotCreated
+  try {
+    console.info(`Creating build push robot account ${fullName} with project level permsissions`)
+    robotBuildsPushAccount = (await robotApi.createRobot(projectRobot)).body
+  } catch (e) {
+    errors.push(`Error creating build push robot account ${fullName}: ${e}`)
+    throw e
+  }
   if (!robotBuildsPushAccount?.id) {
     throw new Error(
       `RobotBuildsPushAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.`,
