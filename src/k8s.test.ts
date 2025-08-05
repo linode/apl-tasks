@@ -1,26 +1,31 @@
+jest.mock('@kubernetes/client-node', () => ({
+  KubeConfig: jest.fn().mockImplementation(() => ({
+    loadFromDefault: jest.fn(),
+    loadFromFile: jest.fn(),
+    makeApiClient: jest.fn().mockReturnValue({
+      createNamespacedSecret: jest.fn(),
+      readNamespacedServiceAccount: jest.fn(),
+      patchNamespacedServiceAccount: jest.fn(),
+      deleteNamespacedSecret: jest.fn(),
+    }),
+  })),
+  CoreV1Api: jest.fn(),
+  CustomObjectsApi: jest.fn(),
+  NetworkingV1Api: jest.fn(),
+  V1Secret: jest.fn(),
+  V1ObjectMeta: jest.fn(),
+  V1ServiceAccount: jest.fn(),
+  PatchStrategy: {
+    StrategicMergePatch: 'application/strategic-merge-patch+json',
+    MergePatch: 'application/merge-patch+json',
+    JSONPatch: 'application/json-patch+json',
+  },
+  setHeaderOptions: jest.fn(),
+}))
+
 import { V1Secret, V1ServiceAccount } from '@kubernetes/client-node'
 import { cloneDeep } from 'lodash'
 import { createK8sSecret, deleteSecret, k8s } from './k8s'
-
-jest.mock('@kubernetes/client-node', () => {
-  const mockCoreClient = {
-    createNamespacedSecret: jest.fn(),
-    readNamespacedServiceAccount: jest.fn(),
-    patchNamespacedServiceAccount: jest.fn(),
-    deleteNamespacedSecret: jest.fn(),
-  }
-  const originalModule = jest.requireActual('@kubernetes/client-node')
-  return {
-    ...originalModule,
-    CoreV1Api: jest.fn(),
-    CustomObjectsApi: jest.fn(),
-    KubeConfig: jest.fn().mockImplementation(() => ({
-      loadFromDefault: jest.fn(),
-      loadFromFile: jest.fn(),
-      makeApiClient: jest.fn().mockReturnValue(mockCoreClient),
-    })),
-  }
-})
 
 describe('k8s', () => {
   const teamId = 'testtt'
