@@ -50,8 +50,9 @@ export async function setServiceAccountSecret(
           `Problem creating secret ${serviceAccountSecretName} in namespace ${teamNamespace}: ${creatingError}`,
         )
       }
+    } else {
+      console.error(`Problem replacing secret ${serviceAccountSecretName} in namespace ${teamNamespace}: ${error}`)
     }
-    console.error(`Problem replacing secret ${serviceAccountSecretName} in namespace ${teamNamespace}: ${error}`)
   }
   return password
 }
