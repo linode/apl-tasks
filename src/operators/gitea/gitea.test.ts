@@ -1,3 +1,18 @@
+// Mock @kubernetes/client-node before any imports
+jest.mock('@kubernetes/client-node', () => ({
+  KubeConfig: jest.fn().mockImplementation(() => ({
+    loadFromDefault: jest.fn(),
+    makeApiClient: jest.fn(),
+  })),
+  CoreV1Api: jest.fn(),
+  Exec: jest.fn(),
+  KubernetesObject: jest.fn(),
+  V1Status: jest.fn(),
+  PatchStrategy: {
+    Apply: 'Apply',
+  },
+}))
+
 import { EditHookOption, Organization, User } from '@linode/gitea-client-node/'
 import * as giteaUtils from '../../gitea-utils'
 import { getRepoNameFromUrl, setServiceAccountSecret } from '../../gitea-utils'
