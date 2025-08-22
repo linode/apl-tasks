@@ -18,7 +18,7 @@ import {
   UsersApi,
 } from '@linode/keycloak-client-node'
 import { forEach, omit } from 'lodash'
-import { discovery, genericGrantRequest, type TokenEndpointResponse } from 'openid-client'
+import { type TokenEndpointResponse } from 'openid-client'
 import { keycloakRealm } from '../../tasks/keycloak/config'
 import { extractError } from '../../tasks/keycloak/errors'
 import {
@@ -337,19 +337,27 @@ async function createKeycloakConnection(): Promise<KeycloakConnection> {
   const basePath = env.KEYCLOAK_HOSTNAME_URL
   let token: TokenEndpointResponse
   try {
-    const issuerUrl = `${basePath}/realms/${env.KEYCLOAK_REALM}`
-    const config = await discovery(new URL(issuerUrl), 'admin-cli')
+    // Use master realm for admin authentication
+    const tokenUrl = `${basePath}/realms/master/protocol/openid-connect/token`
     
-    token = await genericGrantRequest(
-      config,
-      `${issuerUrl}/protocol/openid-connect/token`,
-      new URLSearchParams({
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
         grant_type: 'password',
         client_id: 'admin-cli',
         username: env.KEYCLOAK_ADMIN,
         password: env.KEYCLOAK_ADMIN_PASSWORD,
-      })
-    )
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Token request failed: ${response.status} ${response.statusText}`)
+    }
+
+    token = await response.json() as TokenEndpointResponse
     
     return { token, basePath } as KeycloakConnection
   } catch (error) {
