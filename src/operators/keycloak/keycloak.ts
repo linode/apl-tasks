@@ -18,7 +18,7 @@ import {
   UsersApi,
 } from '@linode/keycloak-client-node'
 import { forEach, omit } from 'lodash'
-import { custom, Issuer, TokenSet } from 'openid-client'
+import { discovery, genericGrantRequest, type TokenEndpointResponse } from 'openid-client'
 import { keycloakRealm } from '../../tasks/keycloak/config'
 import { extractError } from '../../tasks/keycloak/errors'
 import {
@@ -51,7 +51,7 @@ import {
 
 interface KeycloakConnection {
   basePath: string
-  token: TokenSet
+  token: TokenEndpointResponse
 }
 
 interface KeycloakApi {
@@ -335,20 +335,22 @@ async function keycloakConfigMapChanges(api: KeycloakApi) {
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
   const basePath = env.KEYCLOAK_HOSTNAME_URL
-  let token: TokenSet
+  let token: TokenEndpointResponse
   try {
-    custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_HOSTNAME_URL.replace('https://', '') } })
-    const keycloakIssuer = await Issuer.discover(`${basePath}/realms/${env.KEYCLOAK_REALM}/`)
-    const clientOptions: any = {
-      client_id: 'admin-cli',
-      client_secret: 'unused',
-    }
-    const openIdConnectClient = new keycloakIssuer.Client(clientOptions)
-    token = await openIdConnectClient.grant({
-      grant_type: 'password',
-      username: env.KEYCLOAK_ADMIN,
-      password: env.KEYCLOAK_ADMIN_PASSWORD,
-    })
+    const issuerUrl = `${basePath}/realms/${env.KEYCLOAK_REALM}/`
+    const config = await discovery(new URL(issuerUrl), 'admin-cli')
+    
+    token = await genericGrantRequest(
+      config,
+      `${issuerUrl}protocol/openid-connect/token`,
+      new URLSearchParams({
+        grant_type: 'password',
+        client_id: 'admin-cli',
+        username: env.KEYCLOAK_ADMIN,
+        password: env.KEYCLOAK_ADMIN_PASSWORD,
+      })
+    )
+    
     return { token, basePath } as KeycloakConnection
   } catch (error) {
     throw extractError('creating Keycloak connection', error)
