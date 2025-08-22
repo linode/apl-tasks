@@ -337,12 +337,12 @@ async function createKeycloakConnection(): Promise<KeycloakConnection> {
   const basePath = env.KEYCLOAK_HOSTNAME_URL
   let token: TokenEndpointResponse
   try {
-    const issuerUrl = `${basePath}/realms/${env.KEYCLOAK_REALM}/`
+    const issuerUrl = `${basePath}/realms/${env.KEYCLOAK_REALM}`
     const config = await discovery(new URL(issuerUrl), 'admin-cli')
     
     token = await genericGrantRequest(
       config,
-      `${issuerUrl}protocol/openid-connect/token`,
+      `${issuerUrl}/protocol/openid-connect/token`,
       new URLSearchParams({
         grant_type: 'password',
         client_id: 'admin-cli',
