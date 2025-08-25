@@ -18,7 +18,7 @@ import {
   UsersApi,
 } from '@linode/keycloak-client-node'
 import { forEach, omit } from 'lodash'
-import { custom, Issuer, TokenSet } from 'openid-client'
+import { type TokenEndpointResponse } from 'openid-client'
 import { keycloakRealm } from '../../tasks/keycloak/config'
 import { extractError } from '../../tasks/keycloak/errors'
 import {
@@ -51,7 +51,7 @@ import {
 
 interface KeycloakConnection {
   basePath: string
-  token: TokenSet
+  token: TokenEndpointResponse
 }
 
 interface KeycloakApi {
@@ -335,20 +335,30 @@ async function keycloakConfigMapChanges(api: KeycloakApi) {
 
 async function createKeycloakConnection(): Promise<KeycloakConnection> {
   const basePath = env.KEYCLOAK_HOSTNAME_URL
-  let token: TokenSet
+  let token: TokenEndpointResponse
   try {
-    custom.setHttpOptionsDefaults({ headers: { host: env.KEYCLOAK_HOSTNAME_URL.replace('https://', '') } })
-    const keycloakIssuer = await Issuer.discover(`${basePath}/realms/${env.KEYCLOAK_REALM}/`)
-    const clientOptions: any = {
-      client_id: 'admin-cli',
-      client_secret: 'unused',
-    }
-    const openIdConnectClient = new keycloakIssuer.Client(clientOptions)
-    token = await openIdConnectClient.grant({
-      grant_type: 'password',
-      username: env.KEYCLOAK_ADMIN,
-      password: env.KEYCLOAK_ADMIN_PASSWORD,
+    // Use master realm for admin authentication
+    const tokenUrl = `${basePath}/realms/master/protocol/openid-connect/token`
+    
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'password',
+        client_id: 'admin-cli',
+        username: env.KEYCLOAK_ADMIN,
+        password: env.KEYCLOAK_ADMIN_PASSWORD,
+      }),
     })
+
+    if (!response.ok) {
+      throw new Error(`Token request failed: ${response.status} ${response.statusText}`)
+    }
+
+    token = await response.json() as TokenEndpointResponse
+    
     return { token, basePath } as KeycloakConnection
   } catch (error) {
     throw extractError('creating Keycloak connection', error)
