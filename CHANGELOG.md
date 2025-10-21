@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.15.0](https://github.com/linode/apl-tasks/compare/v3.14.0...v3.15.0) (2025-10-21)
+
 ## [3.14.0](https://github.com/linode/apl-tasks/compare/v3.13.2...v3.14.0) (2025-07-31)
 
 
