@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.15.0](https://github.com/linode/apl-tasks/compare/v3.14.0...v3.15.0) (2025-10-21)
+
+### Chore
+
+* Bump @commitlint/cli from 19.8.1 to 20.1.0 (#293)
+* Bump @commitlint/config-conventional from 19.8.1 to 20.0.0 (#292)
+* Bump the npm-dependencies group across 1 directory with 9 updates (#294)
+* Bump github/codeql-action from 3 to 4 (#295)
+* Bump the npm-dependencies group across 1 directory with 13 updates (#290)
+* Bump ncipollo/release-action (#287)
+* Bump the npm-dependencies group with 4 updates (#285)
+* Bump openid-client from 5.7.0 to 6.6.2 (#270)
+* Bump nock from 13.0.3 to 14.0.10 (#282)
+* Bump the npm-dependencies group with 5 updates (#281)
+* Bump dotenv from 16.6.1 to 17.2.1 (#284)
+* Bump actions/checkout from 4 to 5 (#279)
+* Bump the npm-dependencies group across 1 directory with 10 updates (#278)
+* Bump amannn/action-semantic-pull-request from 5 to 6 (#280)
+* updated Gitea API client (#277)
+* Bump jest and @types/jest (#258)
+* Bump openapi-schema-validator from 3.0.3 to 12.1.3 (#256)
+* Bump @types/node from 16.7.1 to 24.0.7 (#255)
+
+
 ## [3.14.0](https://github.com/linode/apl-tasks/compare/v3.13.2...v3.14.0) (2025-07-31)
 
 
