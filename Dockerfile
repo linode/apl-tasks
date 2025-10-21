@@ -12,7 +12,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN echo "@linode:registry=https://npm.pkg.github.com/linode" > .npmrc
 RUN --mount=type=secret,id=BOT_TOKEN \
-    echo "//npm.pkg.github.com/:_authToken=$(cat /run/secrets/NPM_TOKEN)" >> .npmrc
+    echo "//npm.pkg.github.com/:_authToken=$(cat /run/secrets/BOT_TOKEN)" >> .npmrc
 
 RUN npm ci
 
