@@ -36,6 +36,9 @@ jobs:
           echo "TAG=$tag" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Prepare NPM token for Docker build
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" > ${{ runner.temp }}/npm_token
       - name: CI tests, image build and push tag to cache for main or branch
         uses: whoan/docker-build-with-cache-action@v8
         with:
@@ -44,7 +47,11 @@ jobs:
           registry: ${{ env.CACHE_REGISTRY }}
           image_name: ${{ env.CACHE_REPO }}
           image_tag: ${{ env.TAG }}
-          build_extra_args: '--build-arg=NPM_TOKEN=${{ secrets.GITHUB_TOKEN }}'
+          build_extra_args: '--secret id=NPM_TOKEN,src=${{ runner.temp }}/npm_token'
+      - name: Clean up NPM token file
+        if: always()
+        run: |
+          rm -f ${{ runner.temp }}/npm_token
       - name: Retag from cache and push
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
