@@ -46,7 +46,7 @@ jobs:
           password: ${{ env.BOT_TOKEN }}
       - name: Prepare NPM token for Docker build
         run: |
-          echo "${{ secrets.BOT_TOKEN }}" > /tmp/npm_token
+          echo "${{ env.BOT_TOKEN }}" > /tmp/npm_token
       - name: CI tests, image build and push tag to cache for main or branch
         uses: docker/build-push-action@v6
         with:
