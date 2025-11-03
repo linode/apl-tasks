@@ -48,7 +48,7 @@ jobs:
         run: |
           echo "${{ env.GITHUB_TOKEN }}" > /tmp/npm_token
       - name: CI tests, image build and push tag to cache for main or branch
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
