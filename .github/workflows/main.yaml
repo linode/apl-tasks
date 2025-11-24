@@ -35,7 +35,7 @@ jobs:
           echo "Creating tag: $tag"
           echo "TAG=$tag" >> $GITHUB_ENV
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: CI tests, image build and push tag to cache for main or branch
         uses: whoan/docker-build-with-cache-action@v8
         with:
