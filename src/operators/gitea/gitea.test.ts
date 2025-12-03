@@ -60,7 +60,7 @@ describe('giteaOperator', () => {
     const existingOrgantizations: Organization[] = [{ name: 'team-demo' }, { name: 'team-demo2' }]
     const organizationName = 'team-demo3'
     const prefixedOrgName = `team-demo3`
-    const mockedResponse = { body: { id: 3, fullName: prefixedOrgName, repoAdminChangeTeamAccess: true, username: prefixedOrgName }}
+    const mockedResponse = { id: 3, fullName: prefixedOrgName, repoAdminChangeTeamAccess: true, username: prefixedOrgName }
     const expectedResult = { id: 3, fullName: prefixedOrgName, repoAdminChangeTeamAccess: true, username: prefixedOrgName }
 
     jest.spyOn(organizationApi, 'orgCreate').mockResolvedValue(mockedResponse)
@@ -73,7 +73,7 @@ describe('giteaOperator', () => {
   it('should create service account for organization if it doesnt exist', async () => {
     const existingOrgantizations: Organization[] = [{ name: 'team-demo' }, { name: 'team-demo2' }, { name: 'team-demo3'}]
     const organizationName = 'team-demo3'
-    const mockedListUsersResponse = { body: [{ login: 'organization-team-demo' }, { login: 'organization-team-demo2' }]}
+    const mockedListUsersResponse = [{ login: 'organization-team-demo' }, { login: 'organization-team-demo2' }]
     const mockedCreateUserResponse: User = { id: 3, email: 'organization-team-demo3@test.com', loginName: organizationName, fullName: organizationName, restricted: false }
 
     jest.spyOn(adminApi, 'adminSearchUsers').mockResolvedValue(mockedListUsersResponse)
@@ -87,7 +87,7 @@ describe('giteaOperator', () => {
 
   it('should recreate a service account secret if it does not exists anymore and update the service account', async () => {
     const existingOrgantizations: Organization[] = [{ name: 'team-demo3'}]
-    const mockedListUsersResponse = { body: [{ id: 1, login: 'organization-team-demo' }, { id: 2, login: 'organization-team-demo2' }, { id: 3, login: 'organization-team-demo3', loginName: 'organization-team-demo3' }]}
+    const mockedListUsersResponse = [{ id: 1, login: 'organization-team-demo' }, { id: 2, login: 'organization-team-demo2' }, { id: 3, login: 'organization-team-demo3', loginName: 'organization-team-demo3' }]
     const mockEditUserResponse1: User = { id: 1, login: 'organization-team-demo1', loginName: 'organization-team-demo1' }
     const mockEditUserResponse2: User = { id: 2, login: 'organization-team-demo2', loginName: 'organization-team-demo2' }
     const mockEditUserResponse3: User = { id: 3, login: 'organization-team-demo3', loginName: 'organization-team-demo3' }
@@ -107,15 +107,15 @@ describe('giteaOperator', () => {
     jest.spyOn(giteaOperator, 'addServiceAccountToOrganizations').mockImplementation(jest.fn())
 
     await giteaOperator.createServiceAccounts(adminApi, existingOrgantizations, organizationApi)
-    expect(adminApi.adminEditUser).toHaveBeenCalledWith('organization-team-demo3', { loginName: 'organization-team-demo3', password: expect.any(String) })
+    expect(adminApi.adminEditUser).toHaveBeenCalledWith({ username: 'organization-team-demo3', body: { loginName: 'organization-team-demo3', password: expect.any(String), sourceId: 0 }})
     expect(setServiceAccountSecret).toHaveBeenCalled()
   })
 
   it('should add service accounts to organizations', async () => {
     const existingOrgantizations: Organization[] = [{ name: 'team-demo' }, { name: 'team-demo2' }, { name: 'team-demo3'}]
     const loginName = 'organization-team-demo'
-    const mockedListTeamsResponse = { body: [{ name: 'Owners', id: 1 }, { name: 'team-demo' }, { name: 'team-demo2' }, { name: 'team-demo3' }]}
-    const mockedListUsersResponse = { body: [{ login: 'test-user' }, { login: 'test-user-2' }]}
+    const mockedListTeamsResponse = [{ name: 'Owners', id: 1 }, { name: 'team-demo' }, { name: 'team-demo2' }, { name: 'team-demo3' }]
+    const mockedListUsersResponse = [{ login: 'test-user' }, { login: 'test-user-2' }]
 
     jest.spyOn(organizationApi, 'orgListTeams').mockResolvedValueOnce(mockedListTeamsResponse)
     jest.spyOn(organizationApi, 'orgListTeamMembers').mockResolvedValueOnce(mockedListUsersResponse)
@@ -123,13 +123,13 @@ describe('giteaOperator', () => {
 
     await giteaOperator.addServiceAccountToOrganizations(organizationApi, loginName, existingOrgantizations)
 
-    expect(organizationApi.orgAddTeamMember).toHaveBeenCalledWith(1, 'organization-team-demo')
+    expect(organizationApi.orgAddTeamMember).toHaveBeenCalledWith({ id: 1, username: 'organization-team-demo' })
   })
 
   it('should create a webhook inside a repo of an organization', async () => {
     const teamId = 'team-demo'
     const buildWorkspace: { buildName: string; repoUrl: string } = { buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
-    repositoryApi.repoListHooks.mockResolvedValue({ body: []})
+    repositoryApi.repoListHooks.mockResolvedValue([])
     repositoryApi.repoCreateHook.mockResolvedValue({})
     const response = await giteaOperator.createBuildWebHook(repositoryApi, teamId, buildWorkspace)
 
@@ -150,11 +150,11 @@ describe('giteaOperator', () => {
       },
     }
 
-    repositoryApi.repoListHooks.mockResolvedValue({ body: [ {id: 1}]})
+    repositoryApi.repoListHooks.mockResolvedValue([{ id: 1 }])
     repositoryApi.repoEditHook.mockResolvedValue({})
     await giteaOperator.updateBuildWebHook(repositoryApi, teamId, buildWorkspace)
 
-    expect(repositoryApi.repoEditHook).toHaveBeenCalledWith(teamId, repoName, 1, editHookOption)
+    expect(repositoryApi.repoEditHook).toHaveBeenCalledWith({ owner: teamId, repo: repoName, id: 1, body: editHookOption})
   })
 
   it('should delete a webhook inside a repo of an organization', async () => {
@@ -162,11 +162,11 @@ describe('giteaOperator', () => {
     const buildWorkspace: { buildName: string; repoUrl: string } = { buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
     const repoName = getRepoNameFromUrl(buildWorkspace.repoUrl)!
 
-    repositoryApi.repoListHooks.mockResolvedValue({ body: [ {id: 1}]})
+    repositoryApi.repoListHooks.mockResolvedValue([{ id: 1 }])
     repositoryApi.repoDeleteHook.mockResolvedValue({})
     await giteaOperator.deleteBuildWebHook(repositoryApi, teamId, buildWorkspace)
 
-    expect(repositoryApi.repoDeleteHook).toHaveBeenCalledWith(teamId, repoName, 1)
+    expect(repositoryApi.repoDeleteHook).toHaveBeenCalledWith({ owner: teamId, repo: repoName, id: 1 })
   })
 
   it('should create a valid group mapping string with all the teams', () => {
