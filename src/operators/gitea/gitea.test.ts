@@ -13,7 +13,7 @@ jest.mock('@kubernetes/client-node', () => ({
   },
 }))
 
-import { EditHookOption, Organization, User } from '@linode/gitea-client-node/'
+import { EditHookOption, Organization, User } from '@linode/gitea-client-fetch/'
 import * as giteaUtils from '../../gitea-utils'
 import { getRepoNameFromUrl, setServiceAccountSecret } from '../../gitea-utils'
 import * as giteaOperator from './gitea'
@@ -141,7 +141,6 @@ describe('giteaOperator', () => {
     const buildWorkspace: { buildName: string; repoUrl: string } = { buildName: 'demo', repoUrl: 'https://gitea.test.net/team-demo/blue'}
     const repoName = getRepoNameFromUrl(buildWorkspace.repoUrl)!
     const editHookOption: EditHookOption = {
-      ...new EditHookOption(),
       active: true,
       events: ['push'],
       config: {
