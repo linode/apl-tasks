@@ -1,5 +1,4 @@
 import { V1Secret } from '@kubernetes/client-node'
-import { RepositoryApi } from '@linode/gitea-client-node'
 import { k8s } from './k8s'
 
 export async function setServiceAccountSecret(
@@ -59,14 +58,4 @@ export async function setServiceAccountSecret(
 export function getRepoNameFromUrl(url: string): string | null {
   const parts = url.split('/')
   return parts.length ? parts.pop() || null : null
-}
-
-export async function getRepositoryWebHooks(repoApi: RepositoryApi, team: string, repoName: string) {
-  try {
-    const response = await repoApi.repoListHooks(team, repoName)
-    return response.body || []
-  } catch (error) {
-    console.debug(`Failed to fetch webhooks for ${repoName} in ${team}: ${error.message}`)
-    return []
-  }
 }
