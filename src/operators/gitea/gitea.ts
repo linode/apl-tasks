@@ -3,23 +3,23 @@ import { CoreV1Api, Exec, KubeConfig, KubernetesObject, V1Status } from '@kubern
 import Operator, { ResourceEvent, ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   AdminApi,
+  Configuration,
   CreateHookOption,
-  CreateOrgOption,
+  CreateHookOptionTypeEnum,
   CreateRepoOption,
   CreateTeamOption,
-  CreateUserOption,
+  CreateTeamOptionPermissionEnum,
   EditHookOption,
   EditRepoOption,
-  EditUserOption,
-  HttpError,
   MiscellaneousApi,
   Organization,
   OrganizationApi,
   Repository,
   RepositoryApi,
+  ResponseError,
   Team,
   User,
-} from '@linode/gitea-client-node'
+} from '@linode/gitea-client-fetch'
 import retry from 'async-retry'
 import { generate as generatePassword } from 'generate-password'
 import { isEmpty, keys } from 'lodash'
@@ -114,21 +114,20 @@ let lastState: DependencyState = {
 const errors: string[] = []
 
 const readOnlyTeam: CreateTeamOption = {
-  ...new CreateTeamOption(),
   canCreateOrgRepo: false,
   name: teamNameViewer,
   includesAllRepositories: false,
-  permission: CreateTeamOption.PermissionEnum.Read,
+  permission: CreateTeamOptionPermissionEnum.Read,
   units: ['repo.code'],
 }
 
 const editorTeam: CreateTeamOption = {
   ...readOnlyTeam,
   includesAllRepositories: false,
-  permission: CreateTeamOption.PermissionEnum.Write,
+  permission: CreateTeamOptionPermissionEnum.Write,
 }
 
-const adminTeam: CreateTeamOption = { ...editorTeam, permission: CreateTeamOption.PermissionEnum.Admin }
+const adminTeam: CreateTeamOption = { ...editorTeam, permission: CreateTeamOptionPermissionEnum.Admin }
 
 const kc = new KubeConfig()
 // loadFromCluster when deploying on cluster
@@ -137,6 +136,18 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
   kc.loadFromCluster()
 } else {
   kc.loadFromDefault()
+}
+
+function isUnprocessableError(error): boolean {
+  return error instanceof ResponseError && error.response.status === 422
+}
+
+function isNotFoundError(error): boolean {
+  return error instanceof ResponseError && error.response.status === 404
+}
+
+function isNotModifiedError(error) {
+  return error instanceof ResponseError && error.response.status === 304
 }
 
 // Callbacks
@@ -188,7 +199,12 @@ async function triggerTemplateCallback(resourceEvent: ResourceEvent): Promise<vo
     retry(
       async () => {
         if (isEmpty(giteaPassword)) throw new Error('Setup missing details')
-        const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+        const apiConfig = new Configuration({
+          basePath: `${formattedGiteaUrl}/api/v1`,
+          username,
+          password: giteaPassword,
+        })
+        const repoApi = new RepositoryApi(apiConfig)
 
         // Collect all data to create or edit a webhook
         const resourceTemplate = (object as PipelineKubernetesObject).spec.resourcetemplates.find(
@@ -244,7 +260,7 @@ export const addServiceAccountToOrganizations = async (
   let teams: Team[]
   try {
     console.info(`Getting teams from organization: ${organization?.name}`)
-    teams = (await organizationApi.orgListTeams(organization!.name!)).body
+    teams = await organizationApi.orgListTeams({ org: organization!.name! })
   } catch (e) {
     errors.push(`Error getting teams from organization ${organization?.name}: ${e}`)
     return
@@ -253,7 +269,7 @@ export const addServiceAccountToOrganizations = async (
   let members: User[]
   try {
     console.info(`Getting members from Owners team in ${organization?.name}`)
-    members = (await organizationApi.orgListTeamMembers(ownerTeam!.id!)).body
+    members = await organizationApi.orgListTeamMembers({ id: ownerTeam!.id! })
   } catch (e) {
     errors.push(`Error getting members from Owners team in ${organization?.name}: ${e}`)
     return
@@ -263,7 +279,7 @@ export const addServiceAccountToOrganizations = async (
   if (exists) return
   try {
     console.info(`Adding user to organization Owners team in ${organization?.name}`)
-    await organizationApi.orgAddTeamMember(ownerTeam!.id!, serviceAcountName)
+    await organizationApi.orgAddTeamMember({ id: ownerTeam!.id!, username: serviceAcountName})
   } catch (e) {
     errors.push(`Error adding user to organization Owners team in ${organization?.name}: ${e}`)
   }
@@ -272,13 +288,13 @@ export const addServiceAccountToOrganizations = async (
 // Exported for testing purposes
 export const editServiceAccount = async (adminApi: AdminApi, loginName: string, password: string) => {
   const editUserOption = {
-    ...new EditUserOption(),
+    sourceId: 0,
     loginName,
     password,
   }
   try {
     console.info(`Editing user: ${loginName} with new password`)
-    await adminApi.adminEditUser(loginName, editUserOption)
+    await adminApi.adminEditUser({ username: loginName, body: editUserOption })
   } catch (e) {
     errors.push(`Error editing user ${loginName}: ${e}`)
   }
@@ -293,7 +309,7 @@ export const createServiceAccounts = async (
   let users: User[]
   try {
     console.info('Getting all users')
-    users = (await adminApi.adminSearchUsers()).body
+    users = await adminApi.adminSearchUsers()
   } catch (e) {
     errors.push(`Error getting all users: ${e}`)
     return
@@ -317,7 +333,6 @@ export const createServiceAccounts = async (
       if (!exists) {
         const organizationEmail = `${organization.name}@mail.com`
         const createUserOption = {
-          ...new CreateUserOption(),
           email: organizationEmail,
           password,
           username: serviceAccount,
@@ -329,7 +344,7 @@ export const createServiceAccounts = async (
         }
         try {
           console.info(`Creating user: ${serviceAccount}`)
-          await adminApi.adminCreateUser(createUserOption)
+          await adminApi.adminCreateUser({ body: createUserOption })
         } catch (e) {
           errors.push(`Error creating user ${serviceAccount}: ${e}`)
         }
@@ -400,9 +415,9 @@ export default class MyOperator extends Operator {
       async () => {
         try {
           // Use the Gitea client library to check if the API is available
-          const miscApi = new MiscellaneousApi(`${formattedGiteaUrl}/api/v1`)
+          const miscApi = new MiscellaneousApi(new Configuration({ basePath: `${formattedGiteaUrl}/api/v1` }))
           const versionResult = await miscApi.getVersion()
-          console.info(`Gitea API is available, version: ${versionResult.body.version}`)
+          console.info(`Gitea API is available, version: ${versionResult.version}`)
         } catch (error) {
           const errorMessage = getSanitizedErrorMessage(error)
           console.debug(`Gitea not ready yet: ${errorMessage}`)
@@ -497,7 +512,6 @@ export async function upsertOrganization(
 ): Promise<Organization> {
   const prefixedOrgName = !organizationName.includes('otomi') ? `team-${organizationName}` : organizationName
   const orgOption = {
-    ...new CreateOrgOption(),
     username: prefixedOrgName,
     fullName: prefixedOrgName,
     repoAdminChangeTeamAccess: true,
@@ -506,10 +520,9 @@ export async function upsertOrganization(
   if (isEmpty(existingOrg)) {
     try {
       console.info(`Creating organization "${orgOption.fullName}"`)
-      const { body } = await orgApi.orgCreate(orgOption)
-      return body
+      return await orgApi.orgCreate({ organization: orgOption })
     } catch (e) {
-      if (e?.statusCode !== 422) {
+      if (!isUnprocessableError(e)) {
         errors.push(`Error creating organization "${orgOption.fullName}": ${e}`)
       }
       throw e
@@ -518,10 +531,9 @@ export async function upsertOrganization(
 
   try {
     console.info(`Updating organization "${orgOption.fullName}"`)
-    const { body } = await orgApi.orgEdit(prefixedOrgName, orgOption)
-    return body
+    return await orgApi.orgEdit({ org: prefixedOrgName, body: orgOption})
   } catch (e) {
-    if (e?.statusCode !== 422) {
+    if (!isUnprocessableError(e)) {
       errors.push(`Error updating organization "${orgOption.fullName}": ${e}`)
     }
     throw e
@@ -538,7 +550,7 @@ async function upsertTeam(
   let existingTeams: Team[]
   try {
     console.info(`Getting all teams in organization "${organizationName}"`)
-    existingTeams = (await orgApi.orgListTeams(organizationName)).body
+    existingTeams = await orgApi.orgListTeams({ org: organizationName })
   } catch (e) {
     getErrors.push(`Error getting all teams in organization "${organizationName}": ${e}`)
     console.error('Errors when getting teams.', getErrors)
@@ -548,18 +560,18 @@ async function upsertTeam(
   if (existingTeam === undefined) {
     try {
       console.info(`Creating team "${teamOption.name}" in organization "${organizationName}"`)
-      await orgApi.orgCreateTeam(organizationName, teamOption)
+      await orgApi.orgCreateTeam({ org: organizationName, body: teamOption })
     } catch (e) {
-      if (e?.statusCode !== 422) {
+      if (!isUnprocessableError(e)) {
         errors.push(`Error creating team "${teamOption.name}" in organization "${organizationName}": ${e}`)
       }
     }
   } else {
     try {
       console.info(`Updating team "${teamOption.name}" in organization "${organizationName}"`)
-      await orgApi.orgEditTeam(existingTeam.id!, teamOption)
+      await orgApi.orgEditTeam({ id: existingTeam.id!, body: teamOption })
     } catch (e) {
-      if (e?.statusCode !== 422) {
+      if (!isUnprocessableError(e)) {
         errors.push(`Error updating team "${teamOption.name}" in organization "${organizationName}": ${e}`)
       }
     }
@@ -579,18 +591,18 @@ async function upsertRepo(
   if (isEmpty(existingRepo)) {
     // organization repo create
     console.info(`Creating repo "${repoName}" in organization "${orgName}"`)
-    await orgApi.createOrgRepo(orgName, repoOption as CreateRepoOption)
+    await orgApi.createOrgRepo({ org: orgName, body: repoOption as CreateRepoOption })
     addTeam = true
   } else {
     // repo update
     console.info(`Updating repo "${repoName}" in organization "${orgName}"`)
-    await repoApi.repoEdit(orgName, repoName, repoOption as EditRepoOption)
+    await repoApi.repoEdit({ owner: orgName, repo: repoName, body: repoOption as EditRepoOption })
     if (teamName) {
       console.info(`Checking if repo "${repoName}" is assigned to team "${teamName}"`)
       try {
-        await repoApi.repoCheckTeam(orgName, repoName, teamName)
+        await repoApi.repoCheckTeam({ owner: orgName, repo: repoName, team: teamName })
       } catch (error) {
-        if (error instanceof HttpError && error.statusCode === 404) {
+        if (isNotFoundError(error)) {
           addTeam = true
         } else {
           throw error
@@ -600,7 +612,7 @@ async function upsertRepo(
   }
   if (addTeam && teamName) {
     console.info(`Adding repo "${repoName}" to team "${teamName}"`)
-    await repoApi.repoAddTeam(orgName, repoName, teamName)
+    await repoApi.repoAddTeam({ owner: orgName, repo: repoName, team: teamName })
   }
 }
 
@@ -632,9 +644,9 @@ async function hasSpecificHook(repoApi: RepositoryApi, hookToFind: string): Prom
   let hooks: any[]
   try {
     console.debug(`Getting hooks in repo "otomi/values"`)
-    hooks = (await repoApi.repoListHooks(orgName, 'values')).body
+    hooks = await repoApi.repoListHooks({ owner: orgName, repo: 'values' })
   } catch (e) {
-    if (e?.statusCode !== 400) {
+    if (isNotFoundError(e)) {
       errors.push(`Error getting hooks in repo "otomi/values": ${e}`)
     }
     console.debug(`No hooks were found in repo "otomi/values"`)
@@ -664,18 +676,22 @@ async function addTektonHook(repoApi: RepositoryApi): Promise<void> {
     console.debug('Tekton Hook needs to be created')
     try {
       console.debug(`Adding hook "tekton" to repo otomi/values`)
-      await repoApi.repoCreateHook(orgName, 'values', {
-        type: CreateHookOption.TypeEnum.Gitea,
-        active: true,
-        config: {
-          url: clusterIP,
-          http_method: 'post',
-          content_type: 'json',
+      await repoApi.repoCreateHook({
+        owner: orgName,
+        repo: 'values',
+        body: {
+          type: CreateHookOptionTypeEnum.Gitea,
+          active: true,
+          config: {
+            url: clusterIP,
+            http_method: 'post',
+            content_type: 'json',
+          },
+          events: ['push'],
         },
-        events: ['push'],
-      } as CreateHookOption)
+      })
     } catch (e) {
-      if (e?.statusCode !== 304) {
+      if (!isNotModifiedError(e)) {
         errors.push(`Error adding hook "tekton" to repo otomi/values: ${e}`)
       }
     }
@@ -699,9 +715,9 @@ async function createReposAndAddToTeam(
   if (!existingValuesRepo) {
     try {
       console.info(`Adding repo "${otomiValuesRepoName}" to team "${teamNameViewer}"`)
-      await repoApi.repoAddTeam(orgName, otomiValuesRepoName, teamNameViewer)
+      await repoApi.repoAddTeam({ owner: orgName, repo: otomiValuesRepoName, team: teamNameViewer })
     } catch (e) {
-      if (e?.statusCode !== 422) {
+      if (!isUnprocessableError(e)) {
         errors.push(`Error adding repo ${otomiValuesRepoName} to team ${teamNameViewer}: ${e}`)
       }
     }
@@ -710,9 +726,9 @@ async function createReposAndAddToTeam(
     // add repo: otomi/charts to the team: otomi-viewer
     try {
       console.info(`Adding repo "${otomiChartsRepoName}" to team "${teamNameViewer}"`)
-      await repoApi.repoAddTeam(orgName, otomiChartsRepoName, teamNameViewer)
+      await repoApi.repoAddTeam({ owner: orgName, repo: otomiChartsRepoName, team: teamNameViewer })
     } catch (e) {
-      if (e?.statusCode !== 422) {
+      if (!isUnprocessableError(e)) {
         errors.push(`Error adding repo ${otomiChartsRepoName} to team ${teamNameViewer}: ${e}`)
       }
     }
@@ -729,7 +745,7 @@ export async function createBuildWebHook(
     const repoName = getRepoNameFromUrl(buildWorkspace.repoUrl)!
 
     // Check to see if a webhook already exists with the same url and push event
-    const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
+    const webhooks = await repoApi.repoListHooks({ owner: teamName, repo: repoName})
     let webhookExists
     if (!isEmpty(webhooks)) {
       webhookExists = webhooks.find((hook) => {
@@ -743,16 +759,15 @@ export async function createBuildWebHook(
 
     if (!isEmpty(webhookExists)) return
     const createHookOption: CreateHookOption = {
-      ...new CreateHookOption(),
       active: true,
-      type: CreateHookOption.TypeEnum.Gitea,
+      type: CreateHookOptionTypeEnum.Gitea,
       events: ['push'],
       config: {
         content_type: 'json',
         url: `http://el-gitea-webhook-${buildWorkspace.buildName}.${teamName}.svc.cluster.local:8080`,
       },
     }
-    await repoApi.repoCreateHook(teamName, repoName, createHookOption)
+    await repoApi.repoCreateHook({ owner: teamName, repo: repoName, body: createHookOption })
     console.info(`Gitea webhook created for repository: ${repoName} in ${teamName}`)
   } catch (error) {
     throw new Error(`Error creating Gitea webhook`)
@@ -768,7 +783,7 @@ export async function updateBuildWebHook(
   try {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const repoName = getRepoNameFromUrl(buildWorkspace.repoUrl)!
-    const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
+    const webhooks = await repoApi.repoListHooks({ owner: teamName, repo: repoName })
 
     if (isEmpty(webhooks)) {
       console.debug(`No webhooks found for ${repoName} in ${teamName}`)
@@ -777,7 +792,6 @@ export async function updateBuildWebHook(
     }
 
     const editHookOption: EditHookOption = {
-      ...new EditHookOption(),
       active: true,
       events: ['push'],
       config: {
@@ -787,7 +801,7 @@ export async function updateBuildWebHook(
     }
     await Promise.all(
       webhooks.map(async (webhook) => {
-        await repoApi.repoEditHook(teamName, repoName, webhook.id!, editHookOption)
+        await repoApi.repoEditHook({ owner: teamName, repo: repoName, id: webhook.id!, body: editHookOption })
       }),
     )
     console.info(`Gitea webhook updated for repository: ${repoName} in ${teamName}`)
@@ -805,13 +819,13 @@ export async function deleteBuildWebHook(
   try {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const repoName = buildWorkspace.repoUrl.split('/').pop()!
-    const webhooks = (await repoApi.repoListHooks(teamName, repoName)).body
+    const webhooks = await repoApi.repoListHooks({ owner: teamName, repo: repoName })
 
     if (isEmpty(webhooks)) throw new Error(`No webhooks found for ${repoName} in ${teamName}`)
 
     await Promise.all(
       webhooks.map(async (webhook) => {
-        await repoApi.repoDeleteHook(teamName, repoName, webhook.id!)
+        await repoApi.repoDeleteHook({ owner: teamName, repo: repoName, id: webhook.id! })
       }),
     )
     console.info(`Gitea webhook deleted for repository: ${repoName} in ${teamName}`)
@@ -824,15 +838,16 @@ async function setupGitea() {
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const adminApi = new AdminApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  const apiConfig = new Configuration({ basePath: `${formattedGiteaUrl}/api/v1`, username, password: giteaPassword })
+  const adminApi = new AdminApi(apiConfig)
   const teamIds = Object.keys(teamConfig)
   const orgNames = [orgName, ...teamIds]
-  const orgApi = new OrganizationApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
-  const repoApi = new RepositoryApi(username, giteaPassword, `${formattedGiteaUrl}/api/v1`)
+  const orgApi = new OrganizationApi(apiConfig)
+  const repoApi = new RepositoryApi(apiConfig)
   let existingOrganizations: Organization[]
   try {
     console.info('Getting all organizations')
-    existingOrganizations = (await orgApi.orgGetAll()).body
+    existingOrganizations = await orgApi.orgGetAll()
   } catch (e) {
     errors.push(`Error getting all organizations: ${e}`)
     return
@@ -842,13 +857,12 @@ async function setupGitea() {
   let existingRepos: Repository[]
   try {
     console.info(`Getting all repos in organization "${orgName}"`)
-    existingRepos = (await orgApi.orgListRepos(orgName)).body
+    existingRepos = await orgApi.orgListRepos({ org: orgName })
   } catch (e) {
     errors.push(`Error getting all repos in organization "${orgName}": ${e}`)
     return
   }
   const repoOption: CreateRepoOption = {
-    ...new CreateRepoOption(),
     autoInit: false,
     name: otomiValuesRepoName,
     _private: true,
