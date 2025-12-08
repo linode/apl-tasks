@@ -22,7 +22,7 @@ env:
   BOT_EMAIL: ${{ vars.BOT_EMAIL }}
   BOT_USERNAME: ${{ vars.BOT_USERNAME }}
   BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  NPM_TOKEN: ${{ secrets.BOT_TOKEN }}
 
 jobs:
   build-test-push-release:
