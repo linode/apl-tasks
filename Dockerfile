@@ -1,7 +1,5 @@
 # --------------- Dev stage for developers to override sources
-FROM node:22.13.1-alpine as dev
-ARG NPM_TOKEN
-RUN test -n "$NPM_TOKEN"
+FROM node:22.21.1-alpine AS dev
 
 RUN apk --no-cache add make gcc g++ python3 git jq
 
@@ -13,12 +11,13 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN echo "@linode:registry=https://npm.pkg.github.com/linode" > .npmrc
-RUN echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc
+RUN --mount=type=secret,id=NPM_TOKEN \
+  echo "//npm.pkg.github.com/:_authToken=$(cat /run/secrets/NPM_TOKEN)" >> .npmrc
 
 RUN npm ci
 
 # --------------- ci stage for CI runner
-FROM dev as ci
+FROM dev AS ci
 
 COPY . eslint.config.mjs ./
 
@@ -30,11 +29,11 @@ RUN if [ "$SKIP_TESTS" = 'false' ]; then npm run lint && npm run test; fi
 RUN npm run build
 
 # --------------- Cleanup
-FROM dev as clean
+FROM dev AS clean
 # below command removes the packages specified in devDependencies and set NODE_ENV to production
 RUN npm prune --production
 # --------------- Production stage
-FROM node:22.13.1-alpine AS prod
+FROM node:22.21.1-alpine AS prod
 
 COPY --from=dev /usr/local/bin/node /usr/bin/
 COPY --from=dev /usr/lib/libgcc* /usr/lib/
