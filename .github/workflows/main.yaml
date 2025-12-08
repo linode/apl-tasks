@@ -22,7 +22,6 @@ env:
   BOT_EMAIL: ${{ vars.BOT_EMAIL }}
   BOT_USERNAME: ${{ vars.BOT_USERNAME }}
   BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-  NPM_TOKEN: ${{ secrets.BOT_TOKEN }}
 
 jobs:
   build-test-push-release:
@@ -45,7 +44,7 @@ jobs:
           registry: ${{ env.CACHE_REGISTRY }}
           image_name: ${{ env.CACHE_REPO }}
           image_tag: ${{ env.TAG }}
-          build_extra_args: '--secret id=NPM_TOKEN,env=NPM_TOKEN'
+          build_extra_args: '--secret id=NPM_TOKEN,env=BOT_TOKEN'
       - name: Retag from cache and push
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
