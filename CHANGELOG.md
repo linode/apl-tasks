@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.16.0](https://github.com/linode/apl-tasks/compare/v3.15.0...v3.16.0) (2026-02-02)
+
+
+### Bug Fixes
+
+* upgrade docker node version ([#307](https://github.com/linode/apl-tasks/issues/307)) ([e9ea46b](https://github.com/linode/apl-tasks/commit/e9ea46b16b6b2154d174f51418e3815fb70461c2))
+
+### Chore
+
+* upgrade docker node version ([#307](https://github.com/linode/apl-tasks/issues/307)) ([e9ea46b](https://github.com/linode/apl-tasks/commit/e9ea46b16b6b2154d174f51418e3815fb70461c2))
+
 ## [3.15.0](https://github.com/linode/apl-tasks/compare/v3.14.0...v3.15.0) (2025-10-21)
 
 ### Chore
