@@ -643,7 +643,7 @@ export async function internalIDP(api: KeycloakApi) {
         // both platform-admin and all-teams-admin role will get access to manage users
         // so the platform-admin can login to the 'otomi' realm just like all-teams-admin and see the same
         if (groupName === 'all-teams-admin') accessRoles.push(userManagementRole)
-        if (groupName === 'platform-admin') accessRoles.push(realmManagementRole)
+        if (groupName === 'platform-admin') accessRoles.push(realmManagementRole, userManagementRole)
         console.info(
           `Creating access roles [${accessRoles.map((r) => r.name).join(',')}] mapping for group ${groupName}`,
         )
