@@ -26,6 +26,7 @@ import {
   createClient,
   createClientAudClaimMapper,
   createClientEmailClaimMapper,
+  createClientNameClaimMapper,
   createClientNicknameClaimMapper,
   createClientScopes,
   createClientSubClaimMapper,
@@ -339,7 +340,7 @@ async function createKeycloakConnection(): Promise<KeycloakConnection> {
   try {
     // Use master realm for admin authentication
     const tokenUrl = `${basePath}/realms/master/protocol/openid-connect/token`
-    
+
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -357,8 +358,8 @@ async function createKeycloakConnection(): Promise<KeycloakConnection> {
       throw new Error(`Token request failed: ${response.status} ${response.statusText}`)
     }
 
-    token = await response.json() as TokenEndpointResponse
-    
+    token = (await response.json()) as TokenEndpointResponse
+
     return { token, basePath } as KeycloakConnection
   } catch (error) {
     throw extractError('creating Keycloak connection', error)
@@ -490,10 +491,23 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     console.info('Creating client sub claim mapper')
     await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
   }
+  if (!allClientClaimMappers.some((el) => el.name === 'name')) {
+    const nameMapper = createClientNameClaimMapper()
+    console.info('Creating client name claim mapper')
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(
+      keycloakRealm,
+      client.id!,
+      nameMapper,
+    )
+  }
   if (!allClientClaimMappers.some((claim) => claim.name === 'nickname')) {
     const nicknameMapper = createClientNicknameClaimMapper()
     console.info('Creating client nickname claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, nicknameMapper)
+    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(
+      keycloakRealm,
+      client.id!,
+      nicknameMapper,
+    )
   }
 
   // Needed for oauth2-proxy OIDC configuration
@@ -512,12 +526,28 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
 export async function manageUserProfile(api: KeycloakApi) {
   const currentUserProfile = (await api.users.adminRealmsRealmUsersProfileGet(keycloakRealm)).body
 
-  // set unmanaged attribute policy for use of nickname attribute and mapper
-  if (currentUserProfile.unmanagedAttributePolicy !== UnmanagedAttributePolicy.AdminEdit) {
+  const requiredAttributes = ['username', 'email', 'firstName', 'lastName']
+  const existingNames = (currentUserProfile.attributes || []).map((a: any) => a.name)
+  const missingAttributes = requiredAttributes.filter((name) => !existingNames.includes(name))
+
+  if (
+    currentUserProfile.unmanagedAttributePolicy !== UnmanagedAttributePolicy.AdminEdit ||
+    missingAttributes.length > 0
+  ) {
+    const attributes = currentUserProfile.attributes || []
+    for (const name of missingAttributes) {
+      attributes.push({
+        name,
+        displayName: `\${${name}}`,
+        permissions: { view: new Set(['admin', 'user']), edit: new Set(['admin', 'user']) },
+      })
+    }
     await api.users.adminRealmsRealmUsersProfilePut(keycloakRealm, {
+      ...currentUserProfile,
+      attributes,
       unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
     })
-    console.info('Setting unmanaged attribute policy to AdminEdit')
+    console.info(`User profile updated: ensured attributes [${requiredAttributes.join(', ')}] and AdminEdit policy`)
   }
 }
 

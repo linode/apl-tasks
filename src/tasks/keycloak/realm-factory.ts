@@ -16,6 +16,7 @@ import {
   adminUserCfgTpl,
   clientAudClaimMapper,
   clientEmailClaimMapper,
+  clientNameClaimMapper,
   clientNicknameClaimMapper,
   clientScopeCfgTpl,
   clientSubClaimMapper,
@@ -122,6 +123,10 @@ export function createClientSubClaimMapper(): ProtocolMapperRepresentation {
   return subClaimMapper
 }
 
+export function createClientNameClaimMapper(): ProtocolMapperRepresentation {
+  const nameClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientNameClaimMapper())
+  return nameClaimMapper
+}
 
 export function createClientNicknameClaimMapper(): ProtocolMapperRepresentation {
   const nicknameClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientNicknameClaimMapper())
