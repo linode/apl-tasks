@@ -112,7 +112,7 @@ const env = {
   REDIRECT_URIS: [] as string[],
   TEAM_IDS: [] as string[],
   WAIT_OPTIONS: {},
-  USERS: [],
+  USERS: [] as Record<string, any>[],
 }
 
 const kc = new k8s.KubeConfig()
@@ -186,6 +186,21 @@ async function runKeycloakUpdater() {
 }
 
 export default class MyOperator extends Operator {
+  private userUpdateTimer: ReturnType<typeof setTimeout> | null = null
+  private readonly USER_UPDATE_DEBOUNCE_MS = 5000
+
+  private debouncedUserUpdate(secretInitialized: boolean, configMapInitialized: boolean) {
+    if (this.userUpdateTimer) clearTimeout(this.userUpdateTimer)
+    this.userUpdateTimer = setTimeout(() => {
+      this.userUpdateTimer = null
+      if (secretInitialized && configMapInitialized) {
+        runKeycloakUpdater().catch((error) => {
+          console.error('Failed to run keycloak updater after user secret change:', error)
+        })
+      }
+    }, this.USER_UPDATE_DEBOUNCE_MS)
+  }
+
   protected async init() {
     let secretInitialized = false
     let configMapInitialized = false
@@ -211,7 +226,6 @@ export default class MyOperator extends Operator {
                 if (data!.IDP_CLIENT_ID) env.IDP_CLIENT_ID = Buffer.from(data!.IDP_CLIENT_ID, 'base64').toString()
                 if (data!.IDP_CLIENT_SECRET)
                   env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
-                env.USERS = JSON.parse(Buffer.from(data!.USERS, 'base64').toString())
                 configMapInitialized = true
                 if (secretInitialized) await runKeycloakUpdater()
                 break
@@ -280,6 +294,67 @@ export default class MyOperator extends Operator {
       console.info('Setting up configmap watcher done')
     } catch (error) {
       throw extractError('setting up configmap watcher', error)
+    }
+
+    // Watch user secrets in apl-users namespace
+    try {
+      console.info('Setting up apl-users secrets watcher')
+      const k8sCoreApi = kc.makeApiClient(k8s.CoreV1Api)
+      await this.watchResource(
+        '',
+        'v1',
+        'secrets',
+        async (e) => {
+          switch (e.type) {
+            case ResourceEventType.Added:
+            case ResourceEventType.Modified:
+            case ResourceEventType.Deleted: {
+              try {
+                // List all secrets in apl-users namespace and rebuild users array
+                const res: any = await k8sCoreApi.listNamespacedSecret({ namespace: 'apl-users' })
+                const users: any[] = []
+                for (const item of res.items || []) {
+                  if (item.type !== 'Opaque') continue
+                  if (!item.data?.email) continue
+
+                  const decoded: Record<string, string> = {}
+                  for (const [key, value] of Object.entries(item.data as Record<string, string>)) {
+                    decoded[key] = Buffer.from(value, 'base64').toString('utf-8')
+                  }
+
+                  const groups: string[] = []
+                  if (decoded.isPlatformAdmin === 'true') groups.push('platform-admin')
+                  if (decoded.isTeamAdmin === 'true') groups.push('team-admin')
+                  const teams = decoded.teams ? JSON.parse(decoded.teams) : []
+                  for (const team of teams) groups.push(`team-${team}`)
+
+                  users.push({
+                    email: decoded.email,
+                    firstName: decoded.firstName || '',
+                    lastName: decoded.lastName || '',
+                    initialPassword: decoded.initialPassword || '',
+                    groups,
+                  })
+                }
+
+                env.USERS = users
+                console.info(`Updated USERS from apl-users namespace: ${users.length} user(s)`)
+                this.debouncedUserUpdate(secretInitialized, configMapInitialized)
+                break
+              } catch (error) {
+                console.error('Failed to process apl-users secret event:', error)
+                break
+              }
+            }
+            default:
+              break
+          }
+        },
+        'apl-users',
+      )
+      console.info('Setting up apl-users secrets watcher done')
+    } catch (error) {
+      throw extractError('setting up apl-users secrets watcher', error)
     }
   }
 }
@@ -695,7 +770,7 @@ export async function IDPManager(api: KeycloakApi, isExternalIdp: boolean) {
   if (isExternalIdp) await externalIDP(api)
   else {
     await internalIDP(api)
-    await manageUsers(api, env.USERS as Record<string, any>[])
+    await manageUsers(api, env.USERS)
   }
 }
 
