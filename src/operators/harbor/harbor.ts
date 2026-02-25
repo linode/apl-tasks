@@ -1,6 +1,5 @@
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
-import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   Configurations,
   ConfigureApi,
@@ -28,6 +27,7 @@ import {
   HARBOR_BASE_URL,
   HARBOR_BASE_URL_PORT,
   HARBOR_OPERATOR_NAMESPACE,
+  HARBOR_SETUP_POLL_INTERVAL_SECONDS,
   HARBOR_SYSTEM_NAMESPACE,
   HARBOR_SYSTEM_ROBOTNAME,
 } from '../../validators'
@@ -85,6 +85,7 @@ const localEnv = cleanEnv({
   HARBOR_BASE_URL,
   HARBOR_BASE_URL_PORT,
   HARBOR_OPERATOR_NAMESPACE,
+  HARBOR_SETUP_POLL_INTERVAL_SECONDS,
   HARBOR_SYSTEM_NAMESPACE,
   HARBOR_SYSTEM_ROBOTNAME,
 })
@@ -130,10 +131,15 @@ const projectBuildPushSecretName = 'harbor-pushsecret-builds'
 const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const harborOperatorNamespace = localEnv.HARBOR_OPERATOR_NAMESPACE
+const harborSetupPollIntervalMs = localEnv.HARBOR_SETUP_POLL_INTERVAL_SECONDS * 1000
+const operatorSecretName = 'apl-harbor-operator-secret'
+const operatorConfigMapName = 'apl-harbor-operator-cm'
 let robotApi: RobotApi
 let configureApi: ConfigureApi
 let projectsApi: ProjectApi
 let memberApi: MemberApi
+let setupPollingInterval: NodeJS.Timeout | undefined
+let setupPollingInProgress = false
 
 const dockerConfigKey = '.dockerconfigjson'
 
@@ -152,71 +158,72 @@ function hasStateChanged(currentState: DependencyState, _lastState: DependencySt
   return Object.entries(currentState).some(([key, value]) => !value || value !== _lastState[key])
 }
 
-// Callbacks
-const secretsAndConfigmapsCallback = async (e: any) => {
-  const { object } = e
-  const { metadata, data } = object
+async function syncOperatorInputs(): Promise<void> {
+  try {
+    const secretRes = await k8sApi.readNamespacedSecret({
+      name: operatorSecretName,
+      namespace: harborOperatorNamespace,
+    })
+    const secretData = secretRes.data || {}
+    if (secretData.harborPassword) env.harborPassword = Buffer.from(secretData.harborPassword, 'base64').toString()
+    if (secretData.harborUser) env.harborUser = Buffer.from(secretData.harborUser, 'base64').toString()
+    if (secretData.oidcEndpoint) env.oidcEndpoint = Buffer.from(secretData.oidcEndpoint, 'base64').toString()
+    if (secretData.oidcClientId) env.oidcClientId = Buffer.from(secretData.oidcClientId, 'base64').toString()
+    if (secretData.oidcClientSecret)
+      env.oidcClientSecret = Buffer.from(secretData.oidcClientSecret, 'base64').toString()
+  } catch (error) {
+    console.debug(`Unable to read secret ${operatorSecretName} in namespace ${harborOperatorNamespace}`)
+  }
 
-  if (object.kind === 'Secret' && metadata.name === 'apl-harbor-operator-secret') {
-    env.harborPassword = Buffer.from(data.harborPassword, 'base64').toString()
-    env.harborUser = Buffer.from(data.harborUser, 'base64').toString()
-    env.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
-    env.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
-    env.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
-  } else if (object.kind === 'ConfigMap' && metadata.name === 'apl-harbor-operator-cm') {
-    env.harborBaseRepoUrl = data.harborBaseRepoUrl
-    env.oidcAutoOnboard = data.oidcAutoOnboard === 'true'
-    env.oidcUserClaim = data.oidcUserClaim
-    env.oidcGroupsClaim = data.oidcGroupsClaim
-    env.oidcName = data.oidcName
-    env.oidcScope = data.oidcScope
-    env.oidcVerifyCert = data.oidcVerifyCert === 'true'
-    env.teamNamespaces = JSON.parse(data.teamNamespaces)
-  } else return
+  try {
+    const configMapRes = await k8sApi.readNamespacedConfigMap({
+      name: operatorConfigMapName,
+      namespace: harborOperatorNamespace,
+    })
+    const configMapData = configMapRes.data || {}
+    if (configMapData.harborBaseRepoUrl) env.harborBaseRepoUrl = configMapData.harborBaseRepoUrl
+    if (configMapData.oidcAutoOnboard) env.oidcAutoOnboard = configMapData.oidcAutoOnboard === 'true'
+    if (configMapData.oidcUserClaim) env.oidcUserClaim = configMapData.oidcUserClaim
+    if (configMapData.oidcGroupsClaim) env.oidcGroupsClaim = configMapData.oidcGroupsClaim
+    if (configMapData.oidcName) env.oidcName = configMapData.oidcName
+    if (configMapData.oidcScope) env.oidcScope = configMapData.oidcScope
+    if (configMapData.oidcVerifyCert) env.oidcVerifyCert = configMapData.oidcVerifyCert === 'true'
+    if (configMapData.teamNamespaces) env.teamNamespaces = JSON.parse(configMapData.teamNamespaces)
+  } catch (error) {
+    console.debug(`Unable to read configmap ${operatorConfigMapName} in namespace ${harborOperatorNamespace}`)
+  }
+}
 
-  switch (e.type) {
-    case ResourceEventType.Added:
-    case ResourceEventType.Modified: {
-      try {
-        await runSetupHarbor()
-      } catch (error) {
-        console.debug(error)
-      }
-      break
-    }
-    default:
-      break
+async function pollAndRunSetup(): Promise<void> {
+  if (setupPollingInProgress) return
+  setupPollingInProgress = true
+  try {
+    await syncOperatorInputs()
+    await runSetupHarbor()
+  } catch (error) {
+    console.debug('Error during Harbor setup poll execution', error)
+  } finally {
+    setupPollingInProgress = false
   }
 }
 
 // Operator
-export default class MyOperator extends Operator {
-  protected async init() {
-    // Watch apl-harbor-operator-secret
-    try {
-      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, harborOperatorNamespace)
-    } catch (error) {
-      console.debug(error)
-    }
-    // Watch apl-harbor-operator-cm
-    try {
-      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, harborOperatorNamespace)
-    } catch (error) {
-      console.debug(error)
-    }
-  }
+function startPolling(): void {
+  void pollAndRunSetup()
+  setupPollingInterval = setInterval(() => {
+    void pollAndRunSetup()
+  }, harborSetupPollIntervalMs)
 }
 
-async function main(): Promise<void> {
-  const operator = new MyOperator()
-  console.info(`Listening to secrets, configmaps and namespaces`)
-  await operator.start()
-  const exit = (reason: string) => {
-    operator.stop()
+function main(): void {
+  console.info(`Polling Harbor setup every ${localEnv.HARBOR_SETUP_POLL_INTERVAL_SECONDS} seconds`)
+  startPolling()
+  const exit = (): void => {
+    if (setupPollingInterval) clearInterval(setupPollingInterval)
     process.exit(0)
   }
 
-  process.on('SIGTERM', () => exit('SIGTERM')).on('SIGINT', () => exit('SIGINT'))
+  process.on('SIGTERM', () => exit()).on('SIGINT', () => exit())
 }
 
 if (typeof require !== 'undefined' && require.main === module) {
