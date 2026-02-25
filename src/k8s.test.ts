@@ -33,7 +33,7 @@ describe('k8s', () => {
     metadata: { name },
     type: 'docker-registry',
     data: {
-      '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
+      'config.json': Buffer.from(JSON.stringify(data)).toString('base64'),
     },
   }
 
@@ -63,6 +63,35 @@ describe('k8s', () => {
       name: 'default',
       namespace,
       body: saWithExistingSecret,
+    })
+  })
+
+  it('should create docker configjson content with auths schema', async () => {
+    const createSpy = jest.spyOn(k8s.core(), 'createNamespacedSecret').mockResolvedValue(cloneDeep(secret))
+    jest.spyOn(k8s.core(), 'readNamespacedServiceAccount').mockResolvedValue(cloneDeep(saNew))
+    jest.spyOn(k8s.core(), 'patchNamespacedServiceAccount').mockResolvedValue(undefined as any)
+
+    await createK8sSecret({
+      namespace,
+      name,
+      server,
+      username: 'tiger',
+      password: 'pass1234',
+      email: 'tiger@acme.example',
+    })
+
+    const dockerConfigBase64 = (createSpy.mock.calls[0][0].body as V1Secret).data?.['config.json']
+    const dockerConfig = JSON.parse(Buffer.from(dockerConfigBase64!, 'base64').toString())
+
+    expect(dockerConfig).toEqual({
+      auths: {
+        [server]: {
+          username: 'tiger',
+          password: 'pass1234',
+          email: 'tiger@acme.example',
+          auth: Buffer.from('tiger:pass1234').toString('base64'),
+        },
+      },
     })
   })
 

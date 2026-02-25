@@ -51,6 +51,7 @@ export async function createSecret(
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
     metadata: { name },
+    ...(secretType ? { type: secretType } : {}),
     data: mapValues(data, b64enc) as {
       [key: string]: string
     },
@@ -69,6 +70,7 @@ export async function replaceSecret(
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
     metadata: { name },
+    ...(secretType ? { type: secretType } : {}),
     data: mapValues(data, b64enc) as {
       [key: string]: string
     },
@@ -106,6 +108,20 @@ export async function getSecret(name: string, namespace: string): Promise<unknow
   }
 }
 
+function buildDockerConfigJson(server: string, username: string, password: string, email?: string): string {
+  const resolvedEmail = email ?? `${username}@acme.example`
+  return JSON.stringify({
+    auths: {
+      [server]: {
+        username,
+        password,
+        email: resolvedEmail,
+        auth: Buffer.from(`${username}:${password}`).toString('base64'),
+      },
+    },
+  })
+}
+
 /**
  * Create Kubernetes secret
  * @param name Secret name
@@ -118,31 +134,23 @@ export async function createK8sSecret({
   server,
   password,
   username = '_json_key',
+  email,
 }: {
   namespace: string
   name: string
   server: string
   password: string
   username?: string
+  email?: string
 }): Promise<void> {
   const client = k8s.core()
-  // create data structure for secret
-  const data = {
-    auths: {
-      [server]: {
-        username,
-        password,
-        email: 'not@val.id',
-        auth: Buffer.from(`${username}:${password}`).toString('base64'),
-      },
-    },
-  }
+  const dockerConfigJson = buildDockerConfigJson(server, username, password, email)
   // create the secret
   const secret = {
     metadata: { name },
     type: 'kubernetes.io/dockerconfigjson',
     data: {
-      '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
+      'config.json': Buffer.from(dockerConfigJson).toString('base64'),
     },
   }
 
@@ -173,6 +181,38 @@ export async function createK8sSecret({
   }
 }
 
+export async function createDockerconfigjsonSecret({
+  namespace,
+  name,
+  server,
+  password,
+  username = '_json_key',
+  email,
+}: {
+  namespace: string
+  name: string
+  server: string
+  password: string
+  username?: string
+  email?: string
+}): Promise<void> {
+  const client = k8s.core()
+  const dockerConfigJson = buildDockerConfigJson(server, username, password, email)
+  const secret = {
+    metadata: { name },
+    type: 'kubernetes.io/dockerconfigjson',
+    data: {
+      'config.json': Buffer.from(dockerConfigJson).toString('base64'),
+    },
+  }
+
+  try {
+    await client.createNamespacedSecret({ namespace, body: secret })
+  } catch (e) {
+    throw new Error(`Secret '${name}' already exists in namespace '${namespace}'`)
+  }
+}
+
 /**
  * Create generic Kubernetes secret for Builds
  * @param name Secret name
@@ -185,32 +225,24 @@ export async function createBuildsK8sSecret({
   server,
   password,
   username = '_json_key',
+  email,
 }: {
   namespace: string
   name: string
   server: string
   password: string
   username?: string
+  email?: string
 }): Promise<void> {
   const client = k8s.core()
-  // create data structure for secret
-  const data = {
-    auths: {
-      [server]: {
-        username,
-        password,
-        email: 'not@val.id',
-        auth: Buffer.from(`${username}:${password}`).toString('base64'),
-      },
-    },
-  }
+  const dockerConfigJson = buildDockerConfigJson(server, username, password, email)
   // create the secret
   const secret = {
     ...new V1Secret(),
     metadata: { ...new V1ObjectMeta(), name },
-    type: 'Opaque',
+    type: 'kubernetes.io/dockerconfigjson',
     data: {
-      'config.json': Buffer.from(JSON.stringify(data)).toString('base64'),
+      'config.json': Buffer.from(dockerConfigJson).toString('base64'),
     },
   }
 
