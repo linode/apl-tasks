@@ -1,15 +1,8 @@
 import { RobotApi } from '@linode/harbor-client-node'
 import dotenv from 'dotenv'
+import { cleanEnv } from 'envalid'
 import { handleErrors, waitTillAvailable } from '../../utils'
-import {
-  cleanEnv,
-  HARBOR_BASE_URL,
-  HARBOR_BASE_URL_PORT,
-  HARBOR_OPERATOR_NAMESPACE,
-  HARBOR_SETUP_POLL_INTERVAL_SECONDS,
-  HARBOR_SYSTEM_NAMESPACE,
-  HARBOR_SYSTEM_ROBOTNAME,
-} from '../../validators'
+
 // full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
 import { error, log } from 'console'
 import { errors, operatorConfigMapName, operatorSecretName, robotPrefix } from './const'
@@ -27,16 +20,10 @@ import {
   ensureTeamPushRobotAccountSecret,
   getBearerToken,
 } from './harbor-robots'
+import { harborEnvValidators } from './types'
 
 // Constants
-const localEnv = cleanEnv({
-  HARBOR_BASE_URL,
-  HARBOR_BASE_URL_PORT,
-  HARBOR_OPERATOR_NAMESPACE,
-  HARBOR_SETUP_POLL_INTERVAL_SECONDS,
-  HARBOR_SYSTEM_NAMESPACE,
-  HARBOR_SYSTEM_ROBOTNAME,
-})
+const localEnv = cleanEnv(process.env, harborEnvValidators)
 
 const systemNamespace = localEnv.HARBOR_SYSTEM_NAMESPACE
 const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
@@ -47,24 +34,6 @@ let setupPollingInterval: NodeJS.Timeout | undefined
 let setupPollingInProgress = false
 let harborApis: HarborApis | undefined
 const k8sApi = createCoreV1Api()
-
-async function pollAndRunSetup(): Promise<void> {
-  if (setupPollingInProgress) return
-  setupPollingInProgress = true
-  try {
-    const desiredConfig = await syncOperatorInputs(
-      k8sApi,
-      harborOperatorNamespace,
-      operatorSecretName,
-      operatorConfigMapName,
-    )
-    await checkAndExecute(desiredConfig)
-  } catch (err) {
-    error('Error during Harbor setup poll execution', err)
-  } finally {
-    setupPollingInProgress = false
-  }
-}
 
 // Setup Harbor
 async function setupHarbor(desiredConfig: HarborConfig, robotApiClientForConfig: RobotApi): Promise<void> {
@@ -120,6 +89,25 @@ async function checkAndExecute(desiredConfig: HarborConfig): Promise<void> {
     }),
   )
 }
+
+async function pollAndRunSetup(): Promise<void> {
+  if (setupPollingInProgress) return
+  setupPollingInProgress = true
+  try {
+    const desiredConfig = await syncOperatorInputs(
+      k8sApi,
+      harborOperatorNamespace,
+      operatorSecretName,
+      operatorConfigMapName,
+    )
+    await checkAndExecute(desiredConfig)
+  } catch (err) {
+    error('Error during Harbor setup poll execution', err)
+  } finally {
+    setupPollingInProgress = false
+  }
+}
+
 // Operator
 function startPolling(): void {
   void pollAndRunSetup()
