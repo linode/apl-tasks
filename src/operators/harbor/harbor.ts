@@ -33,6 +33,7 @@ import {
 } from '../../validators'
 // full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
 import fullRobotPermissions from './harbor-full-robot-system-permissions.json'
+import { set } from 'lodash'
 
 // Interfaces
 interface DependencyState {
@@ -107,21 +108,59 @@ let setupSuccess = false
 const errors: string[] = []
 
 const robotPrefix = 'otomi-'
-const env = {
-  harborBaseRepoUrl: '',
-  harborUser: '',
-  harborPassword: '',
-  oidcClientId: '',
-  oidcClientSecret: '',
-  oidcEndpoint: '',
-  oidcVerifyCert: true,
-  oidcUserClaim: 'email',
-  oidcAutoOnboard: true,
-  oidcGroupsClaim: 'groups',
-  oidcName: 'keycloak',
-  oidcScope: 'openid',
-  teamNamespaces: [],
+
+interface HarborSecretData {
+  harborUser: string
+  harborPassword: string
+  oidcClientId: string
+  oidcClientSecret: string
+  oidcEndpoint: string
 }
+
+interface HarborConfigMapData {
+  harborBaseRepoUrl: string
+  oidcAutoOnboard: boolean
+  oidcUserClaim: string
+  oidcGroupsClaim: string
+  oidcName: string
+  oidcScope: string
+  oidcVerifyCert: boolean
+  teamNamespaces?: string[]
+}
+
+class HarborConfig {
+  harborBaseRepoUrl: string
+  harborUser: string
+  harborPassword: string
+  oidcClientId: string
+  oidcClientSecret: string
+  oidcEndpoint: string
+  oidcVerifyCert: boolean
+  oidcUserClaim: string
+  oidcAutoOnboard: boolean
+  oidcGroupsClaim: string
+  oidcName: string
+  oidcScope: string
+  teamNamespaces: string[]
+
+  constructor(secretData: HarborSecretData, configMapData: HarborConfigMapData) {
+    this.harborBaseRepoUrl = configMapData.harborBaseRepoUrl
+    this.harborUser = secretData.harborUser
+    this.harborPassword = secretData.harborPassword
+    this.oidcClientId = secretData.oidcClientId
+    this.oidcClientSecret = secretData.oidcClientSecret
+    this.oidcEndpoint = secretData.oidcEndpoint
+    this.oidcVerifyCert = configMapData.oidcVerifyCert
+    this.oidcUserClaim = configMapData.oidcUserClaim
+    this.oidcAutoOnboard = configMapData.oidcAutoOnboard
+    this.oidcGroupsClaim = configMapData.oidcGroupsClaim
+    this.oidcName = configMapData.oidcName
+    this.oidcScope = configMapData.oidcScope
+    this.teamNamespaces = configMapData.teamNamespaces ?? []
+  }
+}
+
+let desiredConfig: HarborConfig
 
 const systemNamespace = localEnv.HARBOR_SYSTEM_NAMESPACE
 const systemSecretName = 'harbor-robot-admin'
@@ -158,21 +197,83 @@ function hasStateChanged(currentState: DependencyState, _lastState: DependencySt
   return Object.entries(currentState).some(([key, value]) => !value || value !== _lastState[key])
 }
 
+function validateSecretData(data: Record<string, string>): HarborSecretData {
+  const secretFields: (keyof HarborSecretData)[] = [
+    'harborUser',
+    'harborPassword',
+    'oidcClientId',
+    'oidcClientSecret',
+    'oidcEndpoint',
+  ]
+  const decoded: Partial<HarborSecretData> = {}
+  for (const field of secretFields) {
+    if (!data[field]) throw new Error(`Missing required secret field "${field}"`)
+    try {
+      decoded[field] = Buffer.from(data[field], 'base64').toString()
+    } catch {
+      throw new Error(`Invalid base64 value for secret field "${field}"`)
+    }
+  }
+  return decoded as HarborSecretData
+}
+
+function validateConfigMapData(data: Record<string, string>): HarborConfigMapData {
+  const stringFields: (keyof HarborConfigMapData)[] = [
+    'harborBaseRepoUrl',
+    'oidcUserClaim',
+    'oidcGroupsClaim',
+    'oidcName',
+    'oidcScope',
+  ]
+  const boolFields = ['oidcVerifyCert', 'oidcAutoOnboard'] as const
+
+  const result: Partial<HarborConfigMapData> = {}
+
+  for (const field of stringFields) {
+    if (!data[field]) throw new Error(`Missing required configmap field "${field}"`)
+    set(result, field, data[field])
+  }
+
+  for (const field of boolFields) {
+    if (!data[field]) throw new Error(`Missing required configmap field "${field}"`)
+    if (data[field] !== 'true' && data[field] !== 'false') {
+      throw new Error(`Invalid boolean value "${data[field]}" for configmap field "${field}"`)
+    }
+    result[field] = data[field] === 'true'
+  }
+
+  if (data.teamNamespaces) {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(data.teamNamespaces)
+    } catch {
+      throw new Error(`Invalid JSON for configmap field "teamNamespaces"`)
+    }
+    if (!Array.isArray(parsed)) {
+      throw new Error(`Configmap field "teamNamespaces" is not a JSON array`)
+    }
+    result.teamNamespaces = parsed as string[]
+  }
+
+  return result as HarborConfigMapData
+}
+
 async function syncOperatorInputs(): Promise<void> {
+  let harborSecretData: HarborSecretData
+  let harborConfigMapData: HarborConfigMapData
+
   try {
     const secretRes = await k8sApi.readNamespacedSecret({
       name: operatorSecretName,
       namespace: harborOperatorNamespace,
     })
-    const secretData = secretRes.data || {}
-    if (secretData.harborPassword) env.harborPassword = Buffer.from(secretData.harborPassword, 'base64').toString()
-    if (secretData.harborUser) env.harborUser = Buffer.from(secretData.harborUser, 'base64').toString()
-    if (secretData.oidcEndpoint) env.oidcEndpoint = Buffer.from(secretData.oidcEndpoint, 'base64').toString()
-    if (secretData.oidcClientId) env.oidcClientId = Buffer.from(secretData.oidcClientId, 'base64').toString()
-    if (secretData.oidcClientSecret)
-      env.oidcClientSecret = Buffer.from(secretData.oidcClientSecret, 'base64').toString()
-  } catch (error) {
-    console.debug(`Unable to read secret ${operatorSecretName} in namespace ${harborOperatorNamespace}`)
+    if (!secretRes.data) {
+      throw new Error(`No data in secret: ${operatorSecretName}`)
+    }
+    harborSecretData = validateSecretData(secretRes.data || {})
+  } catch {
+    console.error(`Unable to read secret ${operatorSecretName} in namespace ${harborOperatorNamespace}`)
+    throw new Error(`Harbor operator cannot read necessary configuration from secret ${operatorSecretName}`)
   }
 
   try {
@@ -180,18 +281,16 @@ async function syncOperatorInputs(): Promise<void> {
       name: operatorConfigMapName,
       namespace: harborOperatorNamespace,
     })
-    const configMapData = configMapRes.data || {}
-    if (configMapData.harborBaseRepoUrl) env.harborBaseRepoUrl = configMapData.harborBaseRepoUrl
-    if (configMapData.oidcAutoOnboard) env.oidcAutoOnboard = configMapData.oidcAutoOnboard === 'true'
-    if (configMapData.oidcUserClaim) env.oidcUserClaim = configMapData.oidcUserClaim
-    if (configMapData.oidcGroupsClaim) env.oidcGroupsClaim = configMapData.oidcGroupsClaim
-    if (configMapData.oidcName) env.oidcName = configMapData.oidcName
-    if (configMapData.oidcScope) env.oidcScope = configMapData.oidcScope
-    if (configMapData.oidcVerifyCert) env.oidcVerifyCert = configMapData.oidcVerifyCert === 'true'
-    if (configMapData.teamNamespaces) env.teamNamespaces = JSON.parse(configMapData.teamNamespaces)
-  } catch (error) {
-    console.debug(`Unable to read configmap ${operatorConfigMapName} in namespace ${harborOperatorNamespace}`)
+    if (!configMapRes.data) {
+      throw new Error(`No data in configmap: ${operatorConfigMapName}`)
+    }
+    harborConfigMapData = validateConfigMapData(configMapRes.data || {})
+  } catch {
+    console.error(`Unable to read configmap ${operatorConfigMapName} in namespace ${harborOperatorNamespace}`)
+    throw new Error(`Harbor operator cannot read necessary configuration from configmap ${operatorConfigMapName}`)
   }
+
+  desiredConfig = new HarborConfig(harborSecretData, harborConfigMapData)
 }
 
 async function pollAndRunSetup(): Promise<void> {
@@ -233,19 +332,19 @@ if (typeof require !== 'undefined' && require.main === module) {
 // Runners
 async function checkAndExecute() {
   const currentState: DependencyState = {
-    harborBaseRepoUrl: env.harborBaseRepoUrl,
-    harborUser: env.harborUser,
-    harborPassword: env.harborPassword,
-    oidcClientId: env.oidcClientId,
-    oidcClientSecret: env.oidcClientSecret,
-    oidcEndpoint: env.oidcEndpoint,
-    oidcVerifyCert: env.oidcVerifyCert,
-    oidcUserClaim: env.oidcUserClaim,
-    oidcAutoOnboard: env.oidcAutoOnboard,
-    oidcGroupsClaim: env.oidcGroupsClaim,
-    oidcName: env.oidcName,
-    oidcScope: env.oidcScope,
-    teamNames: env.teamNamespaces,
+    harborBaseRepoUrl: desiredConfig.harborBaseRepoUrl,
+    harborUser: desiredConfig.harborUser,
+    harborPassword: desiredConfig.harborPassword,
+    oidcClientId: desiredConfig.oidcClientId,
+    oidcClientSecret: desiredConfig.oidcClientSecret,
+    oidcEndpoint: desiredConfig.oidcEndpoint,
+    oidcVerifyCert: desiredConfig.oidcVerifyCert,
+    oidcUserClaim: desiredConfig.oidcUserClaim,
+    oidcAutoOnboard: desiredConfig.oidcAutoOnboard,
+    oidcGroupsClaim: desiredConfig.oidcGroupsClaim,
+    oidcName: desiredConfig.oidcName,
+    oidcScope: desiredConfig.oidcScope,
+    teamNames: desiredConfig.teamNamespaces,
   }
 
   if (hasStateChanged(currentState, lastState)) {
@@ -281,25 +380,25 @@ async function runSetupHarbor() {
 async function setupHarbor() {
   // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
-  if (!env.harborUser) return
+  if (!desiredConfig.harborUser) return
 
-  robotApi = new RobotApi(env.harborUser, env.harborPassword, harborBaseUrl)
-  configureApi = new ConfigureApi(env.harborUser, env.harborPassword, harborBaseUrl)
-  projectsApi = new ProjectApi(env.harborUser, env.harborPassword, harborBaseUrl)
-  memberApi = new MemberApi(env.harborUser, env.harborPassword, harborBaseUrl)
+  robotApi = new RobotApi(desiredConfig.harborUser, desiredConfig.harborPassword, harborBaseUrl)
+  configureApi = new ConfigureApi(desiredConfig.harborUser, desiredConfig.harborPassword, harborBaseUrl)
+  projectsApi = new ProjectApi(desiredConfig.harborUser, desiredConfig.harborPassword, harborBaseUrl)
+  memberApi = new MemberApi(desiredConfig.harborUser, desiredConfig.harborPassword, harborBaseUrl)
 
   const config: Configurations = {
     authMode: 'oidc_auth',
     oidcAdminGroup: 'platform-admin',
     oidcClientId: 'otomi',
-    oidcClientSecret: env.oidcClientSecret,
-    oidcEndpoint: env.oidcEndpoint,
+    oidcClientSecret: desiredConfig.oidcClientSecret,
+    oidcEndpoint: desiredConfig.oidcEndpoint,
     oidcGroupsClaim: 'groups',
     oidcName: 'otomi',
     oidcScope: 'openid',
-    oidcVerifyCert: env.oidcVerifyCert,
-    oidcUserClaim: env.oidcUserClaim,
-    oidcAutoOnboard: env.oidcAutoOnboard,
+    oidcVerifyCert: desiredConfig.oidcVerifyCert,
+    oidcUserClaim: desiredConfig.oidcUserClaim,
+    oidcAutoOnboard: desiredConfig.oidcAutoOnboard,
     projectCreationRestriction: 'adminonly',
     robotNamePrefix: robotPrefix,
     selfRegistration: false,
@@ -425,7 +524,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
     await createDockerconfigjsonSecret({
       namespace: systemNamespace,
       name: systemSecretName,
-      server: env.harborBaseRepoUrl,
+      server: desiredConfig.harborBaseRepoUrl,
       username: preferredRobotName,
       password: token,
     })
@@ -433,9 +532,9 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
     return bearerAuth
   }
 
-  let creds = parseDockerConfigJson(secretData, env.harborBaseRepoUrl)
+  let creds = parseDockerConfigJson(secretData, desiredConfig.harborBaseRepoUrl)
   if (!creds && secretData.name && secretData.secret) {
-    const dockerConfigJson = buildDockerConfigJson(env.harborBaseRepoUrl, secretData.name, secretData.secret)
+    const dockerConfigJson = buildDockerConfigJson(desiredConfig.harborBaseRepoUrl, secretData.name, secretData.secret)
     await replaceSecret(
       systemSecretName,
       systemNamespace,
@@ -454,7 +553,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
     await replaceSecret(
       systemSecretName,
       systemNamespace,
-      { [dockerConfigKey]: buildDockerConfigJson(env.harborBaseRepoUrl, preferredRobotName, token) },
+      { [dockerConfigKey]: buildDockerConfigJson(desiredConfig.harborBaseRepoUrl, preferredRobotName, token) },
       'kubernetes.io/dockerconfigjson',
     )
     bearerAuth.accessToken = token
@@ -540,12 +639,12 @@ async function ensureTeamPullRobotAccountSecret(namespace: string, projectName):
     await createK8sSecret({
       namespace,
       name: projectPullSecretName,
-      server: `${env.harborBaseRepoUrl}`,
+      server: `${desiredConfig.harborBaseRepoUrl}`,
       username: robotPullAccount.name,
       password: token,
     })
   } else {
-    const creds = parseDockerConfigJson(k8sSecret as Record<string, any>, env.harborBaseRepoUrl)
+    const creds = parseDockerConfigJson(k8sSecret as Record<string, any>, desiredConfig.harborBaseRepoUrl)
     if (creds) {
       await createTeamPullRobotAccount(projectName, creds.password)
     }
@@ -593,12 +692,12 @@ async function ensureTeamPushRobotAccountSecret(namespace: string, projectName):
     await createK8sSecret({
       namespace,
       name: projectPushSecretName,
-      server: `${env.harborBaseRepoUrl}`,
+      server: `${desiredConfig.harborBaseRepoUrl}`,
       username: robotPushAccount.name,
       password: token,
     })
   } else {
-    const creds = parseDockerConfigJson(k8sSecret as Record<string, any>, env.harborBaseRepoUrl)
+    const creds = parseDockerConfigJson(k8sSecret as Record<string, any>, desiredConfig.harborBaseRepoUrl)
     if (creds) {
       await ensureTeamPushRobotAccount(projectName, creds.password)
     }
@@ -651,12 +750,12 @@ async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectN
     await createBuildsK8sSecret({
       namespace,
       name: projectBuildPushSecretName,
-      server: `${env.harborBaseRepoUrl}`,
+      server: `${desiredConfig.harborBaseRepoUrl}`,
       username: robotBuildsPushAccount.name,
       password: token,
     })
   } else {
-    const creds = parseDockerConfigJson(k8sSecret as Record<string, any>, env.harborBaseRepoUrl)
+    const creds = parseDockerConfigJson(k8sSecret as Record<string, any>, desiredConfig.harborBaseRepoUrl)
     if (creds) {
       await ensureTeamBuildsPushRobotAccount(projectName, creds.password)
     }
