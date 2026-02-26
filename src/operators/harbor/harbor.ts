@@ -11,7 +11,7 @@ import {
   createHarborApis,
   HarborApis,
   HarborConfig,
-  processNamespace as processHarborNamespace,
+  processHarborProject,
 } from './harbor-api'
 import { createCoreV1Api, syncOperatorInputs } from './harbor-k8s'
 import {
@@ -82,7 +82,7 @@ async function checkAndExecute(desiredConfig: HarborConfig): Promise<void> {
   await Promise.all(
     desiredConfig.teamNamespaces.map(async (namespace) => {
       const teamNamespace = `team-${namespace}`
-      await processHarborNamespace(harborApis as HarborApis, errors, teamNamespace)
+      await processHarborProject(harborApis as HarborApis, errors, teamNamespace)
       await ensureTeamPullRobotAccountSecret(robotDeps, teamNamespace, teamNamespace)
       await ensureTeamPushRobotAccountSecret(robotDeps, teamNamespace, teamNamespace)
       await ensureTeamBuildPushRobotAccountSecret(robotDeps, teamNamespace, teamNamespace)
