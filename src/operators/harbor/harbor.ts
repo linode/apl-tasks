@@ -331,34 +331,23 @@ if (typeof require !== 'undefined' && require.main === module) {
 
 // Runners
 async function checkAndExecute(): Promise<void> {
-  if (!lastState || hasStateChanged(desiredConfig, lastState)) {
-    await setupHarbor()
-  }
-
-  if (!setupSuccess) await setupHarbor()
-
-  if (
-    setupSuccess &&
-    desiredConfig.teamNamespaces &&
-    desiredConfig.teamNamespaces.length > 0 &&
-    desiredConfig.teamNamespaces !== lastState.teamNamespaces
-  ) {
-    await Promise.all(desiredConfig.teamNamespaces.map((namespace) => processNamespace(`team-${namespace}`)))
-    lastState = { ...desiredConfig }
-  }
+  // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
+  await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
+  await setupHarbor()
+  await Promise.all(desiredConfig.teamNamespaces.map((namespace) => processNamespace(`team-${namespace}`)))
 }
 
 // Setup Harbor
 async function setupHarbor() {
-  // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
-  await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
-  if (!desiredConfig.harborUser) return
-
+  const bearerAuth = await getBearerToken()
   robotApi = new RobotApi(desiredConfig.harborUser, desiredConfig.harborPassword, harborBaseUrl)
   configureApi = new ConfigureApi(desiredConfig.harborUser, desiredConfig.harborPassword, harborBaseUrl)
   projectsApi = new ProjectApi(desiredConfig.harborUser, desiredConfig.harborPassword, harborBaseUrl)
   memberApi = new MemberApi(desiredConfig.harborUser, desiredConfig.harborPassword, harborBaseUrl)
-
+  robotApi.setDefaultAuthentication(bearerAuth)
+  configureApi.setDefaultAuthentication(bearerAuth)
+  projectsApi.setDefaultAuthentication(bearerAuth)
+  memberApi.setDefaultAuthentication(bearerAuth)
   const config: Configurations = {
     authMode: 'oidc_auth',
     oidcAdminGroup: 'platform-admin',
@@ -378,11 +367,6 @@ async function setupHarbor() {
   }
 
   try {
-    const bearerAuth = await getBearerToken()
-    robotApi.setDefaultAuthentication(bearerAuth)
-    configureApi.setDefaultAuthentication(bearerAuth)
-    projectsApi.setDefaultAuthentication(bearerAuth)
-    memberApi.setDefaultAuthentication(bearerAuth)
     try {
       console.info('Putting Harbor configuration')
       await configureApi.updateConfigurations(config)
