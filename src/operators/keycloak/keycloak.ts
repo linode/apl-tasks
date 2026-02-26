@@ -614,7 +614,7 @@ export async function manageUserProfile(api: KeycloakApi) {
       attributes.push({
         name,
         displayName: `\${${name}}`,
-        permissions: { view: new Set(['admin', 'user']), edit: new Set(['admin', 'user']) },
+        permissions: { view: ['admin', 'user'] as any, edit: ['admin', 'user'] as any },
       })
     }
     await api.users.adminRealmsRealmUsersProfilePut(keycloakRealm, {
