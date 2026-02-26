@@ -33,7 +33,7 @@ describe('k8s', () => {
     metadata: { name },
     type: 'docker-registry',
     data: {
-      'config.json': Buffer.from(JSON.stringify(data)).toString('base64'),
+      '.dockerconfigjson': Buffer.from(JSON.stringify(data)).toString('base64'),
     },
   }
 
@@ -80,7 +80,7 @@ describe('k8s', () => {
       email: 'tiger@acme.example',
     })
 
-    const dockerConfigBase64 = (createSpy.mock.calls[0][0].body as V1Secret).data?.['config.json']
+    const dockerConfigBase64 = (createSpy.mock.calls[0][0].body as V1Secret).data?.['.dockerconfigjson']
     const dockerConfig = JSON.parse(Buffer.from(dockerConfigBase64!, 'base64').toString())
 
     expect(dockerConfig).toEqual({

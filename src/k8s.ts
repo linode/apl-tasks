@@ -150,7 +150,7 @@ export async function createK8sSecret({
     metadata: { name },
     type: 'kubernetes.io/dockerconfigjson',
     data: {
-      'config.json': Buffer.from(dockerConfigJson).toString('base64'),
+      '.dockerconfigjson': Buffer.from(dockerConfigJson).toString('base64'),
     },
   }
 
@@ -202,7 +202,7 @@ export async function createDockerconfigjsonSecret({
     metadata: { name },
     type: 'kubernetes.io/dockerconfigjson',
     data: {
-      'config.json': Buffer.from(dockerConfigJson).toString('base64'),
+      '.dockerconfigjson': Buffer.from(dockerConfigJson).toString('base64'),
     },
   }
 
@@ -242,7 +242,7 @@ export async function createBuildsK8sSecret({
     metadata: { ...new V1ObjectMeta(), name },
     type: 'kubernetes.io/dockerconfigjson',
     data: {
-      'config.json': Buffer.from(dockerConfigJson).toString('base64'),
+      '.dockerconfigjson': Buffer.from(dockerConfigJson).toString('base64'),
     },
   }
 

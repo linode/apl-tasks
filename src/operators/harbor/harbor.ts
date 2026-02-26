@@ -103,7 +103,7 @@ const HarborGroupType = {
   http: 2,
 }
 
-let lastState: DependencyState = {}
+let lastState: HarborConfig
 let setupSuccess = false
 const errors: string[] = []
 
@@ -298,7 +298,7 @@ async function pollAndRunSetup(): Promise<void> {
   setupPollingInProgress = true
   try {
     await syncOperatorInputs()
-    await runSetupHarbor()
+    await checkAndExecute()
   } catch (error) {
     console.debug('Error during Harbor setup poll execution', error)
   } finally {
@@ -330,24 +330,8 @@ if (typeof require !== 'undefined' && require.main === module) {
 }
 
 // Runners
-async function checkAndExecute() {
-  const currentState: DependencyState = {
-    harborBaseRepoUrl: desiredConfig.harborBaseRepoUrl,
-    harborUser: desiredConfig.harborUser,
-    harborPassword: desiredConfig.harborPassword,
-    oidcClientId: desiredConfig.oidcClientId,
-    oidcClientSecret: desiredConfig.oidcClientSecret,
-    oidcEndpoint: desiredConfig.oidcEndpoint,
-    oidcVerifyCert: desiredConfig.oidcVerifyCert,
-    oidcUserClaim: desiredConfig.oidcUserClaim,
-    oidcAutoOnboard: desiredConfig.oidcAutoOnboard,
-    oidcGroupsClaim: desiredConfig.oidcGroupsClaim,
-    oidcName: desiredConfig.oidcName,
-    oidcScope: desiredConfig.oidcScope,
-    teamNames: desiredConfig.teamNamespaces,
-  }
-
-  if (hasStateChanged(currentState, lastState)) {
+async function checkAndExecute(): Promise<void> {
+  if (hasStateChanged(desiredConfig, lastState)) {
     await setupHarbor()
   }
 
@@ -355,24 +339,12 @@ async function checkAndExecute() {
 
   if (
     setupSuccess &&
-    currentState.teamNames &&
-    currentState.teamNames.length > 0 &&
-    currentState.teamNames !== lastState.teamNames
+    desiredConfig.teamNamespaces &&
+    desiredConfig.teamNamespaces.length > 0 &&
+    desiredConfig.teamNamespaces !== lastState.teamNamespaces
   ) {
-    await Promise.all(currentState.teamNames.map((namespace) => processNamespace(`team-${namespace}`)))
-    lastState = { ...currentState }
-  }
-}
-
-async function runSetupHarbor() {
-  try {
-    await checkAndExecute()
-  } catch (error) {
-    console.debug('Error could not run setup harbor', error)
-    console.debug('Retrying in 30 seconds')
-    await new Promise((resolve) => setTimeout(resolve, 30000))
-    console.debug('Retrying to setup harbor')
-    await runSetupHarbor()
+    await Promise.all(desiredConfig.teamNamespaces.map((namespace) => processNamespace(`team-${namespace}`)))
+    lastState = { ...desiredConfig }
   }
 }
 
