@@ -138,7 +138,11 @@ if (!feat.FEAT_EXTERNAL_IDP) {
 // export env
 export function cleanEnv<T>(validators: { [K in keyof T]: ValidatorSpec<T[K]> }): any {
   // skip loading local .env in test context, and instead load the sample env
-  if (process.env.NODE_ENV === 'test') dotenv.config({ path: '.env.sample' })
+  if (process.env.NODE_ENV === 'test') {
+    dotenv.config({ path: '.env.sample' })
+  } else {
+    dotenv.config()
+  }
   return clean(env, validators) as any
 }
 

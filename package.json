@@ -92,6 +92,7 @@
   },
   "scripts": {
     "build": "tsc && cp src/operators/harbor/harbor-full-robot-system-permissions.json dist/src/operators/harbor/",
+    "env:from-cluster": "tsx ./src/scripts/get-env-from-cluster.ts",
     "cz:retry": "git-cz --retry",
     "cz": "git-cz",
     "lint-staged": "lint-staged",

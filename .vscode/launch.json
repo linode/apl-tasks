@@ -2,6 +2,7 @@
   "version": "0.2.0",
   "configurations": [
 
+
     {
       "type": "node",
       "request": "attach",
@@ -80,22 +81,14 @@
       "preLaunchTask": "port-forward-gitea"
     },
     {
-      "type": "node",
-      "request": "launch",
       "name": "Debug harbor operator",
+      "request": "launch",
+      "runtimeArgs": ["run", "operator:harbor-dev"],
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "operator:harbor-dev"],
-      "cwd": "${workspaceRoot}",
+      "type": "node",
+      "envFile": ".env",
       "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "env" : {
-        "KUBECONFIG": "/path/to/your/kubeconfig.yaml",
-        "HARBOR_BASE_URL" : "http://localhost",
-        "HARBOR_BASE_URL_PORT" : "8083",
-        "HARBOR_OPERATOR_NAMESPACE" : "apl-harbor-operator",
-        "HARBOR_SYSTEM_NAMESPACE" : "harbor",
-      },
-      "preLaunchTask": "port-forward-harbor"
+      "cwd": "${workspaceRoot}"
     },
     {
       "type": "node",

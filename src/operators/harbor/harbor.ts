@@ -32,8 +32,8 @@ import {
   HARBOR_SYSTEM_ROBOTNAME,
 } from '../../validators'
 // full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
-import fullRobotPermissions from './harbor-full-robot-system-permissions.json'
 import { set } from 'lodash'
+import fullRobotPermissions from './harbor-full-robot-system-permissions.json'
 
 // Interfaces
 interface DependencyState {
@@ -331,7 +331,7 @@ if (typeof require !== 'undefined' && require.main === module) {
 
 // Runners
 async function checkAndExecute(): Promise<void> {
-  if (hasStateChanged(desiredConfig, lastState)) {
+  if (!lastState || hasStateChanged(desiredConfig, lastState)) {
     await setupHarbor()
   }
 
