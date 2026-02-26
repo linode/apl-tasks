@@ -37,29 +37,20 @@ const k8sApi = createCoreV1Api()
 
 // Setup Harbor
 async function setupHarbor(desiredConfig: HarborConfig, robotApiClientForConfig: RobotApi): Promise<void> {
-  const bearerAuth = await getBearerToken({
-    desiredConfig,
-    robotApiClient: robotApiClientForConfig,
-    systemNamespace,
-    systemRobotName: localEnv.HARBOR_SYSTEM_ROBOTNAME,
-    errors,
-  })
-  harborApis = createHarborApis({
-    harborUser: desiredConfig.harborUser,
-    harborPassword: desiredConfig.harborPassword,
-    harborBaseUrl,
-    bearerAuth,
-  })
-
   try {
-    try {
-      log('Putting Harbor configuration')
-      await applyHarborConfiguration(harborApis.configureApi, desiredConfig, robotPrefix)
-      log('Harbor configuration updated successfully')
-    } catch (err) {
-      error('Failed to update Harbor configuration:', err)
-    }
-    if (errors.length > 0) handleErrors(errors)
+    const bearerAuth = await getBearerToken({
+      desiredConfig,
+      robotApiClient: robotApiClientForConfig,
+      systemNamespace,
+      systemRobotName: localEnv.HARBOR_SYSTEM_ROBOTNAME,
+      errors,
+    })
+    harborApis = createHarborApis({
+      harborUser: desiredConfig.harborUser,
+      harborPassword: desiredConfig.harborPassword,
+      harborBaseUrl,
+      bearerAuth,
+    })
   } catch (err) {
     error('Failed to set bearer Token for Harbor Api :', err)
   }
@@ -72,6 +63,15 @@ async function checkAndExecute(desiredConfig: HarborConfig): Promise<void> {
   const robotApiClientForConfig = new RobotApi(desiredConfig.harborUser, desiredConfig.harborPassword, harborBaseUrl)
   await setupHarbor(desiredConfig, robotApiClientForConfig)
   if (!harborApis) throw new Error('Harbor APIs are not initialized')
+
+  try {
+    log('Putting Harbor configuration')
+    await applyHarborConfiguration(harborApis.configureApi, desiredConfig, robotPrefix)
+    log('Harbor configuration updated successfully')
+  } catch (err) {
+    error('Failed to update Harbor configuration:', err)
+  }
+  if (errors.length > 0) handleErrors(errors)
   const robotDeps = {
     desiredConfig,
     robotApiClient: robotApiClientForConfig,
