@@ -1,6 +1,5 @@
 /* eslint-disable no-param-reassign */
 
-import dotenv from 'dotenv'
 import { bool, cleanEnv as clean, json, num, str, ValidatorSpec } from 'envalid'
 
 const { env } = process
@@ -137,14 +136,5 @@ if (!feat.FEAT_EXTERNAL_IDP) {
 
 // export env
 export function cleanEnv<T>(validators: { [K in keyof T]: ValidatorSpec<T[K]> }): any {
-  // skip loading local .env in test context, and instead load the sample env
-  if (process.env.NODE_ENV === 'test') {
-    dotenv.config({ path: '.env.sample' })
-  } else {
-    dotenv.config()
-  }
   return clean(env, validators) as any
 }
-
-// And to avoid npm trying to check for updates
-process.env.NO_UPDATE_NOTIFIER = 'true'
