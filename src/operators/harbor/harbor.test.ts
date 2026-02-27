@@ -1,4 +1,13 @@
-// Mock @kubernetes/client-node to avoid ES module loading issues
+import {
+  createSystemRobotSecret,
+  createTeamPullRobotAccount,
+  ensureTeamBuildsPushRobotAccount,
+  ensureTeamPushRobotAccount,
+} from './lib/managers/harbor-robots'
+import { ProjectReq, RobotCreated } from '@linode/harbor-client-node'
+import * as k8s from '../../k8s'
+import { __setApiClients, processNamespace } from './harbor'
+
 jest.mock('@kubernetes/client-node', () => ({
   KubeConfig: jest.fn().mockImplementation(() => ({
     loadFromDefault: jest.fn(),
@@ -15,17 +24,6 @@ jest.mock('@kubernetes/client-node', () => ({
   V1Secret: jest.fn(),
   V1ObjectMeta: jest.fn(),
 }))
-
-import { ProjectReq, RobotCreated } from '@linode/harbor-client-node'
-import * as k8s from '../../k8s'
-import {
-  __setApiClients,
-  createSystemRobotSecret,
-  createTeamPullRobotAccount,
-  ensureTeamBuildsPushRobotAccount,
-  ensureTeamPushRobotAccount,
-  processNamespace
-} from './harbor'
 
 jest.mock('../../k8s')
 
@@ -53,9 +51,13 @@ jest.mock('./harbor-full-robot-system-permissions.json', () => [
   { resource: 'artifact', action: 'create' },
 ])
 
+jest.mock('./lib/managers/harbor-oidc', () => ({
+  manageHarborOidcConfig: jest.fn().mockResolvedValue(undefined),
+}))
+
 describe('harborOperator', () => {
   const mockK8s = k8s as jest.Mocked<typeof k8s>
-  
+
   const mockRobotApi = {
     listRobot: jest.fn(),
     createRobot: jest.fn(),
@@ -81,19 +83,18 @@ describe('harborOperator', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockK8s.getSecret.mockResolvedValue(null)
     mockK8s.createSecret.mockResolvedValue(undefined)
     mockK8s.replaceSecret.mockResolvedValue(undefined)
     mockK8s.createK8sSecret.mockResolvedValue(undefined)
     mockK8s.createBuildsK8sSecret.mockResolvedValue(undefined)
-    
-    // Inject mocked API clients
+
     __setApiClients(
       mockRobotApi as any,
       mockConfigureApi as any,
       mockProjectsApi as any,
-      mockMemberApi as any
+      mockMemberApi as any,
     )
   })
 
@@ -113,7 +114,7 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await createSystemRobotSecret()
+      const result = await createSystemRobotSecret(mockRobotApi as any, 'system-robot', 'harbor-system')
 
       expect(result).toEqual({
         id: 1,
@@ -121,17 +122,19 @@ describe('harborOperator', () => {
         secret: 'robot-secret-123',
       })
       expect(mockRobotApi.listRobot).toHaveBeenCalled()
-      expect(mockRobotApi.createRobot).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'system-robot',
-        level: 'system',
-        permissions: expect.arrayContaining([
-          expect.objectContaining({
-            kind: 'system',
-            namespace: '/',
-            access: expect.any(Array),
-          }),
-        ]),
-      }))
+      expect(mockRobotApi.createRobot).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'system-robot',
+          level: 'system',
+          permissions: expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'system',
+              namespace: '/',
+              access: expect.any(Array),
+            }),
+          ]),
+        }),
+      )
       expect(mockK8s.createSecret).toHaveBeenCalledWith(
         'harbor-robot-admin',
         'harbor-system',
@@ -139,7 +142,7 @@ describe('harborOperator', () => {
           id: 1,
           name: 'otomi-system-robot',
           secret: 'robot-secret-123',
-        })
+        }),
       )
     })
 
@@ -156,7 +159,7 @@ describe('harborOperator', () => {
       mockRobotApi.deleteRobot.mockResolvedValue({})
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await createSystemRobotSecret()
+      const result = await createSystemRobotSecret(mockRobotApi as any, 'system-robot', 'harbor-system')
 
       expect(mockRobotApi.deleteRobot).toHaveBeenCalledWith(999)
       expect(mockRobotApi.createRobot).toHaveBeenCalled()
@@ -171,7 +174,9 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockRejectedValue(error)
 
-      await expect(createSystemRobotSecret()).rejects.toThrow('Robot creation failed')
+      await expect(createSystemRobotSecret(mockRobotApi as any, 'system-robot', 'harbor-system')).rejects.toThrow(
+        'Robot creation failed',
+      )
     })
 
     it('should throw error if robot account is invalid', async () => {
@@ -181,7 +186,9 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: invalidRobot })
 
-      await expect(createSystemRobotSecret()).rejects.toThrow('Robot account creation failed: missing id, name, or secret')
+      await expect(createSystemRobotSecret(mockRobotApi as any, 'system-robot', 'harbor-system')).rejects.toThrow(
+        'Robot account creation failed: missing id, name, or secret',
+      )
     })
   })
 
@@ -199,26 +206,28 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await createTeamPullRobotAccount(projectName)
+      const result = await createTeamPullRobotAccount(projectName, mockRobotApi as any)
 
       expect(result).toEqual(mockRobotCreated)
       expect(mockRobotApi.listRobot).toHaveBeenCalled()
-      expect(mockRobotApi.createRobot).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'team-demo-pull',
-        level: 'system',
-        permissions: expect.arrayContaining([
-          expect.objectContaining({
-            kind: 'project',
-            namespace: 'team-demo',
-            access: expect.arrayContaining([
-              expect.objectContaining({
-                resource: 'repository',
-                action: 'pull',
-              }),
-            ]),
-          }),
-        ]),
-      }))
+      expect(mockRobotApi.createRobot).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'team-demo-pull',
+          level: 'system',
+          permissions: expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'project',
+              namespace: 'team-demo',
+              access: expect.arrayContaining([
+                expect.objectContaining({
+                  resource: 'repository',
+                  action: 'pull',
+                }),
+              ]),
+            }),
+          ]),
+        }),
+      )
     })
 
     it('should delete existing robot before creating new one', async () => {
@@ -236,7 +245,7 @@ describe('harborOperator', () => {
       mockRobotApi.deleteRobot.mockResolvedValue({})
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await createTeamPullRobotAccount(projectName)
+      const result = await createTeamPullRobotAccount(projectName, mockRobotApi as any)
 
       expect(mockRobotApi.deleteRobot).toHaveBeenCalledWith(999)
       expect(mockRobotApi.createRobot).toHaveBeenCalled()
@@ -252,7 +261,9 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockRejectedValue(error)
 
-      await expect(createTeamPullRobotAccount(projectName)).rejects.toThrow('Robot creation failed')
+      await expect(createTeamPullRobotAccount(projectName, mockRobotApi as any)).rejects.toThrow(
+        'Robot creation failed',
+      )
     })
 
     it('should throw error if robot account already exists with more than 100 robots', async () => {
@@ -263,8 +274,8 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      await expect(createTeamPullRobotAccount(projectName)).rejects.toThrow(
-        'RobotPullAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.'
+      await expect(createTeamPullRobotAccount(projectName, mockRobotApi as any)).rejects.toThrow(
+        'RobotPullAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.',
       )
     })
   })
@@ -283,29 +294,25 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await ensureTeamPushRobotAccount(projectName)
+      const result = await ensureTeamPushRobotAccount(projectName, mockRobotApi as any)
 
       expect(result).toEqual(mockRobotCreated)
-      expect(mockRobotApi.createRobot).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'team-demo-push',
-        level: 'system',
-        permissions: expect.arrayContaining([
-          expect.objectContaining({
-            kind: 'project',
-            namespace: 'team-demo',
-            access: expect.arrayContaining([
-              expect.objectContaining({
-                resource: 'repository',
-                action: 'push',
-              }),
-              expect.objectContaining({
-                resource: 'repository',
-                action: 'pull',
-              }),
-            ]),
-          }),
-        ]),
-      }))
+      expect(mockRobotApi.createRobot).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'team-demo-push',
+          level: 'system',
+          permissions: expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'project',
+              namespace: 'team-demo',
+              access: expect.arrayContaining([
+                expect.objectContaining({ resource: 'repository', action: 'push' }),
+                expect.objectContaining({ resource: 'repository', action: 'pull' }),
+              ]),
+            }),
+          ]),
+        }),
+      )
     })
 
     it('should delete existing robot before creating new one', async () => {
@@ -323,7 +330,7 @@ describe('harborOperator', () => {
       mockRobotApi.deleteRobot.mockResolvedValue({})
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await ensureTeamPushRobotAccount(projectName)
+      const result = await ensureTeamPushRobotAccount(projectName, mockRobotApi as any)
 
       expect(mockRobotApi.deleteRobot).toHaveBeenCalledWith(999)
       expect(result.id).toBe(2)
@@ -337,8 +344,8 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      await expect(ensureTeamPushRobotAccount(projectName)).rejects.toThrow(
-        'RobotPushAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.'
+      await expect(ensureTeamPushRobotAccount(projectName, mockRobotApi as any)).rejects.toThrow(
+        'RobotPushAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.',
       )
     })
   })
@@ -357,29 +364,25 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await ensureTeamBuildsPushRobotAccount(projectName)
+      const result = await ensureTeamBuildsPushRobotAccount(projectName, mockRobotApi as any)
 
       expect(result).toEqual(mockRobotCreated)
-      expect(mockRobotApi.createRobot).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'team-demo-builds',
-        level: 'system',
-        permissions: expect.arrayContaining([
-          expect.objectContaining({
-            kind: 'project',
-            namespace: 'team-demo',
-            access: expect.arrayContaining([
-              expect.objectContaining({
-                resource: 'repository',
-                action: 'push',
-              }),
-              expect.objectContaining({
-                resource: 'repository',
-                action: 'pull',
-              }),
-            ]),
-          }),
-        ]),
-      }))
+      expect(mockRobotApi.createRobot).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'team-demo-builds',
+          level: 'system',
+          permissions: expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'project',
+              namespace: 'team-demo',
+              access: expect.arrayContaining([
+                expect.objectContaining({ resource: 'repository', action: 'push' }),
+                expect.objectContaining({ resource: 'repository', action: 'pull' }),
+              ]),
+            }),
+          ]),
+        }),
+      )
     })
 
     it('should throw error if robot account already exists with more than 100 robots', async () => {
@@ -390,8 +393,8 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      await expect(ensureTeamBuildsPushRobotAccount(projectName)).rejects.toThrow(
-        'RobotBuildsPushAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.'
+      await expect(ensureTeamBuildsPushRobotAccount(projectName, mockRobotApi as any)).rejects.toThrow(
+        'RobotBuildsPushAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.',
       )
     })
   })
@@ -476,7 +479,7 @@ describe('harborOperator', () => {
       mockProjectsApi.createProject.mockResolvedValue({})
       mockProjectsApi.getProject.mockResolvedValue({ body: mockProject })
       mockMemberApi.createProjectMember.mockResolvedValue({})
-      
+
       mockRobotApi.listRobot.mockRejectedValue(error)
 
       const result = await processNamespace(namespace)
@@ -490,14 +493,18 @@ describe('harborOperator', () => {
       const authError = new Error('Authentication failed')
       mockRobotApi.listRobot.mockRejectedValue(authError)
 
-      await expect(createSystemRobotSecret()).rejects.toThrow('Authentication failed')
+      await expect(createSystemRobotSecret(mockRobotApi as any, 'system-robot', 'harbor-system')).rejects.toThrow(
+        'Authentication failed',
+      )
     })
 
     it('should handle network errors', async () => {
       const networkError = new Error('Network error')
       mockRobotApi.listRobot.mockRejectedValue(networkError)
 
-      await expect(createSystemRobotSecret()).rejects.toThrow('Network error')
+      await expect(createSystemRobotSecret(mockRobotApi as any, 'system-robot', 'harbor-system')).rejects.toThrow(
+        'Network error',
+      )
     })
 
     it('should handle Harbor API rate limiting', async () => {
@@ -505,7 +512,9 @@ describe('harborOperator', () => {
       mockRobotApi.createRobot.mockRejectedValue(rateLimitError)
       mockRobotApi.listRobot.mockResolvedValue({ body: [] })
 
-      await expect(createSystemRobotSecret()).rejects.toThrow('Rate limit exceeded')
+      await expect(createSystemRobotSecret(mockRobotApi as any, 'system-robot', 'harbor-system')).rejects.toThrow(
+        'Rate limit exceeded',
+      )
     })
   })
 
@@ -519,11 +528,11 @@ describe('harborOperator', () => {
 
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.deleteRobot.mockRejectedValue(deleteError)
-      mockRobotApi.createRobot.mockResolvedValue({ 
-        body: { id: 1, name: expectedRobotName, secret: 'secret' } 
+      mockRobotApi.createRobot.mockResolvedValue({
+        body: { id: 1, name: expectedRobotName, secret: 'secret' },
       })
 
-      const result = await createTeamPullRobotAccount(projectName)
+      const result = await createTeamPullRobotAccount(projectName, mockRobotApi as any)
 
       expect(mockRobotApi.deleteRobot).toHaveBeenCalledWith(999)
       expect(mockRobotApi.createRobot).toHaveBeenCalled()
