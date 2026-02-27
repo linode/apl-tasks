@@ -2,11 +2,11 @@ import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import { ConfigureApi, MemberApi, ProjectApi, RobotApi } from '@linode/harbor-client-node'
-import { cleanEnv } from 'envalid'
 import { handleErrors, waitTillAvailable } from '../../utils'
 // full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
 import { errors } from './lib/globals'
 import { manageHarborOidcConfig } from './lib/managers/harbor-oidc'
+import manageHarborProject from './lib/managers/harbor-project'
 import {
   ensureTeamBuildPushRobotAccountSecret,
   ensureTeamPullRobotAccountSecret,
@@ -15,14 +15,8 @@ import {
 } from './lib/managers/harbor-robots'
 import { HarborConfig } from './lib/types/oidc'
 import { HarborState } from './lib/types/project'
-// Constants
 
-import { harborEnvValidators } from './lib/env'
-import manageHarborProject from './lib/managers/harbor-project'
-
-// Constants
-const localEnv = cleanEnv(process.env, harborEnvValidators)
-
+import { env } from './lib/env'
 let lastState: HarborState = {}
 let setupSuccess = false
 
@@ -42,9 +36,9 @@ const harborConfig: HarborConfig = {
   teamNamespaces: [],
 }
 
-const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
+const harborBaseUrl = `${env.HARBOR_BASE_URL}:${env.HARBOR_BASE_URL_PORT}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
-const harborOperatorNamespace = localEnv.HARBOR_OPERATOR_NAMESPACE
+const harborOperatorNamespace = env.HARBOR_OPERATOR_NAMESPACE
 let robotApi: RobotApi
 let configureApi: ConfigureApi
 let projectsApi: ProjectApi
@@ -86,12 +80,7 @@ async function setupHarborApis(): Promise<void> {
   configureApi = new ConfigureApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
   projectsApi = new ProjectApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
   memberApi = new MemberApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
-  const bearerAuth = await getBearerToken(
-    robotApi,
-    localEnv.HARBOR_SYSTEM_ROBOTNAME,
-    localEnv.HARBOR_SYSTEM_NAMESPACE,
-    k8sApi,
-  )
+  const bearerAuth = await getBearerToken(robotApi, env.HARBOR_SYSTEM_ROBOTNAME, env.HARBOR_SYSTEM_NAMESPACE, k8sApi)
   robotApi.setDefaultAuthentication(bearerAuth)
   configureApi.setDefaultAuthentication(bearerAuth)
   projectsApi.setDefaultAuthentication(bearerAuth)
@@ -154,12 +143,17 @@ export default class MyOperator extends Operator {
 export async function manageHarborProjectsAndRobotAccounts(namespace: string): Promise<string | null> {
   try {
     const projectName = namespace
-    await manageHarborProject(projectName, projectsApi, memberApi)
+    const projectId = await manageHarborProject(projectName, projectsApi, memberApi)
+    if (!projectId) {
+      console.error(`Failed to manage the project ${projectName}, skipping robot account setup`)
+      return null
+    }
+
     await ensureTeamPullRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
     await ensureTeamPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
     await ensureTeamBuildPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
     console.info(`Successfully processed namespace: ${projectName}`)
-    return null
+    return projectId
   } catch (error) {
     console.error(`Error processing namespace ${namespace}:`, error)
     return null

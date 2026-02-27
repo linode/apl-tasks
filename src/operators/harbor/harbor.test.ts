@@ -422,10 +422,10 @@ describe('harborOperator', () => {
       expect(mockProjectsApi.createProject).toHaveBeenCalledWith(mockProjectReq)
       expect(mockProjectsApi.getProject).toHaveBeenCalledWith(namespace)
       expect(mockMemberApi.createProjectMember).toHaveBeenCalledTimes(2)
-      expect(result).toBeNull()
+      expect(result).toBe('1')
     })
 
-    it('should return empty string if project not found', async () => {
+    it('should return null if project not found', async () => {
       const namespace = 'team-demo'
 
       mockProjectsApi.createProject.mockResolvedValue({})
@@ -433,7 +433,7 @@ describe('harborOperator', () => {
 
       const result = await manageHarborProjectsAndRobotAccounts(namespace)
 
-      expect(result).toBe('')
+      expect(result).toBeNull()
     })
 
     it('should handle project creation errors gracefully', async () => {
@@ -445,7 +445,7 @@ describe('harborOperator', () => {
 
       const result = await manageHarborProjectsAndRobotAccounts(namespace)
 
-      expect(result).toBe('')
+      expect(result).toBe(null)
     })
 
     it('should handle project member creation errors gracefully', async () => {
@@ -468,7 +468,7 @@ describe('harborOperator', () => {
       const result = await manageHarborProjectsAndRobotAccounts(namespace)
 
       expect(mockMemberApi.createProjectMember).toHaveBeenCalled()
-      expect(result).toBeNull()
+      expect(result).toBe('1')
     })
 
     it('should handle general errors and return null', async () => {

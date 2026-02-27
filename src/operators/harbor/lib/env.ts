@@ -1,4 +1,5 @@
-import { str } from 'envalid'
+import dotenv from 'dotenv'
+import { cleanEnv, str } from 'envalid'
 
 export const HARBOR_BASE_URL = str({ desc: 'The harbor core service URL' })
 export const HARBOR_BASE_URL_PORT = str({ desc: 'The harbor core service URL port' })
@@ -16,3 +17,10 @@ export const harborEnvValidators = {
   HARBOR_SYSTEM_NAMESPACE,
   HARBOR_SYSTEM_ROBOTNAME,
 }
+
+if (process.env.NODE_ENV === 'test') {
+  dotenv.config({ path: '.env.harbor.sample' })
+} else {
+  dotenv.config()
+}
+export const env = cleanEnv(process.env, harborEnvValidators)
