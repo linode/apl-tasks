@@ -10,7 +10,18 @@ This readme is aimed at development. If you wish to contribute please read our D
 
 ## Development
 
-Make sure your expected environment variables exist in a mandatory `.env` file (see `.env.sample`). 
+Make sure your expected environment variables exist in a mandatory `.env` file.
+For Harbor operator
+```
+cp .env.harbor.sample .env
+```
+
+For Keycloak or Gitea operator
+```
+cp .env.sample .env
+```
+
+
 #
 **Important**
 When using `npm i` and you get the errors `Unauthorized` and `Permission denied` on the installation regarding getting packages from redkubes
