@@ -1,4 +1,5 @@
 import { MemberApi, ProjectApi, ProjectMember, ProjectReq } from '@linode/harbor-client-node'
+import { error, log } from 'console'
 import { HARBOR_GROUP_TYPE, HARBOR_ROLE } from '../consts'
 import { errors } from '../globals'
 import { alreadyExistsError } from '../helpers'
@@ -13,7 +14,7 @@ export default async function manageHarborProject(
       projectName,
     }
     try {
-      console.info(`Creating project for team ${projectName}`)
+      log(`Creating project for team ${projectName}`)
       await projectsApi.createProject(projectReq)
     } catch (e) {
       if (!alreadyExistsError(e)) errors.push(`Error creating project for team ${projectName}: ${e}`)
@@ -43,22 +44,22 @@ export default async function manageHarborProject(
       },
     }
     try {
-      console.info(`Associating "developer" role for team "${projectName}" with harbor project "${projectName}"`)
+      log(`Associating "developer" role for team "${projectName}" with harbor project "${projectName}"`)
       await memberApi.createProjectMember(projectId, undefined, undefined, projMember)
     } catch (e) {
       if (!alreadyExistsError(e)) errors.push(`Error associating developer role for team ${projectName}: ${e}`)
     }
     try {
-      console.info(`Associating "project-admin" role for "all-teams-admin" with harbor project "${projectName}"`)
+      log(`Associating "project-admin" role for "all-teams-admin" with harbor project "${projectName}"`)
       await memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember)
     } catch (e) {
       if (!alreadyExistsError(e)) errors.push(`Error associating project-admin role for all-teams-admin: ${e}`)
     }
 
-    console.info(`Successfully processed project: ${projectName}`)
+    log(`Successfully processed project: ${projectName}`)
     return projectId
-  } catch (error) {
-    console.error(`Error processing project ${projectName}:`, error)
+  } catch (e) {
+    error(`Error processing project ${projectName}:`, e)
     return null
   }
 }

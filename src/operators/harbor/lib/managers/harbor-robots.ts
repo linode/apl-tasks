@@ -1,5 +1,8 @@
-import { HarborConfig } from '../types/oidc'
+import { CoreV1Api } from '@kubernetes/client-node'
+import { HttpBearerAuth, RobotApi, RobotCreate, RobotCreated } from '@linode/harbor-client-node'
+import { debug, log } from 'console'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../../../../k8s'
+import fullRobotPermissions from '../../harbor-full-robot-system-permissions.json'
 import {
   DEFAULT_ROBOT_PREFIX,
   PROJECT_BUILD_PUSH_SECRET_NAME,
@@ -8,11 +11,9 @@ import {
   ROBOT_PREFIX,
   SYSTEM_SECRET_NAME,
 } from '../consts'
-import { HttpBearerAuth, RobotApi, RobotCreate, RobotCreated } from '@linode/harbor-client-node'
 import { errors } from '../globals'
+import { HarborConfig } from '../types/oidc'
 import { RobotAccess, RobotAccount, RobotSecret } from '../types/robot'
-import { CoreV1Api } from '@kubernetes/client-node'
-import fullRobotPermissions from '../../harbor-full-robot-system-permissions.json'
 
 /**
  * Create Harbor system robot account that is scoped to a given Harbor project with pull access only.
@@ -46,7 +47,7 @@ export async function createTeamPullRobotAccount(projectName: string, robotApi: 
   if (existing?.id) {
     const existingId = existing.id
     try {
-      console.info(`Deleting previous pull robot account ${fullName} with id ${existingId}`)
+      log(`Deleting previous pull robot account ${fullName} with id ${existingId}`)
       await robotApi.deleteRobot(existingId)
     } catch (e) {
       errors.push(`Error deleting previous pull robot account ${fullName}: ${e}`)
@@ -54,7 +55,7 @@ export async function createTeamPullRobotAccount(projectName: string, robotApi: 
   }
   let robotPullAccount: RobotCreated
   try {
-    console.info(`Creating pull robot account ${fullName} with project level permsissions`)
+    log(`Creating pull robot account ${fullName} with project level permsissions`)
     const { body } = await robotApi.createRobot(projectRobot)
     robotPullAccount = body
   } catch (e) {
@@ -83,7 +84,7 @@ export async function ensureTeamPullRobotAccountSecret(
   const k8sSecret = await getSecret(PROJECT_PULL_SECRET_NAME, namespace)
   if (!k8sSecret) {
     const robotPullAccount = await createTeamPullRobotAccount(projectName, robotApi)
-    console.debug(`Creating pull secret/${PROJECT_PULL_SECRET_NAME} at ${namespace} namespace`)
+    debug(`Creating pull secret/${PROJECT_PULL_SECRET_NAME} at ${namespace} namespace`)
     await createK8sSecret({
       namespace,
       name: PROJECT_PULL_SECRET_NAME,
@@ -131,7 +132,7 @@ export async function ensureTeamPushRobotAccount(projectName: string, robotApi: 
   if (existing?.id) {
     const existingId = existing.id
     try {
-      console.info(`Deleting previous push robot account ${fullName} with id ${existingId}`)
+      log(`Deleting previous push robot account ${fullName} with id ${existingId}`)
       await robotApi.deleteRobot(existingId)
     } catch (e) {
       errors.push(`Error deleting previous push robot account ${fullName}: ${e}`)
@@ -140,7 +141,7 @@ export async function ensureTeamPushRobotAccount(projectName: string, robotApi: 
 
   let robotPushAccount: RobotCreated
   try {
-    console.info(`Creating push robot account ${fullName} with project level permsissions`)
+    log(`Creating push robot account ${fullName} with project level permsissions`)
     robotPushAccount = (await robotApi.createRobot(projectRobot)).body
   } catch (e) {
     errors.push(`Error creating push robot account ${fullName}: ${e}`)
@@ -168,7 +169,7 @@ export async function ensureTeamPushRobotAccountSecret(
   const k8sSecret = await getSecret(PROJECT_PUSH_SECRET_NAME, namespace)
   if (!k8sSecret) {
     const robotPushAccount = await ensureTeamPushRobotAccount(projectName, robotApi)
-    console.debug(`Creating push secret/${PROJECT_PUSH_SECRET_NAME} at ${namespace} namespace`)
+    debug(`Creating push secret/${PROJECT_PUSH_SECRET_NAME} at ${namespace} namespace`)
     await createK8sSecret({
       namespace,
       name: PROJECT_PUSH_SECRET_NAME,
@@ -216,7 +217,7 @@ export async function ensureTeamBuildsPushRobotAccount(projectName: string, robo
   if (existing?.id) {
     const existingId = existing.id
     try {
-      console.info(`Deleting previous build push robot account ${fullName} with id ${existingId}`)
+      log(`Deleting previous build push robot account ${fullName} with id ${existingId}`)
       await robotApi.deleteRobot(existingId)
     } catch (e) {
       errors.push(`Error deleting previous build push robot account ${fullName}: ${e}`)
@@ -225,7 +226,7 @@ export async function ensureTeamBuildsPushRobotAccount(projectName: string, robo
 
   let robotBuildsPushAccount: RobotCreated
   try {
-    console.info(`Creating build push robot account ${fullName} with project level permsissions`)
+    log(`Creating build push robot account ${fullName} with project level permsissions`)
     robotBuildsPushAccount = (await robotApi.createRobot(projectRobot)).body
   } catch (e) {
     errors.push(`Error creating build push robot account ${fullName}: ${e}`)
@@ -253,7 +254,7 @@ export async function ensureTeamBuildPushRobotAccountSecret(
   const k8sSecret = await getSecret(PROJECT_BUILD_PUSH_SECRET_NAME, namespace)
   if (!k8sSecret) {
     const robotBuildsPushAccount = await ensureTeamBuildsPushRobotAccount(projectName, robotApi)
-    console.debug(`Creating build push secret/${PROJECT_BUILD_PUSH_SECRET_NAME} at ${namespace} namespace`)
+    debug(`Creating build push secret/${PROJECT_BUILD_PUSH_SECRET_NAME} at ${namespace} namespace`)
     await createBuildsK8sSecret({
       namespace,
       name: PROJECT_BUILD_PUSH_SECRET_NAME,
@@ -293,7 +294,7 @@ export async function createSystemRobotSecret(
   if (existing?.id) {
     const existingId = existing.id
     try {
-      console.info(`Deleting previous robot account ${systemRobotName} with id ${existingId}`)
+      log(`Deleting previous robot account ${systemRobotName} with id ${existingId}`)
       await robotApi.deleteRobot(existingId)
     } catch (e) {
       errors.push(`Error deleting previous robot account ${systemRobotName}: ${e}`)
@@ -301,7 +302,7 @@ export async function createSystemRobotSecret(
   }
   let robotAccount: RobotCreated
   try {
-    console.info(`Creating robot account ${systemRobotName} with system level permsissions`)
+    log(`Creating robot account ${systemRobotName} with system level permsissions`)
     robotAccount = (
       await robotApi.createRobot(
         generateRobotAccount(systemRobotName, fullRobotPermissions, {

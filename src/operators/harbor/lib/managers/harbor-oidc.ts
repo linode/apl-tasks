@@ -1,6 +1,7 @@
 import { Configurations, ConfigureApi } from '@linode/harbor-client-node'
-import { HarborConfig } from '../types/oidc'
+import { log } from 'console'
 import { ROBOT_PREFIX } from '../consts'
+import { HarborConfig } from '../types/oidc'
 
 export async function manageHarborOidcConfig(configureApi: ConfigureApi, harborConfig: HarborConfig): Promise<void> {
   const config: Configurations = {
@@ -21,7 +22,7 @@ export async function manageHarborOidcConfig(configureApi: ConfigureApi, harborC
     primaryAuthMode: true,
   }
 
-  console.info('Putting Harbor configuration')
+  log('Putting Harbor configuration')
   await configureApi.updateConfigurations(config)
-  console.info('Harbor configuration updated successfully')
+  log('Harbor configuration updated successfully')
 }

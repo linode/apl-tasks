@@ -16,6 +16,7 @@ import {
 import { HarborConfig } from './lib/types/oidc'
 import { HarborState } from './lib/types/project'
 
+import { debug, error, log } from 'console'
 import { env } from './lib/env'
 let lastState: HarborState = {}
 let setupSuccess = false
@@ -114,8 +115,8 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     case ResourceEventType.Modified: {
       try {
         await runSetupHarbor()
-      } catch (error) {
-        console.debug(error)
+      } catch (err) {
+        debug(err)
       }
       break
     }
@@ -128,14 +129,14 @@ export default class MyOperator extends Operator {
     // Watch apl-harbor-operator-secret
     try {
       await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, harborOperatorNamespace)
-    } catch (error) {
-      console.debug(error)
+    } catch (e) {
+      debug(e)
     }
     // Watch apl-harbor-operator-cm
     try {
       await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, harborOperatorNamespace)
-    } catch (error) {
-      console.debug(error)
+    } catch (e) {
+      debug(e)
     }
   }
 }
@@ -145,17 +146,17 @@ export async function manageHarborProjectsAndRobotAccounts(namespace: string): P
     const projectName = namespace
     const projectId = await manageHarborProject(projectName, projectsApi, memberApi)
     if (!projectId) {
-      console.error(`Failed to manage the project ${projectName}, skipping robot account setup`)
+      error(`Failed to manage the project ${projectName}, skipping robot account setup`)
       return null
     }
 
     await ensureTeamPullRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
     await ensureTeamPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
     await ensureTeamBuildPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
-    console.info(`Successfully processed namespace: ${projectName}`)
+    log(`Successfully processed namespace: ${projectName}`)
     return projectId
-  } catch (error) {
-    console.error(`Error processing namespace ${namespace}:`, error)
+  } catch (e) {
+    error(`Error processing namespace ${namespace}:`, e)
     return null
   }
 }
@@ -171,11 +172,11 @@ async function setupHarbor(): Promise<void> {
       await manageHarborOidcConfig(configureApi, harborConfig)
       setupSuccess = true
     } catch (err) {
-      console.error('Failed to update Harbor configuration:', err)
+      error('Failed to update Harbor configuration:', err)
     }
     if (errors.length > 0) handleErrors(errors)
-  } catch (error) {
-    console.error('Failed to set bearer Token for Harbor Api :', error)
+  } catch (e) {
+    error('Failed to set bearer Token for Harbor Api :', e)
   }
 }
 
@@ -221,18 +222,18 @@ async function checkAndExecute(): Promise<void> {
 async function runSetupHarbor(): Promise<void> {
   try {
     await checkAndExecute()
-  } catch (error) {
-    console.debug('Error could not run setup harbor', error)
-    console.debug('Retrying in 30 seconds')
+  } catch (e) {
+    debug('Error could not run setup harbor', e)
+    debug('Retrying in 30 seconds')
     await new Promise((resolve) => setTimeout(resolve, 30000))
-    console.debug('Retrying to setup harbor')
+    debug('Retrying to setup harbor')
     await runSetupHarbor()
   }
 }
 
 async function main(): Promise<void> {
   const operator = new MyOperator()
-  console.info(`Listening to secrets, configmaps and namespaces`)
+  log(`Listening to secrets, configmaps and namespaces`)
   await operator.start()
   const exit = (reason: string) => {
     operator.stop()
