@@ -2,8 +2,8 @@ import { ProjectReq, RobotCreated } from '@linode/harbor-client-node'
 import * as k8s from '../../k8s'
 import { __setApiClients, manageHarborProjectsAndRobotAccounts } from './harbor'
 import {
+  createRobotAccount,
   createSystemRobotSecret,
-  createTeamPullRobotAccount,
   ensureTeamBuildsPushRobotAccount,
   ensureTeamPushRobotAccount,
 } from './lib/managers/harbor-robots'
@@ -206,7 +206,7 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await createTeamPullRobotAccount(projectName, mockRobotApi as any)
+      const result = await createRobotAccount(projectName, mockRobotApi as any)
 
       expect(result).toEqual(mockRobotCreated)
       expect(mockRobotApi.listRobot).toHaveBeenCalled()
@@ -245,7 +245,7 @@ describe('harborOperator', () => {
       mockRobotApi.deleteRobot.mockResolvedValue({})
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await createTeamPullRobotAccount(projectName, mockRobotApi as any)
+      const result = await createRobotAccount(projectName, mockRobotApi as any)
 
       expect(mockRobotApi.deleteRobot).toHaveBeenCalledWith(999)
       expect(mockRobotApi.createRobot).toHaveBeenCalled()
@@ -261,7 +261,7 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockRejectedValue(error)
 
-      await expect(createTeamPullRobotAccount(projectName, mockRobotApi as any)).rejects.toThrow(
+      await expect(createRobotAccount(projectName, mockRobotApi as any)).rejects.toThrow(
         'Robot creation failed',
       )
     })
@@ -274,7 +274,7 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue(mockRobotList)
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      await expect(createTeamPullRobotAccount(projectName, mockRobotApi as any)).rejects.toThrow(
+      await expect(createRobotAccount(projectName, mockRobotApi as any)).rejects.toThrow(
         'RobotPullAccount already exists and should have been deleted beforehand. This happens when more than 100 robot accounts exist.',
       )
     })
@@ -532,7 +532,7 @@ describe('harborOperator', () => {
         body: { id: 1, name: expectedRobotName, secret: 'secret' },
       })
 
-      const result = await createTeamPullRobotAccount(projectName, mockRobotApi as any)
+      const result = await createRobotAccount(projectName, mockRobotApi as any)
 
       expect(mockRobotApi.deleteRobot).toHaveBeenCalledWith(999)
       expect(mockRobotApi.createRobot).toHaveBeenCalled()

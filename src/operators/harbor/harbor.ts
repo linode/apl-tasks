@@ -8,15 +8,20 @@ import { errors } from './lib/globals'
 import { manageHarborOidcConfig } from './lib/managers/harbor-oidc'
 import manageHarborProject from './lib/managers/harbor-project'
 import {
-  ensureTeamBuildPushRobotAccountSecret,
-  ensureTeamPullRobotAccountSecret,
-  ensureTeamPushRobotAccountSecret,
-  getBearerToken,
+  ensureRobotAccount,
+  getBearerToken
 } from './lib/managers/harbor-robots'
 import { HarborConfig } from './lib/types/oidc'
 import { HarborState } from './lib/types/project'
 
 import { debug, error, log } from 'console'
+import {
+  HARBOR_ROBOT_BUILD_SUFFIX,
+  HARBOR_ROBOT_PULL_SUFFIX,
+  HARBOR_ROBOT_PUSH_SUFFIX,
+  HARBOR_TOKEN_TYPE_PULL,
+  HARBOR_TOKEN_TYPE_PUSH,
+} from './lib/consts'
 import { env } from './lib/env'
 let lastState: HarborState = {}
 let setupSuccess = false
@@ -150,9 +155,30 @@ export async function manageHarborProjectsAndRobotAccounts(namespace: string): P
       return null
     }
 
-    await ensureTeamPullRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
-    await ensureTeamPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
-    await ensureTeamBuildPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
+    await ensureRobotAccount(
+      namespace,
+      projectName,
+      harborConfig,
+      robotApi,
+      HARBOR_ROBOT_PULL_SUFFIX,
+      HARBOR_TOKEN_TYPE_PULL,
+    )
+    await ensureRobotAccount(
+      namespace,
+      projectName,
+      harborConfig,
+      robotApi,
+      HARBOR_ROBOT_PUSH_SUFFIX,
+      HARBOR_TOKEN_TYPE_PUSH,
+    )
+    await ensureRobotAccount(
+      namespace,
+      projectName,
+      harborConfig,
+      robotApi,
+      HARBOR_ROBOT_BUILD_SUFFIX,
+      HARBOR_TOKEN_TYPE_PUSH,
+    )
     log(`Successfully processed namespace: ${projectName}`)
     return projectId
   } catch (e) {

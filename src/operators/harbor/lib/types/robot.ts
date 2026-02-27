@@ -24,3 +24,8 @@ export interface RobotAccount {
   level: 'project' | 'system'
   permissions: RobotPermission[]
 }
+
+export interface DockerConfigCredentials {
+  username: string
+  password: string
+}
