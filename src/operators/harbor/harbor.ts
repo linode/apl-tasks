@@ -13,8 +13,7 @@ import {
 } from '../../validators'
 // full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
 import { HARBOR_GROUP_TYPE, HARBOR_ROLE } from './lib/consts'
-import { HarborState } from './lib/types/project'
-import { HarborConfig } from './lib/types/oidc'
+import { errors } from './lib/globals'
 import { manageHarborOidcConfig } from './lib/managers/harbor-oidc'
 import {
   ensureTeamBuildPushRobotAccountSecret,
@@ -22,7 +21,8 @@ import {
   ensureTeamPushRobotAccountSecret,
   getBearerToken,
 } from './lib/managers/harbor-robots'
-import { errors } from './lib/globals'
+import { HarborConfig } from './lib/types/oidc'
+import { HarborState } from './lib/types/project'
 // Constants
 const localEnv = cleanEnv({
   HARBOR_BASE_URL,
@@ -50,8 +50,6 @@ const harborConfig: HarborConfig = {
   oidcScope: 'openid',
   teamNamespaces: [],
 }
-
-const systemNamespace = localEnv.HARBOR_SYSTEM_NAMESPACE
 
 const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
