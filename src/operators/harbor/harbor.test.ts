@@ -1,4 +1,14 @@
 // Mock @kubernetes/client-node to avoid ES module loading issues
+import {
+  createSystemRobotSecret,
+  createTeamPullRobotAccount,
+  ensureTeamBuildsPushRobotAccount,
+  ensureTeamPushRobotAccount,
+} from './lib/managers/harbor-robots'
+import { ProjectReq, RobotCreated } from '@linode/harbor-client-node'
+import * as k8s from '../../k8s'
+import { __setApiClients, processNamespace } from './harbor'
+
 jest.mock('@kubernetes/client-node', () => ({
   KubeConfig: jest.fn().mockImplementation(() => ({
     loadFromDefault: jest.fn(),
@@ -15,17 +25,6 @@ jest.mock('@kubernetes/client-node', () => ({
   V1Secret: jest.fn(),
   V1ObjectMeta: jest.fn(),
 }))
-
-import { ProjectReq, RobotCreated } from '@linode/harbor-client-node'
-import * as k8s from '../../k8s'
-import {
-  __setApiClients,
-  createSystemRobotSecret,
-  createTeamPullRobotAccount,
-  ensureTeamBuildsPushRobotAccount,
-  ensureTeamPushRobotAccount,
-  processNamespace
-} from './harbor'
 
 jest.mock('../../k8s')
 
