@@ -25,37 +25,17 @@ import {
 } from '../../validators'
 // full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
 import fullRobotPermissions from './harbor-full-robot-system-permissions.json'
-
-// Interfaces
-interface DependencyState {
-  [key: string]: any
-}
-
-interface RobotSecret {
-  id: number
-  name: string
-  secret: string
-}
-
-interface RobotAccess {
-  resource: string
-  action: string
-}
-
-interface RobotPermission {
-  kind: 'project' | 'system'
-  namespace: string
-  access: RobotAccess[]
-}
-
-interface RobotAccount {
-  name: string
-  duration: number
-  description: string
-  disable: boolean
-  level: 'project' | 'system'
-  permissions: RobotPermission[]
-}
+import {
+  HarborGroupType,
+  HarborRole,
+  PROJECT_BUILD_PUSH_SECRET_NAME,
+  PROJECT_PULL_SECRET_NAME,
+  PROJECT_PUSH_SECRET_NAME,
+  ROBOT_PREFIX,
+  SYSTEM_SECRET_NAME,
+} from './lib/consts'
+import { HarborState } from './lib/types/project'
+import { RobotAccess, RobotAccount, RobotSecret } from './lib/types/robot'
 
 // Constants
 const localEnv = cleanEnv({
@@ -66,24 +46,11 @@ const localEnv = cleanEnv({
   HARBOR_SYSTEM_ROBOTNAME,
 })
 
-const HarborRole = {
-  admin: 1,
-  developer: 2,
-  guest: 3,
-  master: 4,
-}
-
-const HarborGroupType = {
-  ldap: 1,
-  http: 2,
-}
-
-let lastState: DependencyState = {}
+let lastState: HarborState = {}
 let setupSuccess = false
 const errors: string[] = []
 
-const robotPrefix = 'otomi-'
-const env = {
+const harborConfig = {
   harborBaseRepoUrl: '',
   harborUser: '',
   harborPassword: '',
@@ -100,10 +67,7 @@ const env = {
 }
 
 const systemNamespace = localEnv.HARBOR_SYSTEM_NAMESPACE
-const systemSecretName = 'harbor-robot-admin'
-const projectPullSecretName = 'harbor-pullsecret'
-const projectPushSecretName = 'harbor-pushsecret'
-const projectBuildPushSecretName = 'harbor-pushsecret-builds'
+
 const harborBaseUrl = `${localEnv.HARBOR_BASE_URL}:${localEnv.HARBOR_BASE_URL_PORT}/api/v2.0`
 const harborHealthUrl = `${harborBaseUrl}/systeminfo`
 const harborOperatorNamespace = localEnv.HARBOR_OPERATOR_NAMESPACE
@@ -139,7 +103,7 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 
 // Utility function to compare states
-function hasStateChanged(currentState: DependencyState, _lastState: DependencyState): boolean {
+function hasStateChanged(currentState: HarborState, _lastState: HarborState): boolean {
   return Object.entries(currentState).some(([key, value]) => !value || value !== _lastState[key])
 }
 
@@ -149,20 +113,20 @@ const secretsAndConfigmapsCallback = async (e: any) => {
   const { metadata, data } = object
 
   if (object.kind === 'Secret' && metadata.name === 'apl-harbor-operator-secret') {
-    env.harborPassword = Buffer.from(data.harborPassword, 'base64').toString()
-    env.harborUser = Buffer.from(data.harborUser, 'base64').toString()
-    env.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
-    env.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
-    env.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
+    harborConfig.harborPassword = Buffer.from(data.harborPassword, 'base64').toString()
+    harborConfig.harborUser = Buffer.from(data.harborUser, 'base64').toString()
+    harborConfig.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
+    harborConfig.oidcClientId = Buffer.from(data.oidcClientId, 'base64').toString()
+    harborConfig.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
   } else if (object.kind === 'ConfigMap' && metadata.name === 'apl-harbor-operator-cm') {
-    env.harborBaseRepoUrl = data.harborBaseRepoUrl
-    env.oidcAutoOnboard = data.oidcAutoOnboard === 'true'
-    env.oidcUserClaim = data.oidcUserClaim
-    env.oidcGroupsClaim = data.oidcGroupsClaim
-    env.oidcName = data.oidcName
-    env.oidcScope = data.oidcScope
-    env.oidcVerifyCert = data.oidcVerifyCert === 'true'
-    env.teamNamespaces = JSON.parse(data.teamNamespaces)
+    harborConfig.harborBaseRepoUrl = data.harborBaseRepoUrl
+    harborConfig.oidcAutoOnboard = data.oidcAutoOnboard === 'true'
+    harborConfig.oidcUserClaim = data.oidcUserClaim
+    harborConfig.oidcGroupsClaim = data.oidcGroupsClaim
+    harborConfig.oidcName = data.oidcName
+    harborConfig.oidcScope = data.oidcScope
+    harborConfig.oidcVerifyCert = data.oidcVerifyCert === 'true'
+    harborConfig.teamNamespaces = JSON.parse(data.teamNamespaces)
   } else return
 
   switch (e.type) {
@@ -216,20 +180,20 @@ if (typeof require !== 'undefined' && require.main === module) {
 
 // Runners
 async function checkAndExecute() {
-  const currentState: DependencyState = {
-    harborBaseRepoUrl: env.harborBaseRepoUrl,
-    harborUser: env.harborUser,
-    harborPassword: env.harborPassword,
-    oidcClientId: env.oidcClientId,
-    oidcClientSecret: env.oidcClientSecret,
-    oidcEndpoint: env.oidcEndpoint,
-    oidcVerifyCert: env.oidcVerifyCert,
-    oidcUserClaim: env.oidcUserClaim,
-    oidcAutoOnboard: env.oidcAutoOnboard,
-    oidcGroupsClaim: env.oidcGroupsClaim,
-    oidcName: env.oidcName,
-    oidcScope: env.oidcScope,
-    teamNames: env.teamNamespaces,
+  const currentState: HarborState = {
+    harborBaseRepoUrl: harborConfig.harborBaseRepoUrl,
+    harborUser: harborConfig.harborUser,
+    harborPassword: harborConfig.harborPassword,
+    oidcClientId: harborConfig.oidcClientId,
+    oidcClientSecret: harborConfig.oidcClientSecret,
+    oidcEndpoint: harborConfig.oidcEndpoint,
+    oidcVerifyCert: harborConfig.oidcVerifyCert,
+    oidcUserClaim: harborConfig.oidcUserClaim,
+    oidcAutoOnboard: harborConfig.oidcAutoOnboard,
+    oidcGroupsClaim: harborConfig.oidcGroupsClaim,
+    oidcName: harborConfig.oidcName,
+    oidcScope: harborConfig.oidcScope,
+    teamNames: harborConfig.teamNamespaces,
   }
 
   if (hasStateChanged(currentState, lastState)) {
@@ -265,27 +229,27 @@ async function runSetupHarbor() {
 async function setupHarbor() {
   // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
-  if (!env.harborUser) return
+  if (!harborConfig.harborUser) return
 
-  robotApi = new RobotApi(env.harborUser, env.harborPassword, harborBaseUrl)
-  configureApi = new ConfigureApi(env.harborUser, env.harborPassword, harborBaseUrl)
-  projectsApi = new ProjectApi(env.harborUser, env.harborPassword, harborBaseUrl)
-  memberApi = new MemberApi(env.harborUser, env.harborPassword, harborBaseUrl)
+  robotApi = new RobotApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  configureApi = new ConfigureApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  projectsApi = new ProjectApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  memberApi = new MemberApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
 
   const config: Configurations = {
     authMode: 'oidc_auth',
     oidcAdminGroup: 'platform-admin',
     oidcClientId: 'otomi',
-    oidcClientSecret: env.oidcClientSecret,
-    oidcEndpoint: env.oidcEndpoint,
+    oidcClientSecret: harborConfig.oidcClientSecret,
+    oidcEndpoint: harborConfig.oidcEndpoint,
     oidcGroupsClaim: 'groups',
     oidcName: 'otomi',
     oidcScope: 'openid',
-    oidcVerifyCert: env.oidcVerifyCert,
-    oidcUserClaim: env.oidcUserClaim,
-    oidcAutoOnboard: env.oidcAutoOnboard,
+    oidcVerifyCert: harborConfig.oidcVerifyCert,
+    oidcUserClaim: harborConfig.oidcUserClaim,
+    oidcAutoOnboard: harborConfig.oidcAutoOnboard,
     projectCreationRestriction: 'adminonly',
-    robotNamePrefix: robotPrefix,
+    robotNamePrefix: ROBOT_PREFIX,
     selfRegistration: false,
     primaryAuthMode: true,
   }
@@ -311,10 +275,10 @@ async function setupHarbor() {
 }
 
 async function ensureRobotSecretHasCorrectName(robotSecret: RobotSecret) {
-  const preferredRobotName = `${robotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`
+  const preferredRobotName = `${ROBOT_PREFIX}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`
   if (robotSecret.name !== preferredRobotName) {
     const updatedRobotSecret = { ...robotSecret, name: preferredRobotName }
-    await replaceSecret(systemSecretName, systemNamespace, updatedRobotSecret)
+    await replaceSecret(SYSTEM_SECRET_NAME, systemNamespace, updatedRobotSecret)
   }
 }
 
@@ -325,7 +289,7 @@ async function ensureRobotSecretHasCorrectName(robotSecret: RobotSecret) {
 async function getBearerToken(): Promise<HttpBearerAuth> {
   const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
 
-  let robotSecret = (await getSecret(systemSecretName, systemNamespace)) as RobotSecret
+  let robotSecret = (await getSecret(SYSTEM_SECRET_NAME, systemNamespace)) as RobotSecret
   if (!robotSecret) {
     // not existing yet, create robot account and keep creds in secret
     robotSecret = await createSystemRobotSecret()
@@ -340,7 +304,7 @@ async function getBearerToken(): Promise<HttpBearerAuth> {
       // throw everything except 401, which is what we test for
       if (e.status !== 401) throw e
       // unauthenticated, so remove and recreate secret
-      await k8sApi.deleteNamespacedSecret({ name: systemSecretName, namespace: systemNamespace })
+      await k8sApi.deleteNamespacedSecret({ name: SYSTEM_SECRET_NAME, namespace: systemNamespace })
       // now, the next call might throw IF:
       // - authMode oidc was already turned on and a platform admin accidentally removed the secret
       // but that is very unlikely, an unresolvable problem and needs a manual db fix
@@ -364,7 +328,7 @@ export async function createSystemRobotSecret(): Promise<RobotSecret> {
   const defaultRobotPrefix = 'robot$'
   const existing = robotList.find(
     (robot) =>
-      robot.name === `${robotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}` ||
+      robot.name === `${ROBOT_PREFIX}${localEnv.HARBOR_SYSTEM_ROBOTNAME}` ||
       robot.name === `${defaultRobotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`,
   )
   if (existing?.id) {
@@ -395,7 +359,7 @@ export async function createSystemRobotSecret(): Promise<RobotSecret> {
     throw new Error('Robot account creation failed: missing id, name, or secret')
   }
   const robotSecret: RobotSecret = { id: robotAccount.id!, name: robotAccount.name!, secret: robotAccount.secret! }
-  await createSecret(systemSecretName, systemNamespace, robotSecret)
+  await createSecret(SYSTEM_SECRET_NAME, systemNamespace, robotSecret)
   return robotSecret
 }
 
@@ -474,14 +438,14 @@ export async function processNamespace(namespace: string): Promise<string | null
  * @param projectName Harbor project name
  */
 async function ensureTeamPullRobotAccountSecret(namespace: string, projectName): Promise<void> {
-  const k8sSecret = await getSecret(projectPullSecretName, namespace)
+  const k8sSecret = await getSecret(PROJECT_PULL_SECRET_NAME, namespace)
   if (!k8sSecret) {
     const robotPullAccount = await createTeamPullRobotAccount(projectName)
-    console.debug(`Creating pull secret/${projectPullSecretName} at ${namespace} namespace`)
+    console.debug(`Creating pull secret/${PROJECT_PULL_SECRET_NAME} at ${namespace} namespace`)
     await createK8sSecret({
       namespace,
-      name: projectPullSecretName,
-      server: `${env.harborBaseRepoUrl}`,
+      name: PROJECT_PULL_SECRET_NAME,
+      server: `${harborConfig.harborBaseRepoUrl}`,
       username: robotPullAccount.name!,
       password: robotPullAccount.secret!,
     })
@@ -512,7 +476,7 @@ export async function createTeamPullRobotAccount(projectName: string): Promise<R
       },
     ],
   }
-  const fullName = `${robotPrefix}${projectRobot.name}`
+  const fullName = `${ROBOT_PREFIX}${projectRobot.name}`
 
   const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
@@ -549,14 +513,14 @@ export async function createTeamPullRobotAccount(projectName: string): Promise<R
  * @param projectName Harbor project name
  */
 async function ensureTeamPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
-  const k8sSecret = await getSecret(projectPushSecretName, namespace)
+  const k8sSecret = await getSecret(PROJECT_PUSH_SECRET_NAME, namespace)
   if (!k8sSecret) {
     const robotPushAccount = await ensureTeamPushRobotAccount(projectName)
-    console.debug(`Creating push secret/${projectPushSecretName} at ${namespace} namespace`)
+    console.debug(`Creating push secret/${PROJECT_PUSH_SECRET_NAME} at ${namespace} namespace`)
     await createK8sSecret({
       namespace,
-      name: projectPushSecretName,
-      server: `${env.harborBaseRepoUrl}`,
+      name: PROJECT_PUSH_SECRET_NAME,
+      server: `${harborConfig.harborBaseRepoUrl}`,
       username: robotPushAccount.name!,
       password: robotPushAccount.secret!,
     })
@@ -592,7 +556,7 @@ export async function ensureTeamPushRobotAccount(projectName: string): Promise<R
       },
     ],
   }
-  const fullName = `${robotPrefix}${projectRobot.name}`
+  const fullName = `${ROBOT_PREFIX}${projectRobot.name}`
 
   const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
@@ -629,14 +593,14 @@ export async function ensureTeamPushRobotAccount(projectName: string): Promise<R
  * @param projectName Harbor project name
  */
 async function ensureTeamBuildPushRobotAccountSecret(namespace: string, projectName): Promise<void> {
-  const k8sSecret = await getSecret(projectBuildPushSecretName, namespace)
+  const k8sSecret = await getSecret(PROJECT_BUILD_PUSH_SECRET_NAME, namespace)
   if (!k8sSecret) {
     const robotBuildsPushAccount = await ensureTeamBuildsPushRobotAccount(projectName)
-    console.debug(`Creating build push secret/${projectBuildPushSecretName} at ${namespace} namespace`)
+    console.debug(`Creating build push secret/${PROJECT_BUILD_PUSH_SECRET_NAME} at ${namespace} namespace`)
     await createBuildsK8sSecret({
       namespace,
-      name: projectBuildPushSecretName,
-      server: `${env.harborBaseRepoUrl}`,
+      name: PROJECT_BUILD_PUSH_SECRET_NAME,
+      server: `${harborConfig.harborBaseRepoUrl}`,
       username: robotBuildsPushAccount.name!,
       password: robotBuildsPushAccount.secret!,
     })
@@ -672,7 +636,7 @@ export async function ensureTeamBuildsPushRobotAccount(projectName: string): Pro
       },
     ],
   }
-  const fullName = `${robotPrefix}${projectRobot.name}`
+  const fullName = `${ROBOT_PREFIX}${projectRobot.name}`
 
   const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
   const existing = robotList.find((i) => i.name === fullName)
