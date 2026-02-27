@@ -26,6 +26,7 @@ import {
 // full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
 import fullRobotPermissions from './harbor-full-robot-system-permissions.json'
 import {
+  DEFAULT_ROBOT_PREFIX,
   HarborGroupType,
   HarborRole,
   PROJECT_BUILD_PUSH_SECRET_NAME,
@@ -325,11 +326,10 @@ function isRobotCreated(obj: unknown): obj is RobotCreated {
  */
 export async function createSystemRobotSecret(): Promise<RobotSecret> {
   const { body: robotList } = await robotApi.listRobot()
-  const defaultRobotPrefix = 'robot$'
   const existing = robotList.find(
     (robot) =>
       robot.name === `${ROBOT_PREFIX}${localEnv.HARBOR_SYSTEM_ROBOTNAME}` ||
-      robot.name === `${defaultRobotPrefix}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`,
+      robot.name === `${DEFAULT_ROBOT_PREFIX}${localEnv.HARBOR_SYSTEM_ROBOTNAME}`,
   )
   if (existing?.id) {
     const existingId = existing.id
