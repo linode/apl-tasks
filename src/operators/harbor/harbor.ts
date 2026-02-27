@@ -1,11 +1,10 @@
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
-import { ConfigureApi, MemberApi, ProjectApi, ProjectMember, ProjectReq, RobotApi } from '@linode/harbor-client-node'
+import { ConfigureApi, MemberApi, ProjectApi, RobotApi } from '@linode/harbor-client-node'
 import { cleanEnv } from 'envalid'
 import { handleErrors, waitTillAvailable } from '../../utils'
 // full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
-import { HARBOR_GROUP_TYPE, HARBOR_ROLE } from './lib/consts'
 import { errors } from './lib/globals'
 import { manageHarborOidcConfig } from './lib/managers/harbor-oidc'
 import {
@@ -19,6 +18,7 @@ import { HarborState } from './lib/types/project'
 // Constants
 
 import { harborEnvValidators } from './lib/env'
+import manageHarborProject from './lib/managers/harbor-project'
 
 // Constants
 const localEnv = cleanEnv(process.env, harborEnvValidators)
@@ -81,6 +81,23 @@ function hasStateChanged(currentState: HarborState, _lastState: HarborState): bo
   return Object.entries(currentState).some(([key, value]) => !value || value !== _lastState[key])
 }
 
+async function setupHarborApis(): Promise<void> {
+  robotApi = new RobotApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  configureApi = new ConfigureApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  projectsApi = new ProjectApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  memberApi = new MemberApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  const bearerAuth = await getBearerToken(
+    robotApi,
+    localEnv.HARBOR_SYSTEM_ROBOTNAME,
+    localEnv.HARBOR_SYSTEM_NAMESPACE,
+    k8sApi,
+  )
+  robotApi.setDefaultAuthentication(bearerAuth)
+  configureApi.setDefaultAuthentication(bearerAuth)
+  projectsApi.setDefaultAuthentication(bearerAuth)
+  memberApi.setDefaultAuthentication(bearerAuth)
+}
+
 // Callbacks
 const secretsAndConfigmapsCallback = async (e: any) => {
   const { object } = e
@@ -117,8 +134,6 @@ const secretsAndConfigmapsCallback = async (e: any) => {
       break
   }
 }
-
-// Operator
 export default class MyOperator extends Operator {
   protected async init() {
     // Watch apl-harbor-operator-secret
@@ -136,24 +151,42 @@ export default class MyOperator extends Operator {
   }
 }
 
-async function main(): Promise<void> {
-  const operator = new MyOperator()
-  console.info(`Listening to secrets, configmaps and namespaces`)
-  await operator.start()
-  const exit = (reason: string) => {
-    operator.stop()
-    process.exit(0)
+export async function manageHarborProjectsAndRobotAccounts(namespace: string): Promise<string | null> {
+  try {
+    const projectName = namespace
+    await manageHarborProject(projectName, projectsApi, memberApi)
+    await ensureTeamPullRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
+    await ensureTeamPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
+    await ensureTeamBuildPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
+    console.info(`Successfully processed namespace: ${projectName}`)
+    return null
+  } catch (error) {
+    console.error(`Error processing namespace ${namespace}:`, error)
+    return null
   }
-
-  process.on('SIGTERM', () => exit('SIGTERM')).on('SIGINT', () => exit('SIGINT'))
 }
 
-if (typeof require !== 'undefined' && require.main === module) {
-  main()
+async function setupHarbor(): Promise<void> {
+  // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
+  await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
+  if (!harborConfig.harborUser) return
+
+  try {
+    await setupHarborApis()
+    try {
+      await manageHarborOidcConfig(configureApi, harborConfig)
+      setupSuccess = true
+    } catch (err) {
+      console.error('Failed to update Harbor configuration:', err)
+    }
+    if (errors.length > 0) handleErrors(errors)
+  } catch (error) {
+    console.error('Failed to set bearer Token for Harbor Api :', error)
+  }
 }
 
 // Runners
-async function checkAndExecute() {
+async function checkAndExecute(): Promise<void> {
   const currentState: HarborState = {
     harborBaseRepoUrl: harborConfig.harborBaseRepoUrl,
     harborUser: harborConfig.harborUser,
@@ -182,12 +215,16 @@ async function checkAndExecute() {
     currentState.teamNames.length > 0 &&
     currentState.teamNames !== lastState.teamNames
   ) {
-    await Promise.all(currentState.teamNames.map((namespace) => processNamespace(`team-${namespace}`)))
+    await Promise.all(
+      currentState.teamNames.map((namespace) => {
+        return manageHarborProjectsAndRobotAccounts(`team-${namespace}`)
+      }),
+    )
     lastState = { ...currentState }
   }
 }
 
-async function runSetupHarbor() {
+async function runSetupHarbor(): Promise<void> {
   try {
     await checkAndExecute()
   } catch (error) {
@@ -199,108 +236,18 @@ async function runSetupHarbor() {
   }
 }
 
-async function setupHarborApis(): Promise<void> {
-  robotApi = new RobotApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
-  configureApi = new ConfigureApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
-  projectsApi = new ProjectApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
-  memberApi = new MemberApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
-  const bearerAuth = await getBearerToken(
-    robotApi,
-    localEnv.HARBOR_SYSTEM_ROBOTNAME,
-    localEnv.HARBOR_SYSTEM_NAMESPACE,
-    k8sApi,
-  )
-  robotApi.setDefaultAuthentication(bearerAuth)
-  configureApi.setDefaultAuthentication(bearerAuth)
-  projectsApi.setDefaultAuthentication(bearerAuth)
-  memberApi.setDefaultAuthentication(bearerAuth)
+async function main(): Promise<void> {
+  const operator = new MyOperator()
+  console.info(`Listening to secrets, configmaps and namespaces`)
+  await operator.start()
+  const exit = (reason: string) => {
+    operator.stop()
+    process.exit(0)
+  }
+
+  process.on('SIGTERM', () => exit('SIGTERM')).on('SIGINT', () => exit('SIGINT'))
 }
 
-// Setup Harbor
-async function setupHarbor() {
-  // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
-  await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
-  if (!harborConfig.harborUser) return
-
-  try {
-    await setupHarborApis()
-    try {
-      await manageHarborOidcConfig(configureApi, harborConfig)
-      setupSuccess = true
-    } catch (err) {
-      console.error('Failed to update Harbor configuration:', err)
-    }
-    if (errors.length > 0) handleErrors(errors)
-  } catch (error) {
-    console.error('Failed to set bearer Token for Harbor Api :', error)
-  }
-}
-
-function alreadyExistsError(e): boolean {
-  if (e && e.body && e.body.errors && e.body.errors.length > 0) {
-    return e.body.errors[0].message.includes('already exists')
-  }
-  return false
-}
-
-// Process Namespace
-export async function processNamespace(namespace: string): Promise<string | null> {
-  try {
-    const projectName = namespace
-    const projectReq: ProjectReq = {
-      projectName,
-    }
-    try {
-      console.info(`Creating project for team ${namespace}`)
-      await projectsApi.createProject(projectReq)
-    } catch (e) {
-      if (!alreadyExistsError(e)) errors.push(`Error creating project for team ${namespace}: ${e}`)
-    }
-
-    let project
-    try {
-      project = (await projectsApi.getProject(projectName)).body
-    } catch (e) {
-      errors.push(`Error getting project for team ${namespace}: ${e}`)
-    }
-    if (!project) return ''
-    const projectId = `${project.projectId}`
-
-    const projMember: ProjectMember = {
-      roleId: HARBOR_ROLE.developer,
-      memberGroup: {
-        groupName: projectName,
-        groupType: HARBOR_GROUP_TYPE.http,
-      },
-    }
-    const projAdminMember: ProjectMember = {
-      roleId: HARBOR_ROLE.admin,
-      memberGroup: {
-        groupName: 'all-teams-admin',
-        groupType: HARBOR_GROUP_TYPE.http,
-      },
-    }
-    try {
-      console.info(`Associating "developer" role for team "${namespace}" with harbor project "${projectName}"`)
-      await memberApi.createProjectMember(projectId, undefined, undefined, projMember)
-    } catch (e) {
-      if (!alreadyExistsError(e)) errors.push(`Error associating developer role for team ${namespace}: ${e}`)
-    }
-    try {
-      console.info(`Associating "project-admin" role for "all-teams-admin" with harbor project "${projectName}"`)
-      await memberApi.createProjectMember(projectId, undefined, undefined, projAdminMember)
-    } catch (e) {
-      if (!alreadyExistsError(e)) errors.push(`Error associating project-admin role for all-teams-admin: ${e}`)
-    }
-
-    await ensureTeamPullRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
-    await ensureTeamPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
-    await ensureTeamBuildPushRobotAccountSecret(namespace, projectName, harborConfig, robotApi)
-
-    console.info(`Successfully processed namespace: ${namespace}`)
-    return null
-  } catch (error) {
-    console.error(`Error processing namespace ${namespace}:`, error)
-    return null
-  }
+if (typeof require !== 'undefined' && require.main === module) {
+  main()
 }
