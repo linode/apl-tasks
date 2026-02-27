@@ -2,15 +2,8 @@ import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import { ConfigureApi, MemberApi, ProjectApi, ProjectMember, ProjectReq, RobotApi } from '@linode/harbor-client-node'
+import { cleanEnv } from 'envalid'
 import { handleErrors, waitTillAvailable } from '../../utils'
-import {
-  cleanEnv,
-  HARBOR_BASE_URL,
-  HARBOR_BASE_URL_PORT,
-  HARBOR_OPERATOR_NAMESPACE,
-  HARBOR_SYSTEM_NAMESPACE,
-  HARBOR_SYSTEM_ROBOTNAME,
-} from '../../validators'
 // full list of robot permissions which are needed because we cannot do *:* anymore to allow all actions for all resources
 import { HARBOR_GROUP_TYPE, HARBOR_ROLE } from './lib/consts'
 import { errors } from './lib/globals'
@@ -24,13 +17,11 @@ import {
 import { HarborConfig } from './lib/types/oidc'
 import { HarborState } from './lib/types/project'
 // Constants
-const localEnv = cleanEnv({
-  HARBOR_BASE_URL,
-  HARBOR_BASE_URL_PORT,
-  HARBOR_OPERATOR_NAMESPACE,
-  HARBOR_SYSTEM_NAMESPACE,
-  HARBOR_SYSTEM_ROBOTNAME,
-})
+
+import { harborEnvValidators } from './lib/env'
+
+// Constants
+const localEnv = cleanEnv(process.env, harborEnvValidators)
 
 let lastState: HarborState = {}
 let setupSuccess = false
