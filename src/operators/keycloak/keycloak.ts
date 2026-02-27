@@ -314,7 +314,7 @@ export default class MyOperator extends Operator {
                 const res: any = await k8sCoreApi.listNamespacedSecret({ namespace: 'apl-users' })
                 const users: any[] = []
                 for (const item of res.items || []) {
-                  if (item.type !== 'Opaque') continue
+                  if (item.type !== 'Opaque' && item.type !== 'kubernetes.io/opaque') continue
                   if (!item.data?.email) continue
 
                   const decoded: Record<string, string> = {}
