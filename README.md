@@ -10,8 +10,7 @@ This readme is aimed at development. If you wish to contribute please read our D
 
 ## Development
 
-Make sure your expected environment variables exist in a mandatory `.env` file (see `.env.sample`). 
-#
+### Set token to pull npm packages
 **Important**
 When using `npm i` and you get the errors `Unauthorized` and `Permission denied` on the installation regarding getting packages from redkubes
 > Example: `npm ERR! 403 403 Forbidden - GET https://npm.pkg.github.com/linode/@linode%2fgitea-client-node - Permission denied`
@@ -22,24 +21,36 @@ This can be fixed by adding the following line to the `.npmrc` file.
 To create a personal access token, go to GitHub -> settings -> developer settings -> personal access token -> give read permission on packages and create the token
 
 **Remember not to push this token**
-#
-Then start a proxy to the api you wish to target:
 
-- gitea: `k -n gitea port-forward svc/gitea-http 8082:3000 &`
-- harbor: `k -n harbor port-forward svc/harbor-core 8083:80 &`
-- keycloak: `k -n keycloak port-forward svc/keycloak-operator 8084:80 &`
+### Set environment variables
+Make sure your expected environment variables exist in a mandatory `.env` file.
+For Harbor operator
+```
+cp .env.harbor.sample .env
+```
 
-Or start them all with `bin/start-proxies.sh`
+For Keycloak or Gitea operator
+```
+cp .env.sample .env
+```
+### Create connection to the kubernetes cluster
+Set port forwarding so the operator can reach harbor|gitea|keycloak API 
+```
+export KUBECONFIG=<>
+bin/start-proxies.sh
+```
 
-Now you can execute a task locally:
+### Execute or debug the code
+In separate terminal execute a task locally:
 
 ```
+export KUBECONFIG=<>
 npm run tasks:(gitea*|harbor|keycloak|certs-aws|...)-dev
 ```
 
 Or start them in vscode from the debug menu. (Don't forget to add a profile for any new tasks!)
 
-**Testing https with self-signed certs**
+### Testing https with self-signed certs
 
 When targeting `https://...` services with self-signed certs, also create a `.env.ca` file (just copy `.env.ca.letsencrypt-staging` to `.env.ca` when using `issuer: letsencrypt-staging`), and export it before running tasks:
 
