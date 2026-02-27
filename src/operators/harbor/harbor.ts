@@ -27,8 +27,8 @@ import {
 import fullRobotPermissions from './harbor-full-robot-system-permissions.json'
 import {
   DEFAULT_ROBOT_PREFIX,
-  HarborGroupType,
-  HarborRole,
+  HARBOR_GROUP_TYPE,
+  HARBOR_ROLE,
   PROJECT_BUILD_PUSH_SECRET_NAME,
   PROJECT_PULL_SECRET_NAME,
   PROJECT_PUSH_SECRET_NAME,
@@ -394,17 +394,17 @@ export async function processNamespace(namespace: string): Promise<string | null
     const projectId = `${project.projectId}`
 
     const projMember: ProjectMember = {
-      roleId: HarborRole.developer,
+      roleId: HARBOR_ROLE.developer,
       memberGroup: {
         groupName: projectName,
-        groupType: HarborGroupType.http,
+        groupType: HARBOR_GROUP_TYPE.http,
       },
     }
     const projAdminMember: ProjectMember = {
-      roleId: HarborRole.admin,
+      roleId: HARBOR_ROLE.admin,
       memberGroup: {
         groupName: 'all-teams-admin',
-        groupType: HarborGroupType.http,
+        groupType: HARBOR_GROUP_TYPE.http,
       },
     }
     try {

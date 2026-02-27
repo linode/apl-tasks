@@ -1,12 +1,12 @@
 // consts
-export const HarborRole = {
+export const HARBOR_ROLE = {
   admin: 1,
   developer: 2,
   guest: 3,
   master: 4,
 }
 
-export const HarborGroupType = {
+export const HARBOR_GROUP_TYPE = {
   ldap: 1,
   http: 2,
 }
