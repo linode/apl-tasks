@@ -2,7 +2,6 @@ import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import Operator, { ResourceEventType } from '@linode/apl-k8s-operator'
 import {
-  Configurations,
   ConfigureApi,
   HttpBearerAuth,
   MemberApi,
@@ -37,7 +36,8 @@ import {
 } from './lib/consts'
 import { HarborState } from './lib/types/project'
 import { RobotAccess, RobotAccount, RobotSecret } from './lib/types/robot'
-
+import { HarborConfig } from './lib/types/oidc'
+import { manageHarborOidcConfig } from './lib/managers/harbor-oidc'
 // Constants
 const localEnv = cleanEnv({
   HARBOR_BASE_URL,
@@ -51,7 +51,7 @@ let lastState: HarborState = {}
 let setupSuccess = false
 const errors: string[] = []
 
-const harborConfig = {
+const harborConfig: HarborConfig = {
   harborBaseRepoUrl: '',
   harborUser: '',
   harborPassword: '',
@@ -226,45 +226,28 @@ async function runSetupHarbor() {
   }
 }
 
+async function setupHarborApis(): Promise<void> {
+  robotApi = new RobotApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  configureApi = new ConfigureApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  projectsApi = new ProjectApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  memberApi = new MemberApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
+  const bearerAuth = await getBearerToken()
+  robotApi.setDefaultAuthentication(bearerAuth)
+  configureApi.setDefaultAuthentication(bearerAuth)
+  projectsApi.setDefaultAuthentication(bearerAuth)
+  memberApi.setDefaultAuthentication(bearerAuth)
+}
+
 // Setup Harbor
 async function setupHarbor() {
   // harborHealthUrl is an in-cluster http svc, so no multiple external dns confirmations are needed
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
   if (!harborConfig.harborUser) return
 
-  robotApi = new RobotApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
-  configureApi = new ConfigureApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
-  projectsApi = new ProjectApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
-  memberApi = new MemberApi(harborConfig.harborUser, harborConfig.harborPassword, harborBaseUrl)
-
-  const config: Configurations = {
-    authMode: 'oidc_auth',
-    oidcAdminGroup: 'platform-admin',
-    oidcClientId: 'otomi',
-    oidcClientSecret: harborConfig.oidcClientSecret,
-    oidcEndpoint: harborConfig.oidcEndpoint,
-    oidcGroupsClaim: 'groups',
-    oidcName: 'otomi',
-    oidcScope: 'openid',
-    oidcVerifyCert: harborConfig.oidcVerifyCert,
-    oidcUserClaim: harborConfig.oidcUserClaim,
-    oidcAutoOnboard: harborConfig.oidcAutoOnboard,
-    projectCreationRestriction: 'adminonly',
-    robotNamePrefix: ROBOT_PREFIX,
-    selfRegistration: false,
-    primaryAuthMode: true,
-  }
-
   try {
-    const bearerAuth = await getBearerToken()
-    robotApi.setDefaultAuthentication(bearerAuth)
-    configureApi.setDefaultAuthentication(bearerAuth)
-    projectsApi.setDefaultAuthentication(bearerAuth)
-    memberApi.setDefaultAuthentication(bearerAuth)
+    await setupHarborApis()
     try {
-      console.info('Putting Harbor configuration')
-      await configureApi.updateConfigurations(config)
-      console.info('Harbor configuration updated successfully')
+      await manageHarborOidcConfig(configureApi, harborConfig)
       setupSuccess = true
     } catch (err) {
       console.error('Failed to update Harbor configuration:', err)
