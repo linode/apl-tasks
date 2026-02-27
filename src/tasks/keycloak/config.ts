@@ -60,6 +60,8 @@ export const idpMapperTpl = (name: string, alias: string, role: string, claim: s
 export const adminUserCfgTpl = (username: string, password: string): Record<string, unknown> => ({
   username,
   email: 'admin@oto.mi',
+  firstName: 'Admin',
+  lastName: 'User',
   emailVerified: true,
   enabled: true,
   realmRoles: ['platformAdmin'],
@@ -241,6 +243,17 @@ export const clientSubClaimMapper = (): Record<string, unknown> => ({
   },
 })
 
+export const clientNameClaimMapper = (): Record<string, unknown> => ({
+  name: 'name',
+  protocol: 'openid-connect',
+  protocolMapper: 'oidc-full-name-mapper',
+  config: {
+    'access.token.claim': 'true',
+    'id.token.claim': 'true',
+    'introspection.token.claim': 'true',
+    'userinfo.token.claim': 'true',
+  },
+})
 
 export const clientNicknameClaimMapper = (): Record<string, unknown> => ({
   name: 'nickname',
@@ -255,7 +268,7 @@ export const clientNicknameClaimMapper = (): Record<string, unknown> => ({
     'lightweight.claim': 'true',
     'user.attribute': 'nickname',
     'userinfo.token.claim': 'true',
-   },
+  },
 })
 
 export const clientAudClaimMapper = (): Record<string, unknown> => ({
