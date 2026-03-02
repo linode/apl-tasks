@@ -6,10 +6,10 @@ import { createK8sSecret, createSecret, getSecret, replaceSecret } from '../../.
 import fullRobotPermissions from '../../harbor-full-robot-system-permissions.json'
 import {
   DEFAULT_ROBOT_PREFIX,
+  DOCKER_CONFIG_BUILDS_KEY,
   DOCKER_CONFIG_KEY,
   HARBOR_TOKEN_TYPE_PULL,
   HARBOR_TOKEN_TYPE_PUSH,
-  PROJECT_PULL_SECRET_NAME,
   ROBOT_PREFIX,
   SYSTEM_SECRET_NAME,
 } from '../consts'
@@ -22,8 +22,13 @@ function generateRobotToken(): string {
   return randomBytes(32).toString('hex')
 }
 
-async function updateRobotToken(robotApi: RobotApi, robot: Robot): Promise<void> {
-  const action = `Updating robot token for ${robot.name}`
+async function updateRobotToken(
+  robotApi: RobotApi,
+  robot: Robot,
+  namespace: string,
+  secretName: string,
+): Promise<void> {
+  const action = `Syncing the ${robot.name} (harbor robot account token) with content of the ${namespace}/${secretName} k8s secret`
   log(action)
   if (!robot.id) {
     const errorMsg = `Cannot update robot token for ${robot.name} because it has no id`
@@ -49,7 +54,7 @@ export function parseDockerConfigJson(
   secret: Record<string, any>,
   server: string,
 ): DockerConfigCredentials | undefined {
-  const raw = secret?.[DOCKER_CONFIG_KEY]
+  const raw = secret?.[DOCKER_CONFIG_KEY] ?? secret?.[DOCKER_CONFIG_BUILDS_KEY]
   if (!raw || typeof raw !== 'string') return undefined
   let parsed: any
   try {
@@ -88,9 +93,10 @@ export async function createRobotAccount(projectRobot: RobotCreate, robotApi: Ro
   return robotAccount
 }
 
-async function findRobotByName(robotApi: RobotApi, robotName: string) {
-  const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
-  const existing = robotList.find((i) => i.name === robotName)
+async function findRobotByName(robotApi: RobotApi, robotName: string, fullName: string): Promise<Robot | undefined> {
+  const query = `name=${robotName}`
+  const { body: robotList } = await robotApi.listRobot(undefined, query, undefined, undefined, undefined)
+  const existing = robotList.find((i) => i.name === fullName)
   return existing
 }
 
@@ -146,11 +152,6 @@ function createRobotPayload(name: string, namespace: string, token: string, toke
   }
 }
 
-/**
- * Ensure that Harbor robot account and corresponding Kubernetes pull secret exist
- * @param namespace Kubernetes namespace where pull secret is created
- * @param projectName Harbor project name
- */
 export async function ensureRobotAccount(
   namespace: string,
   projectName: string,
@@ -158,17 +159,18 @@ export async function ensureRobotAccount(
   robotApi: RobotApi,
   suffix: string,
   tokenType: string,
+  secretName: string,
 ): Promise<void> {
-  const k8sSecret = await getSecret(PROJECT_PULL_SECRET_NAME, namespace)
+  const k8sSecret = await getSecret(secretName, namespace)
   const fullName = `${ROBOT_PREFIX}${projectName}-${suffix}`
   const robotName = `${projectName}-${suffix}`
-  const existingRobot = await findRobotByName(robotApi, fullName)
+  const existingRobot = await findRobotByName(robotApi, robotName, fullName)
   let robotToken = generateRobotToken()
   if (!k8sSecret) {
-    debug(`Creating ${suffix} secret/${PROJECT_PULL_SECRET_NAME} at ${namespace} namespace`)
+    debug(`Creating ${suffix} secret/${secretName} at ${namespace} namespace`)
     await createK8sSecret({
       namespace,
-      name: PROJECT_PULL_SECRET_NAME,
+      name: secretName,
       server: `${harborConfig.harborBaseRepoUrl}`,
       username: robotName,
       password: robotToken,
@@ -176,9 +178,7 @@ export async function ensureRobotAccount(
   } else {
     const credentials = parseDockerConfigJson(k8sSecret, harborConfig.harborBaseRepoUrl)
     if (!credentials || !credentials.password) {
-      error(
-        `Failed to parse credentials from existing ${suffix} secret/${PROJECT_PULL_SECRET_NAME} in ${namespace} namespace`,
-      )
+      error(`Failed to parse credentials from existing ${suffix} secret/${secretName} in ${namespace} namespace`)
       return
     }
     robotToken = credentials.password
@@ -191,8 +191,9 @@ export async function ensureRobotAccount(
     await createRobotAccount(robot, robotApi)
   } else {
     existingRobot.secret = robotToken
-    await updateRobotToken(robotApi, existingRobot)
+    await updateRobotToken(robotApi, existingRobot, namespace, secretName)
   }
+  log(`Successfully processed robot account: ${fullName}`)
 }
 
 export async function ensureRobotSecretHasCorrectName(

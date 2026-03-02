@@ -7,10 +7,7 @@ import { handleErrors, waitTillAvailable } from '../../utils'
 import { errors } from './lib/globals'
 import { manageHarborOidcConfig } from './lib/managers/harbor-oidc'
 import manageHarborProject from './lib/managers/harbor-project'
-import {
-  ensureRobotAccount,
-  getBearerToken
-} from './lib/managers/harbor-robots'
+import { ensureRobotAccount, getBearerToken } from './lib/managers/harbor-robots'
 import { HarborConfig } from './lib/types/oidc'
 import { HarborState } from './lib/types/project'
 
@@ -21,8 +18,12 @@ import {
   HARBOR_ROBOT_PUSH_SUFFIX,
   HARBOR_TOKEN_TYPE_PULL,
   HARBOR_TOKEN_TYPE_PUSH,
+  PROJECT_BUILD_PUSH_SECRET_NAME,
+  PROJECT_PULL_SECRET_NAME,
+  PROJECT_PUSH_SECRET_NAME,
 } from './lib/consts'
 import { env } from './lib/env'
+
 let lastState: HarborState = {}
 let setupSuccess = false
 
@@ -162,6 +163,7 @@ export async function manageHarborProjectsAndRobotAccounts(namespace: string): P
       robotApi,
       HARBOR_ROBOT_PULL_SUFFIX,
       HARBOR_TOKEN_TYPE_PULL,
+      PROJECT_PULL_SECRET_NAME,
     )
     await ensureRobotAccount(
       namespace,
@@ -170,6 +172,7 @@ export async function manageHarborProjectsAndRobotAccounts(namespace: string): P
       robotApi,
       HARBOR_ROBOT_PUSH_SUFFIX,
       HARBOR_TOKEN_TYPE_PUSH,
+      PROJECT_PUSH_SECRET_NAME,
     )
     await ensureRobotAccount(
       namespace,
@@ -178,11 +181,11 @@ export async function manageHarborProjectsAndRobotAccounts(namespace: string): P
       robotApi,
       HARBOR_ROBOT_BUILD_SUFFIX,
       HARBOR_TOKEN_TYPE_PUSH,
+      PROJECT_BUILD_PUSH_SECRET_NAME,
     )
-    log(`Successfully processed namespace: ${projectName}`)
     return projectId
   } catch (e) {
-    error(`Error processing namespace ${namespace}:`, e)
+    error(`Error processing project ${namespace}:`, e)
     return null
   }
 }

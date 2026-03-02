@@ -254,7 +254,7 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue({ body: [] })
       mockRobotApi.createRobot.mockResolvedValue({ body: { id: 1, name: 'otomi-team-demo-pull', secret: 'token' } })
 
-      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'pull', 'pull')
+      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'pull', 'pull', 'harbor-pullsecret')
 
       expect(mockK8s.createK8sSecret).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -293,7 +293,7 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue({ body: [] })
       mockRobotApi.createRobot.mockResolvedValue({ body: { id: 1, name: 'otomi-team-demo-pull', secret: 'token' } })
 
-      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'pull', 'pull')
+      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'pull', 'pull', 'pull-secret-name')
 
       expect(mockK8s.createK8sSecret).not.toHaveBeenCalled()
       expect(mockRobotApi.createRobot).toHaveBeenCalledWith(
@@ -315,7 +315,7 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue({ body: [existingRobot] })
       mockRobotApi.updateRobot.mockResolvedValue({})
 
-      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'push', 'push')
+      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'push', 'push', 'push-secret-name')
 
       expect(mockRobotApi.updateRobot).toHaveBeenCalledWith(
         42,
@@ -329,7 +329,7 @@ describe('harborOperator', () => {
       mockRobotApi.listRobot.mockResolvedValue({ body: [] })
       mockRobotApi.createRobot.mockResolvedValue({ body: { id: 2, name: 'otomi-team-demo-push', secret: 'push-token' } })
 
-      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'push', 'push')
+      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'push', 'push', 'push-secret-name')
 
       expect(mockRobotApi.createRobot).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -353,7 +353,7 @@ describe('harborOperator', () => {
         body: { id: 3, name: 'otomi-team-demo-builds', secret: 'builds-token' },
       })
 
-      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'builds', 'push')
+      await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'builds', 'push', 'push-secret-name')
 
       expect(mockRobotApi.createRobot).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -500,7 +500,7 @@ describe('harborOperator', () => {
 
       // Should not throw — updateRobotToken catches errors internally
       await expect(
-        ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'pull', 'pull'),
+        ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'pull', 'pull', 'pull-secret-name'),
       ).resolves.toBeUndefined()
 
       expect(mockRobotApi.updateRobot).toHaveBeenCalledWith(99, expect.objectContaining({ secret: 'existing-token' }))
