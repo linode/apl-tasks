@@ -88,8 +88,9 @@ export async function createRobotAccount(projectRobot: RobotCreate, robotApi: Ro
   return robotAccount
 }
 
-async function findRobotByName(robotApi: RobotApi, robotName: string) {
-  const { body: robotList } = await robotApi.listRobot(undefined, undefined, undefined, undefined, 100)
+async function findRobotByName(robotApi: RobotApi, robotName: string): Promise<Robot | undefined> {
+  const query = `name=${robotName}`
+  const { body: robotList } = await robotApi.listRobot(undefined, query, undefined, undefined, undefined)
   const existing = robotList.find((i) => i.name === robotName)
   return existing
 }
