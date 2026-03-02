@@ -9,7 +9,7 @@ export const HARBOR_SYSTEM_NAMESPACE = str({ desc: 'The harbor system namespace'
 export const HARBOR_SYSTEM_ROBOTNAME = str({ desc: 'The harbor system robot account name', default: 'harbor' })
 export const HARBOR_PASSWORD = str({ desc: 'The harbor admin password' })
 export const HARBOR_USER = str({ desc: 'The harbor admin username' })
-export const HARBOR_RECONCILE_INTERVAL = num({ desc: 'Reconciliation interval in seconds', default: 300 })
+export const HARBOR_RECONCILE_INTERVAL = num({ desc: 'Reconciliation interval in seconds', default: 60 })
 
 export const harborEnvValidators = {
   HARBOR_BASE_URL,

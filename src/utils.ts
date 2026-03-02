@@ -62,8 +62,6 @@ export function handleErrors(errors: string[]): void {
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
     process.exit(1)
-  } else {
-    console.info('Success!')
   }
 }
 

@@ -9,7 +9,7 @@ import manageHarborProject from './lib/managers/harbor-project'
 import { ensureRobotAccount, getBearerToken } from './lib/managers/harbor-robots'
 import { HarborConfig, validateConfigMapData, validateSecretData } from './lib/types/oidc'
 
-import { debug, error, log } from 'console'
+import { error, log } from 'console'
 import {
   HARBOR_ROBOT_BUILD_SUFFIX,
   HARBOR_ROBOT_PULL_SUFFIX,
@@ -38,7 +38,7 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
   kc.loadFromDefault()
 }
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
-
+let reconciling = false
 interface HarborApis {
   robotApi: RobotApi
   configureApi: ConfigureApi
@@ -120,33 +120,33 @@ export default async function manageHarborProjectsAndRobotAccounts(
 }
 
 async function reconcile(): Promise<void> {
-  let config: HarborConfig
-  try {
-    config = await syncConfig()
-  } catch (e) {
-    debug('Harbor credentials not yet available, skipping reconciliation:', e)
+  if (reconciling) {
+    log('Reconciliation already in progress, skipping this cycle')
     return
   }
-
+  reconciling = true
   try {
-    await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
-    const apis = await setupHarborApis(config)
-    await manageHarborOidcConfig(apis.configureApi, config)
+    const harborConfig = await syncConfig()
+    const apis = await setupHarborApis(harborConfig)
+    await manageHarborOidcConfig(apis.configureApi, harborConfig)
     handleErrors(errors)
-    if (config.teamNamespaces.length > 0) {
+    if (harborConfig.teamNamespaces.length > 0) {
       await Promise.all(
-        config.teamNamespaces.map((namespace) =>
-          manageHarborProjectsAndRobotAccounts(`team-${namespace}`, config, apis),
+        harborConfig.teamNamespaces.map((namespace) =>
+          manageHarborProjectsAndRobotAccounts(`team-${namespace}`, harborConfig, apis),
         ),
       )
     }
   } catch (e) {
     error('Reconciliation failed:', e)
+  } finally {
+    reconciling = false
   }
 }
 
 async function main(): Promise<void> {
   log(`Starting Harbor operator, reconciling every ${env.HARBOR_RECONCILE_INTERVAL}s`)
+  await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
   await reconcile()
   setInterval(() => {
     reconcile().catch((e) => error('Reconciliation error:', e))
