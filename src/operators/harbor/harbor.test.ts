@@ -209,7 +209,7 @@ describe('harborOperator', () => {
     it('should create a robot account successfully', async () => {
       const projectRobot: RobotCreate = {
         name: 'team-demo-pull',
-        level: 'project',
+        level: 'system',
         duration: -1,
         description: 'Allow to pull from project container registry',
         disable: false,
@@ -239,7 +239,7 @@ describe('harborOperator', () => {
     it('should throw error if robot creation fails', async () => {
       const projectRobot: RobotCreate = {
         name: 'team-demo-pull',
-        level: 'project',
+        level: 'system',
         duration: -1,
         disable: false,
         permissions: [],
@@ -269,7 +269,7 @@ describe('harborOperator', () => {
       expect(mockRobotApi.createRobot).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'team-demo-pull',
-          level: 'project',
+          level: 'system',
           permissions: expect.arrayContaining([
             expect.objectContaining({
               kind: 'project',
