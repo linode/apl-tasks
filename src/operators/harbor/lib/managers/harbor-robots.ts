@@ -103,7 +103,7 @@ function createRobotPayload(name: string, namespace: string, token: string, toke
         duration: -1,
         description: 'Allow to push to project container registry',
         disable: false,
-        level: 'project',
+        level: 'system',
         secret: token,
         permissions: [
           {
@@ -129,7 +129,7 @@ function createRobotPayload(name: string, namespace: string, token: string, toke
         duration: -1,
         description: 'Allow to pull from project container registry',
         disable: false,
-        level: 'project',
+        level: 'system',
         secret: token,
         permissions: [
           {
