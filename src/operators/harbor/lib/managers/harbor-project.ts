@@ -1,5 +1,5 @@
 import { MemberApi, ProjectApi, ProjectMember, ProjectReq } from '@linode/harbor-client-node'
-import { error, log } from 'console'
+import { debug, error, log } from 'console'
 import { HARBOR_GROUP_TYPE, HARBOR_ROLE } from '../consts'
 import { errors } from '../globals'
 import { alreadyExistsError } from '../helpers'
@@ -14,7 +14,7 @@ export default async function manageHarborProject(
       projectName,
     }
     try {
-      log(`Creating project for team ${projectName}`)
+      debug(`Creating project for team ${projectName}`)
       await projectsApi.createProject(projectReq)
     } catch (e) {
       if (!alreadyExistsError(e)) errors.push(`Error creating project for team ${projectName}: ${e}`)
