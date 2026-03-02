@@ -1,5 +1,5 @@
 import dotenv from 'dotenv'
-import { cleanEnv, str } from 'envalid'
+import { cleanEnv, num, str } from 'envalid'
 
 export const HARBOR_BASE_URL = str({ desc: 'The harbor core service URL' })
 export const HARBOR_BASE_URL_PORT = str({ desc: 'The harbor core service URL port' })
@@ -9,6 +9,7 @@ export const HARBOR_SYSTEM_NAMESPACE = str({ desc: 'The harbor system namespace'
 export const HARBOR_SYSTEM_ROBOTNAME = str({ desc: 'The harbor system robot account name', default: 'harbor' })
 export const HARBOR_PASSWORD = str({ desc: 'The harbor admin password' })
 export const HARBOR_USER = str({ desc: 'The harbor admin username' })
+export const HARBOR_RECONCILE_INTERVAL = num({ desc: 'Reconciliation interval in seconds', default: 300 })
 
 export const harborEnvValidators = {
   HARBOR_BASE_URL,
@@ -16,6 +17,7 @@ export const harborEnvValidators = {
   HARBOR_OPERATOR_NAMESPACE,
   HARBOR_SYSTEM_NAMESPACE,
   HARBOR_SYSTEM_ROBOTNAME,
+  HARBOR_RECONCILE_INTERVAL,
 }
 
 if (process.env.NODE_ENV === 'test') {

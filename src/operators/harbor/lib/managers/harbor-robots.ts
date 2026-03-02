@@ -75,10 +75,6 @@ export function parseDockerConfigJson(
   return undefined
 }
 
-/**
- * Create Harbor system robot account that is scoped to a given Harbor project with pull access only.
- * @param projectName Harbor project name
- */
 export async function createRobotAccount(projectRobot: RobotCreate, robotApi: RobotApi): Promise<RobotCreated> {
   let robotAccount: RobotCreated
   try {
@@ -96,8 +92,7 @@ export async function createRobotAccount(projectRobot: RobotCreate, robotApi: Ro
 async function findRobotByName(robotApi: RobotApi, robotName: string, fullName: string): Promise<Robot | undefined> {
   const query = `name=${robotName}`
   const { body: robotList } = await robotApi.listRobot(undefined, query, undefined, undefined, undefined)
-  const existing = robotList.find((i) => i.name === fullName)
-  return existing
+  return robotList.find((i) => i.name === fullName)
 }
 
 function createRobotPayload(name: string, namespace: string, token: string, tokenType: string): RobotCreate {
@@ -208,6 +203,47 @@ export async function ensureRobotSecretHasCorrectName(
   }
 }
 
+export function generateRobotAccount(
+  name: string,
+  accessList: RobotAccess[],
+  options: {
+    description?: string
+    level: 'project' | 'system'
+    kind: 'project' | 'system'
+    namespace?: string
+    duration?: number
+    disable?: boolean
+  },
+): RobotAccount {
+  const {
+    description = options?.description || `Robot account for ${name}`,
+    level = options.level,
+    kind = options.kind,
+    namespace = options?.namespace || '/',
+    duration = options?.duration || -1,
+    disable = options?.disable || false,
+  } = options || {}
+
+  return {
+    name,
+    duration,
+    description,
+    disable,
+    level,
+    permissions: [
+      {
+        kind,
+        namespace,
+        access: accessList,
+      },
+    ],
+  }
+}
+
+export function isRobotCreated(obj: unknown): obj is RobotCreated {
+  return typeof obj === 'object' && obj !== null && 'id' in obj && 'name' in obj && 'secret' in obj
+}
+
 /**
  * Create Harbor robot account that is used by APL tasks
  * @note assumes OIDC is not yet configured, otherwise this operation is NOT possible
@@ -290,45 +326,4 @@ export async function getBearerToken(
   }
   bearerAuth.accessToken = robotSecret.secret
   return bearerAuth
-}
-
-export function isRobotCreated(obj: unknown): obj is RobotCreated {
-  return typeof obj === 'object' && obj !== null && 'id' in obj && 'name' in obj && 'secret' in obj
-}
-
-export function generateRobotAccount(
-  name: string,
-  accessList: RobotAccess[],
-  options: {
-    description?: string
-    level: 'project' | 'system'
-    kind: 'project' | 'system'
-    namespace?: string
-    duration?: number
-    disable?: boolean
-  },
-): RobotAccount {
-  const {
-    description = options?.description || `Robot account for ${name}`,
-    level = options.level,
-    kind = options.kind,
-    namespace = options?.namespace || '/',
-    duration = options?.duration || -1,
-    disable = options?.disable || false,
-  } = options || {}
-
-  return {
-    name,
-    duration,
-    description,
-    disable,
-    level,
-    permissions: [
-      {
-        kind,
-        namespace,
-        access: accessList,
-      },
-    ],
-  }
 }
