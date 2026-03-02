@@ -69,11 +69,14 @@ describe('harborOperator', () => {
   const mockProjectsApi = {
     createProject: jest.fn(),
     getProject: jest.fn(),
+    updateProject: jest.fn(),
     setDefaultAuthentication: jest.fn(),
   }
 
   const mockMemberApi = {
     createProjectMember: jest.fn(),
+    listProjectMembers: jest.fn(),
+    updateProjectMember: jest.fn(),
     setDefaultAuthentication: jest.fn(),
   }
 
@@ -384,8 +387,15 @@ describe('harborOperator', () => {
         secret: 'robot-secret-123',
       }
 
-      mockProjectsApi.createProject.mockResolvedValue({})
-      mockProjectsApi.getProject.mockResolvedValue({ body: mockProject })
+      mockProjectsApi.createProject.mockResolvedValue({body: {
+        projectId: 1
+        }})
+      mockProjectsApi.getProject.mockRejectedValue({body: {
+        errors : [{ code: 'PROJECT_NOT_FOUND', message: 'Project not found' }],
+        }})
+      mockMemberApi.listProjectMembers.mockResolvedValue({
+        body: [],
+      })
       mockMemberApi.createProjectMember.mockResolvedValue({})
       mockRobotApi.listRobot.mockResolvedValue({ body: [] })
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
@@ -395,6 +405,37 @@ describe('harborOperator', () => {
       expect(mockProjectsApi.createProject).toHaveBeenCalledWith(mockProjectReq)
       expect(mockProjectsApi.getProject).toHaveBeenCalledWith(namespace)
       expect(mockMemberApi.createProjectMember).toHaveBeenCalledTimes(2)
+      expect(result).toBe('1')
+    })
+    it('should update project members if they exist already, associate team roles, and set up robot accounts', async () => {
+      const namespace = 'team-demo'
+      const mockProject = { projectId: 1, name: namespace }
+      const mockProjectReq: ProjectReq = { projectName: namespace }
+      const mockRobotCreated: RobotCreated = {
+        id: 1,
+        name: 'otomi-team-demo-pull',
+        secret: 'robot-secret-123',
+      }
+
+      mockProjectsApi.createProject.mockResolvedValue({body: {
+        projectId: 1
+        }})
+      mockProjectsApi.getProject.mockRejectedValue({body: {
+        errors : [{ code: 'PROJECT_NOT_FOUND', message: 'Project not found' }],
+        }})
+      mockMemberApi.listProjectMembers.mockResolvedValue({
+        body: [{ id: 1, entityName: 'team-demo', roleId: 2 }],
+      })
+      mockMemberApi.createProjectMember.mockResolvedValue({})
+      mockRobotApi.listRobot.mockResolvedValue({ body: [] })
+      mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
+
+      const result = await manageHarborProjectsAndRobotAccounts(namespace, mockHarborConfig as any, mockApis as any)
+
+      expect(mockProjectsApi.createProject).toHaveBeenCalledWith(mockProjectReq)
+      expect(mockProjectsApi.getProject).toHaveBeenCalledWith(namespace)
+      expect(mockMemberApi.updateProjectMember).toHaveBeenCalledTimes(2)
+      expect(mockMemberApi.createProjectMember).not.toHaveBeenCalled()
       expect(result).toBe('1')
     })
 
@@ -431,6 +472,10 @@ describe('harborOperator', () => {
 
       mockProjectsApi.createProject.mockResolvedValue({})
       mockProjectsApi.getProject.mockResolvedValue({ body: mockProject })
+      mockProjectsApi.updateProject.mockResolvedValue({ body: mockProject })
+      mockMemberApi.listProjectMembers.mockResolvedValue({
+        body: [],
+      })
       mockMemberApi.createProjectMember.mockRejectedValue(new Error('Member creation failed'))
       mockRobotApi.listRobot.mockResolvedValue({ body: [] })
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })

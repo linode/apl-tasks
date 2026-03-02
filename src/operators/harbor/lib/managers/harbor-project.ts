@@ -64,7 +64,7 @@ async function ensureProject(projectsApi: ProjectApi, projectName: string, proje
     project = (await projectsApi.getProject(projectName)).body
     await projectsApi.updateProject(projectName, projectReq)
   } catch (e) {
-    if (!notFoundError(e)) {
+    if (notFoundError(e)) {
       project = await createHarborProject(projectName, projectsApi, projectReq)
     } else {
       errors.push(`Error getting project for team ${projectName}: ${e}`)
