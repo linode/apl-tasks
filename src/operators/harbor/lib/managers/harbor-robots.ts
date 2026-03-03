@@ -20,7 +20,15 @@ import { HarborConfig } from '../types/oidc'
 import { DockerConfigCredentials, RobotAccess, RobotAccount, RobotSecret } from '../types/robot'
 
 function generateRobotToken(): string {
-  return randomBytes(32).toString('hex')
+  const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const lower = 'abcdefghijklmnopqrstuvwxyz'
+  const digits = '0123456789'
+  const all = upper + lower + digits
+  const bytes = randomBytes(32)
+  // First 3 bytes guarantee one of each required character type
+  const required = [upper[bytes[0] % upper.length], lower[bytes[1] % lower.length], digits[bytes[2] % digits.length]]
+  const rest = Array.from(bytes.subarray(3), (b) => all[b % all.length])
+  return [...required, ...rest].join('')
 }
 
 async function updateRobotToken(
@@ -45,7 +53,8 @@ async function updateRobotToken(
   }
 
   try {
-    await robotApi.updateRobot(robot.id, robot)
+    const response = await robotApi.updateRobot(robot.id, robot)
+    debug(`update robot response: ${response.body}`)
   } catch (e) {
     handleApiError(errors, action, e)
   }
@@ -190,7 +199,7 @@ export async function ensureRobotAccount(
   const existingRobot = await findRobotByName(robotApi, robotName, fullName)
   let robotToken = generateRobotToken()
   if (!k8sSecret) {
-    await createHarborTeamSecret(secretName, namespace, harborConfig, robotName, robotToken)
+    await createHarborTeamSecret(secretName, namespace, harborConfig, fullName, robotToken)
   } else {
     const credentials = parseDockerConfigJson(k8sSecret, harborConfig.harborBaseRepoUrl)
     if (!credentials || !credentials.password) {
