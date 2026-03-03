@@ -2,12 +2,13 @@ import { CoreV1Api } from '@kubernetes/client-node'
 import { HttpBearerAuth, Robot, RobotApi, RobotCreate, RobotCreated } from '@linode/harbor-client-node'
 import { debug, error, log } from 'console'
 import { randomBytes } from 'crypto'
-import { createBuildsK8sSecret, createSecret, getSecret, replaceSecret } from '../../../../k8s'
+import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../../../../k8s'
 import fullRobotPermissions from '../../harbor-full-robot-system-permissions.json'
 import {
   DEFAULT_ROBOT_PREFIX,
   DOCKER_CONFIG_BUILDS_KEY,
   DOCKER_CONFIG_KEY,
+  HARBOR_ROBOT_BUILD_SUFFIX,
   HARBOR_TOKEN_TYPE_PULL,
   HARBOR_TOKEN_TYPE_PUSH,
   ROBOT_PREFIX,
@@ -163,13 +164,23 @@ export async function ensureRobotAccount(
   let robotToken = generateRobotToken()
   if (!k8sSecret) {
     debug(`Creating ${suffix} secret/${secretName} at ${namespace} namespace`)
-    await createBuildsK8sSecret({
-      namespace,
-      name: secretName,
-      server: `${harborConfig.harborBaseRepoUrl}`,
-      username: robotName,
-      password: robotToken,
-    })
+    if (suffix === HARBOR_ROBOT_BUILD_SUFFIX) {
+      await createBuildsK8sSecret({
+        namespace,
+        name: secretName,
+        server: `${harborConfig.harborBaseRepoUrl}`,
+        username: robotName,
+        password: robotToken,
+      })
+    } else {
+      await createK8sSecret({
+        namespace,
+        name: secretName,
+        server: `${harborConfig.harborBaseRepoUrl}`,
+        username: robotName,
+        password: robotToken,
+      })
+    }
   } else {
     const credentials = parseDockerConfigJson(k8sSecret, harborConfig.harborBaseRepoUrl)
     if (!credentials || !credentials.password) {
