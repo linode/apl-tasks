@@ -110,6 +110,7 @@ describe('harborOperator', () => {
     mockK8s.createSecret.mockResolvedValue(undefined)
     mockK8s.replaceSecret.mockResolvedValue(undefined)
     mockK8s.createK8sSecret.mockResolvedValue(undefined)
+    mockK8s.createBuildsK8sSecret.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -259,7 +260,7 @@ describe('harborOperator', () => {
 
       await ensureRobotAccount('team-demo', 'team-demo', mockHarborConfig as any, mockRobotApi as any, 'pull', 'pull', 'harbor-pullsecret')
 
-      expect(mockK8s.createK8sSecret).toHaveBeenCalledWith(
+      expect(mockK8s.createBuildsK8sSecret).toHaveBeenCalledWith(
         expect.objectContaining({
           namespace: 'team-demo',
           name: 'harbor-pullsecret',
