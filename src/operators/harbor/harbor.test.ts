@@ -59,6 +59,7 @@ describe('harborOperator', () => {
     deleteRobot: jest.fn(),
     updateRobot: jest.fn(),
     setDefaultAuthentication: jest.fn(),
+    refreshSec: jest.fn(),
   }
 
   const mockConfigureApi = {
@@ -231,10 +232,10 @@ describe('harborOperator', () => {
 
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await createRobotAccount(projectRobot, mockRobotApi as any)
+      await createRobotAccount(projectRobot, mockRobotApi as any)
 
-      expect(result).toEqual(mockRobotCreated)
       expect(mockRobotApi.createRobot).toHaveBeenCalledWith(projectRobot)
+      expect(mockRobotApi.refreshSec).toHaveBeenCalled()
     })
 
     it('should throw error if robot creation fails', async () => {
@@ -264,7 +265,9 @@ describe('harborOperator', () => {
         expect.objectContaining({
           namespace: 'team-demo',
           name: 'harbor-pullsecret',
-          username: 'team-demo-pull',
+          username: 'otomi-team-demo-pull',
+          server: 'harbor.example.com',
+          password: expect.any(String),
         }),
       )
       expect(mockRobotApi.createRobot).toHaveBeenCalledWith(

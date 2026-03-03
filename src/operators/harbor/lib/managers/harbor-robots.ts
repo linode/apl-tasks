@@ -53,8 +53,9 @@ async function updateRobotToken(
   }
 
   try {
-    const response = await robotApi.updateRobot(robot.id, robot)
-    debug(`update robot response: ${response.body}`)
+    await robotApi.updateRobot(robot.id, robot)
+    // the Harbor API does not apply the provided secret immediately, so we need to refresh it after creation to ensure the correct token is set
+    await robotApi.refreshSec(robot.id, { secret: robot.secret })
   } catch (e) {
     handleApiError(errors, action, e)
   }
@@ -85,18 +86,16 @@ export function parseDockerConfigJson(
   return undefined
 }
 
-export async function createRobotAccount(projectRobot: RobotCreate, robotApi: RobotApi): Promise<RobotCreated> {
-  let robotAccount: RobotCreated
+export async function createRobotAccount(projectRobot: RobotCreate, robotApi: RobotApi): Promise<void> {
   try {
-    log(`Creating robot account ${projectRobot.name} with project level permsissions`)
+    log(`Creating robot account ${projectRobot.name} with project level permissions`)
     const { body } = await robotApi.createRobot(projectRobot)
-    robotAccount = body
+    // the Harbor API does not apply the provided secret immediately, so we need to refresh it after creation to ensure the correct token is set
+    await robotApi.refreshSec(body.id!, { secret: projectRobot.secret })
   } catch (e) {
     errors.push(`Error creating robot account ${projectRobot.name}: ${e}`)
     throw e
   }
-
-  return robotAccount
 }
 
 async function findRobotByName(robotApi: RobotApi, robotName: string, fullName: string): Promise<Robot | undefined> {
