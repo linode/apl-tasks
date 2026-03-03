@@ -8,9 +8,9 @@ import {
   DEFAULT_ROBOT_PREFIX,
   DOCKER_CONFIG_BUILDS_KEY,
   DOCKER_CONFIG_KEY,
-  HARBOR_ROBOT_BUILD_SUFFIX,
   HARBOR_TOKEN_TYPE_PULL,
   HARBOR_TOKEN_TYPE_PUSH,
+  PROJECT_BUILD_PUSH_SECRET_NAME,
   ROBOT_PREFIX,
   SYSTEM_SECRET_NAME,
 } from '../consts'
@@ -148,6 +148,33 @@ function createRobotPayload(name: string, namespace: string, token: string, toke
   }
 }
 
+async function createHarborTeamSecret(
+  secretName: string,
+  namespace: string,
+  harborConfig: HarborConfig,
+  robotName: string,
+  robotToken: string,
+): Promise<void> {
+  debug(`Creating secret/${secretName} at ${namespace} namespace`)
+  if (secretName === PROJECT_BUILD_PUSH_SECRET_NAME) {
+    await createBuildsK8sSecret({
+      namespace,
+      name: secretName,
+      server: `${harborConfig.harborBaseRepoUrl}`,
+      username: robotName,
+      password: robotToken,
+    })
+  } else {
+    await createK8sSecret({
+      namespace,
+      name: secretName,
+      server: `${harborConfig.harborBaseRepoUrl}`,
+      username: robotName,
+      password: robotToken,
+    })
+  }
+}
+
 export async function ensureRobotAccount(
   namespace: string,
   projectName: string,
@@ -163,24 +190,7 @@ export async function ensureRobotAccount(
   const existingRobot = await findRobotByName(robotApi, robotName, fullName)
   let robotToken = generateRobotToken()
   if (!k8sSecret) {
-    debug(`Creating ${suffix} secret/${secretName} at ${namespace} namespace`)
-    if (suffix === HARBOR_ROBOT_BUILD_SUFFIX) {
-      await createBuildsK8sSecret({
-        namespace,
-        name: secretName,
-        server: `${harborConfig.harborBaseRepoUrl}`,
-        username: robotName,
-        password: robotToken,
-      })
-    } else {
-      await createK8sSecret({
-        namespace,
-        name: secretName,
-        server: `${harborConfig.harborBaseRepoUrl}`,
-        username: robotName,
-        password: robotToken,
-      })
-    }
+    await createHarborTeamSecret(secretName, namespace, harborConfig, robotName, robotToken)
   } else {
     const credentials = parseDockerConfigJson(k8sSecret, harborConfig.harborBaseRepoUrl)
     if (!credentials || !credentials.password) {
