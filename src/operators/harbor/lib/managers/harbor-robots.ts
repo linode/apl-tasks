@@ -2,7 +2,7 @@ import { CoreV1Api } from '@kubernetes/client-node'
 import { HttpBearerAuth, Robot, RobotApi, RobotCreate, RobotCreated } from '@linode/harbor-client-node'
 import { debug, error, log } from 'console'
 import { randomBytes } from 'crypto'
-import { createK8sSecret, createSecret, getSecret, replaceSecret } from '../../../../k8s'
+import { createBuildsK8sSecret, createSecret, getSecret, replaceSecret } from '../../../../k8s'
 import fullRobotPermissions from '../../harbor-full-robot-system-permissions.json'
 import {
   DEFAULT_ROBOT_PREFIX,
@@ -163,7 +163,7 @@ export async function ensureRobotAccount(
   let robotToken = generateRobotToken()
   if (!k8sSecret) {
     debug(`Creating ${suffix} secret/${secretName} at ${namespace} namespace`)
-    await createK8sSecret({
+    await createBuildsK8sSecret({
       namespace,
       name: secretName,
       server: `${harborConfig.harborBaseRepoUrl}`,
