@@ -1,7 +1,7 @@
 import { CoreV1Api } from '@kubernetes/client-node'
 import { HttpBearerAuth, Robot, RobotApi, RobotCreate, RobotCreated } from '@linode/harbor-client-node'
 import { debug, error, log } from 'console'
-import { randomBytes } from 'crypto'
+import { generate as generatePassword } from 'generate-password'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../../../../k8s'
 import fullRobotPermissions from '../../harbor-full-robot-system-permissions.json'
 import {
@@ -20,15 +20,7 @@ import { HarborConfig } from '../types/oidc'
 import { DockerConfigCredentials, RobotAccess, RobotAccount, RobotSecret } from '../types/robot'
 
 function generateRobotToken(): string {
-  const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  const lower = 'abcdefghijklmnopqrstuvwxyz'
-  const digits = '0123456789'
-  const all = upper + lower + digits
-  const bytes = randomBytes(32)
-  // First 3 bytes guarantee one of each required character type
-  const required = [upper[bytes[0] % upper.length], lower[bytes[1] % lower.length], digits[bytes[2] % digits.length]]
-  const rest = Array.from(bytes.subarray(3), (b) => all[b % all.length])
-  return [...required, ...rest].join('')
+  return generatePassword({ length: 32, numbers: true, uppercase: true, lowercase: true, strict: true })
 }
 
 async function updateRobotToken(
