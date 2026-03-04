@@ -20,6 +20,7 @@ import { HarborConfig } from '../types/oidc'
 import { DockerConfigCredentials, RobotAccess, RobotAccount, RobotSecret } from '../types/robot'
 
 function generateRobotToken(): string {
+  // For Harbor: Secret should be 8-128 characters long with at least 1 uppercase, 1 lowercase and 1 number.
   return generatePassword({ length: 32, numbers: true, uppercase: true, lowercase: true, strict: true })
 }
 
