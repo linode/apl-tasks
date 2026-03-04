@@ -58,6 +58,7 @@ describe('utils', () => {
     let spyFetch: jest.SpyInstance
 
     beforeEach(() => {
+      jest.useFakeTimers()
       spyFetch = jest.spyOn(global, 'fetch')
     })
 
@@ -66,19 +67,20 @@ describe('utils', () => {
       spyFetch.mockRestore()
     })
 
-    const successResp = Promise.resolve({ status: 200 })
-    const failResp = Promise.resolve({ status: 500 })
+    const successResp = { status: 200 }
+    const failResp = { status: 500 }
     const url = 'https://bla.com'
 
     it('should pass after x successful requests', async () => {
       spyFetch.mockResolvedValue(successResp)
       const confirmations = 3
       const res = waitTillAvailable(url, undefined, { confirmations })
-      spyFetch = jest.spyOn(global, 'fetch')
+
+      await jest.runAllTimersAsync()
 
       await expect(res).resolves.toBeUndefined()
       expect(spyFetch).toHaveBeenCalledTimes(confirmations)
-    }, 10000)
+    })
 
     it('should bail when a request returns an unexpected status code', async () => {
       spyFetch.mockResolvedValue(failResp)
@@ -95,30 +97,30 @@ describe('utils', () => {
       const maxTimeout = 30000
       const res = waitTillAvailable(url, undefined, { retries, maxTimeout })
 
-      await expect(res).rejects.toThrow(`Max retries (${retries}) has been reached!`)
+      const rejection = expect(res).rejects.toThrow(`Max retries (${retries}) has been reached!`)
+      await jest.runAllTimersAsync()
+      await rejection
       expect(spyFetch).toHaveBeenCalledTimes(3)
-    }, 30000)
+    })
 
     it('should retry x times after encountering connection issues, then get y confirmations', async () => {
-      spyFetch.mockRejectedValue(new Error('ECONNREFUSED'))
+      spyFetch
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+        .mockResolvedValue(successResp)
+
       const confirmations = 3
       const retries = 1000 // large enough
       const maxTimeout = 1000 // same as minTimeout to be able to calculate attempts
       const res = waitTillAvailable(url, undefined, { confirmations, retries, maxTimeout, forever: true })
 
-      // Simulate 5 failures
-      jest.advanceTimersByTime(5 * 1000) // Advance time by 5 seconds
-      await Promise.resolve() // Allow promises to resolve
-
-      // Now start returning ok responses
-      spyFetch.mockRestore()
-      // @ts-ignore
-      spyFetch = jest.spyOn(global, 'fetch').mockResolvedValue(successResp)
-
-      jest.advanceTimersByTime(confirmations * 1000) // Advance time by confirmations * 1000ms
-      await Promise.resolve() // Allow promises to resolve
+      await jest.runAllTimersAsync()
 
       await expect(res).resolves.toBeUndefined()
+      expect(spyFetch).toHaveBeenCalledTimes(8)
     })
   })
 
