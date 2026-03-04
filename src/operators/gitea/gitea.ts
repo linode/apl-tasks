@@ -27,16 +27,8 @@ import stream from 'stream'
 import { getRepoNameFromUrl, setServiceAccountSecret } from '../../gitea-utils'
 import { getTektonPipeline } from '../../k8s'
 import { getSanitizedErrorMessage } from '../../utils'
-import {
-  CHECK_OIDC_CONFIG_INTERVAL,
-  cleanEnv,
-  GITEA_OPERATOR_NAMESPACE,
-  GITEA_URL,
-  GITEA_URL_PORT,
-  MIN_TIMEOUT,
-  RETRIES,
-} from '../../validators'
-import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer, username } from '../common'
+import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer } from '../common'
+import { giteaEnv } from './lib/env'
 
 // Interfaces
 interface hookInfo {
@@ -82,17 +74,7 @@ export interface PipelineKubernetesObject extends KubernetesObject {
   }
 }
 
-// Constants
-const localEnv = cleanEnv({
-  GITEA_URL,
-  GITEA_URL_PORT,
-  GITEA_OPERATOR_NAMESPACE,
-  CHECK_OIDC_CONFIG_INTERVAL,
-  RETRIES,
-  MIN_TIMEOUT,
-})
-
-const GITEA_ENDPOINT = `${localEnv.GITEA_URL}:${localEnv.GITEA_URL_PORT}`
+const GITEA_ENDPOINT = `${giteaEnv.GITEA_URL}:${giteaEnv.GITEA_URL_PORT}`
 const env = {
   giteaPassword: '',
   hasArgocd: false,
@@ -201,7 +183,7 @@ async function triggerTemplateCallback(resourceEvent: ResourceEvent): Promise<vo
         if (isEmpty(giteaPassword)) throw new Error('Setup missing details')
         const apiConfig = new Configuration({
           basePath: `${formattedGiteaUrl}/api/v1`,
-          username,
+          username: giteaEnv.GITEA_USERNAME,
           password: giteaPassword,
         })
         const repoApi = new RepositoryApi(apiConfig)
@@ -243,7 +225,7 @@ async function triggerTemplateCallback(resourceEvent: ResourceEvent): Promise<vo
 
         return
       },
-      { retries: localEnv.RETRIES, minTimeout: localEnv.MIN_TIMEOUT },
+      { retries: giteaEnv.RETRIES, minTimeout: giteaEnv.MIN_TIMEOUT },
     ).catch((error) => {
       console.error(error)
     })
@@ -279,7 +261,7 @@ export const addServiceAccountToOrganizations = async (
   if (exists) return
   try {
     console.info(`Adding user to organization Owners team in ${organization?.name}`)
-    await organizationApi.orgAddTeamMember({ id: ownerTeam!.id!, username: serviceAcountName})
+    await organizationApi.orgAddTeamMember({ id: ownerTeam!.id!, username: serviceAcountName })
   } catch (e) {
     errors.push(`Error adding user to organization Owners team in ${organization?.name}: ${e}`)
   }
@@ -370,7 +352,7 @@ const createSetGiteaOIDCConfig = (() => {
           .finally(() => {
             intervalId = null
           })
-      }, localEnv.CHECK_OIDC_CONFIG_INTERVAL * 1000)
+      }, giteaEnv.CHECK_OIDC_CONFIG_INTERVAL * 1000)
     }
   }
 })()
@@ -385,14 +367,14 @@ export default class MyOperator extends Operator {
     createSetGiteaOIDCConfig()
     // Watch apl-gitea-operator-secrets
     try {
-      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
+      await this.watchResource('', 'v1', 'secrets', secretsAndConfigmapsCallback, giteaEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
       const errorMessage = getSanitizedErrorMessage(error)
       console.debug('Error could not watch secrets', errorMessage)
     }
     // Watch apl-gitea-operator-cm
     try {
-      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, localEnv.GITEA_OPERATOR_NAMESPACE)
+      await this.watchResource('', 'v1', 'configmaps', secretsAndConfigmapsCallback, giteaEnv.GITEA_OPERATOR_NAMESPACE)
     } catch (error) {
       const errorMessage = getSanitizedErrorMessage(error)
       console.debug('Error could not watch configmaps', errorMessage)
@@ -531,7 +513,7 @@ export async function upsertOrganization(
 
   try {
     console.info(`Updating organization "${orgOption.fullName}"`)
-    return await orgApi.orgEdit({ org: prefixedOrgName, body: orgOption})
+    return await orgApi.orgEdit({ org: prefixedOrgName, body: orgOption })
   } catch (e) {
     if (!isUnprocessableError(e)) {
       errors.push(`Error updating organization "${orgOption.fullName}": ${e}`)
@@ -745,7 +727,7 @@ export async function createBuildWebHook(
     const repoName = getRepoNameFromUrl(buildWorkspace.repoUrl)!
 
     // Check to see if a webhook already exists with the same url and push event
-    const webhooks = await repoApi.repoListHooks({ owner: teamName, repo: repoName})
+    const webhooks = await repoApi.repoListHooks({ owner: teamName, repo: repoName })
     let webhookExists
     if (!isEmpty(webhooks)) {
       webhookExists = webhooks.find((hook) => {
@@ -838,7 +820,11 @@ async function setupGitea() {
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
   const { giteaPassword, teamConfig, hasArgocd } = env
   console.info('Starting Gitea setup/reconfiguration')
-  const apiConfig = new Configuration({ basePath: `${formattedGiteaUrl}/api/v1`, username, password: giteaPassword })
+  const apiConfig = new Configuration({
+    basePath: `${formattedGiteaUrl}/api/v1`,
+    username: giteaEnv.GITEA_USERNAME,
+    password: giteaPassword,
+  })
   const adminApi = new AdminApi(apiConfig)
   const teamIds = Object.keys(teamConfig)
   const orgNames = [orgName, ...teamIds]
