@@ -2,7 +2,7 @@ import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
 import { ConfigureApi, HttpError, MemberApi, ProjectApi, RobotApi } from '@linode/harbor-client-node'
 import { getSecret } from '../../k8s'
-import { handleErrors, waitTillAvailable } from '../../utils'
+import { waitTillAvailable } from '../../utils'
 import { errors } from './lib/globals'
 import manageHarborOidcConfig from './lib/managers/harbor-oidc'
 import manageHarborProject from './lib/managers/harbor-project'
@@ -21,6 +21,7 @@ import {
   PROJECT_PUSH_SECRET_NAME,
 } from './lib/consts'
 import { env } from './lib/env'
+import { handleErrors } from './lib/helpers'
 
 const OPERATOR_SECRET_NAME = 'apl-harbor-operator-secret'
 const OPERATOR_CONFIGMAP_NAME = 'apl-harbor-operator-cm'
@@ -151,7 +152,6 @@ async function reconcile(): Promise<void> {
     const harborConfig = await syncConfig()
     const apis = await setupHarborApis(harborConfig)
     await manageHarborOidcConfig(apis.configureApi, harborConfig)
-    handleErrors(errors)
     if (harborConfig.teamNamespaces.length > 0) {
       await Promise.all(
         harborConfig.teamNamespaces.map((namespace) =>
@@ -166,6 +166,7 @@ async function reconcile(): Promise<void> {
       error('Reconciliation failed:', e)
     }
   } finally {
+    handleErrors(errors)
     reconciling = false
   }
 }

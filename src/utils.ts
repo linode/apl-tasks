@@ -58,13 +58,6 @@ export type openapiResponse = {
   body?: any
 }
 
-export function handleErrors(errors: string[]): void {
-  if (errors.length) {
-    console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
-    process.exit(1)
-  }
-}
-
 type WaitTillAvailableOptions = Options & {
   confirmations?: number
   status?: number
