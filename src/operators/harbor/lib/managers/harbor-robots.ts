@@ -1,8 +1,8 @@
 import { CoreV1Api } from '@kubernetes/client-node'
 import { HttpBearerAuth, Robot, RobotApi, RobotCreate, RobotCreated } from '@linode/harbor-client-node'
 import { debug, error, log } from 'console'
-import { randomBytes } from 'crypto'
-import { createK8sSecret, createSecret, getSecret, replaceSecret } from '../../../../k8s'
+import { generate as generatePassword } from 'generate-password'
+import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../../../../k8s'
 import fullRobotPermissions from '../../harbor-full-robot-system-permissions.json'
 import {
   DEFAULT_ROBOT_PREFIX,
@@ -10,6 +10,7 @@ import {
   DOCKER_CONFIG_KEY,
   HARBOR_TOKEN_TYPE_PULL,
   HARBOR_TOKEN_TYPE_PUSH,
+  PROJECT_BUILD_PUSH_SECRET_NAME,
   ROBOT_PREFIX,
   SYSTEM_SECRET_NAME,
 } from '../consts'
@@ -19,7 +20,8 @@ import { HarborConfig } from '../types/oidc'
 import { DockerConfigCredentials, RobotAccess, RobotAccount, RobotSecret } from '../types/robot'
 
 function generateRobotToken(): string {
-  return randomBytes(32).toString('hex')
+  // For Harbor: Secret should be 8-128 characters long with at least 1 uppercase, 1 lowercase and 1 number.
+  return generatePassword({ length: 32, numbers: true, uppercase: true, lowercase: true, strict: true })
 }
 
 async function updateRobotToken(
@@ -45,6 +47,8 @@ async function updateRobotToken(
 
   try {
     await robotApi.updateRobot(robot.id, robot)
+    // the Harbor API does not apply the provided secret immediately, so we need to refresh it after creation to ensure the correct token is set
+    await robotApi.refreshSec(robot.id, { secret: robot.secret })
   } catch (e) {
     handleApiError(errors, action, e)
   }
@@ -75,29 +79,22 @@ export function parseDockerConfigJson(
   return undefined
 }
 
-/**
- * Create Harbor system robot account that is scoped to a given Harbor project with pull access only.
- * @param projectName Harbor project name
- */
-export async function createRobotAccount(projectRobot: RobotCreate, robotApi: RobotApi): Promise<RobotCreated> {
-  let robotAccount: RobotCreated
+export async function creatingRobotAccount(projectRobot: RobotCreate, robotApi: RobotApi): Promise<void> {
   try {
-    log(`Creating robot account ${projectRobot.name} with project level permsissions`)
+    log(`Creating robot account ${projectRobot.name} with project level permissions`)
     const { body } = await robotApi.createRobot(projectRobot)
-    robotAccount = body
+    // the Harbor API does not apply the provided secret immediately, so we need to refresh it after creation to ensure the correct token is set
+    await robotApi.refreshSec(body.id!, { secret: projectRobot.secret })
   } catch (e) {
     errors.push(`Error creating robot account ${projectRobot.name}: ${e}`)
     throw e
   }
-
-  return robotAccount
 }
 
 async function findRobotByName(robotApi: RobotApi, robotName: string, fullName: string): Promise<Robot | undefined> {
   const query = `name=${robotName}`
   const { body: robotList } = await robotApi.listRobot(undefined, query, undefined, undefined, undefined)
-  const existing = robotList.find((i) => i.name === fullName)
-  return existing
+  return robotList.find((i) => i.name === fullName)
 }
 
 function createRobotPayload(name: string, namespace: string, token: string, tokenType: string): RobotCreate {
@@ -108,7 +105,7 @@ function createRobotPayload(name: string, namespace: string, token: string, toke
         duration: -1,
         description: 'Allow to push to project container registry',
         disable: false,
-        level: 'project',
+        level: 'system',
         secret: token,
         permissions: [
           {
@@ -134,7 +131,7 @@ function createRobotPayload(name: string, namespace: string, token: string, toke
         duration: -1,
         description: 'Allow to pull from project container registry',
         disable: false,
-        level: 'project',
+        level: 'system',
         secret: token,
         permissions: [
           {
@@ -152,6 +149,33 @@ function createRobotPayload(name: string, namespace: string, token: string, toke
   }
 }
 
+async function createHarborTeamSecret(
+  secretName: string,
+  namespace: string,
+  harborConfig: HarborConfig,
+  robotName: string,
+  robotToken: string,
+): Promise<void> {
+  debug(`Creating secret/${secretName} at ${namespace} namespace`)
+  if (secretName === PROJECT_BUILD_PUSH_SECRET_NAME) {
+    await createBuildsK8sSecret({
+      namespace,
+      name: secretName,
+      server: `${harborConfig.harborBaseRepoUrl}`,
+      username: robotName,
+      password: robotToken,
+    })
+  } else {
+    await createK8sSecret({
+      namespace,
+      name: secretName,
+      server: `${harborConfig.harborBaseRepoUrl}`,
+      username: robotName,
+      password: robotToken,
+    })
+  }
+}
+
 export async function ensureRobotAccount(
   namespace: string,
   projectName: string,
@@ -161,24 +185,20 @@ export async function ensureRobotAccount(
   tokenType: string,
   secretName: string,
 ): Promise<void> {
-  const k8sSecret = await getSecret(secretName, namespace)
-  const fullName = `${ROBOT_PREFIX}${projectName}-${suffix}`
   const robotName = `${projectName}-${suffix}`
+  const fullName = `${ROBOT_PREFIX}${projectName}-${suffix}`
+  log(
+    `Attempting to sync the ${robotName} (harbor robot account token) with content of the ${namespace}/${secretName} k8s secret`,
+  )
+  const k8sSecret = await getSecret(secretName, namespace)
   const existingRobot = await findRobotByName(robotApi, robotName, fullName)
   let robotToken = generateRobotToken()
   if (!k8sSecret) {
-    debug(`Creating ${suffix} secret/${secretName} at ${namespace} namespace`)
-    await createK8sSecret({
-      namespace,
-      name: secretName,
-      server: `${harborConfig.harborBaseRepoUrl}`,
-      username: robotName,
-      password: robotToken,
-    })
+    await createHarborTeamSecret(secretName, namespace, harborConfig, fullName, robotToken)
   } else {
     const credentials = parseDockerConfigJson(k8sSecret, harborConfig.harborBaseRepoUrl)
     if (!credentials || !credentials.password) {
-      error(`Failed to parse credentials from existing ${suffix} secret/${secretName} in ${namespace} namespace`)
+      error(`Failed to parse credentials from existing secret/${secretName} in ${namespace} namespace`)
       return
     }
     robotToken = credentials.password
@@ -188,7 +208,7 @@ export async function ensureRobotAccount(
     log(`Creating ${suffix} robot account ${fullName} with project level permsissions`)
     const robot = createRobotPayload(robotName, projectName, robotToken, tokenType)
 
-    await createRobotAccount(robot, robotApi)
+    await creatingRobotAccount(robot, robotApi)
   } else {
     existingRobot.secret = robotToken
     await updateRobotToken(robotApi, existingRobot, namespace, secretName)
@@ -206,6 +226,47 @@ export async function ensureRobotSecretHasCorrectName(
     const updatedRobotSecret = { ...robotSecret, name: preferredRobotName }
     await replaceSecret(SYSTEM_SECRET_NAME, systemNamespace, updatedRobotSecret)
   }
+}
+
+export function generateRobotAccount(
+  name: string,
+  accessList: RobotAccess[],
+  options: {
+    description?: string
+    level: 'project' | 'system'
+    kind: 'project' | 'system'
+    namespace?: string
+    duration?: number
+    disable?: boolean
+  },
+): RobotAccount {
+  const {
+    description = options?.description || `Robot account for ${name}`,
+    level = options.level,
+    kind = options.kind,
+    namespace = options?.namespace || '/',
+    duration = options?.duration || -1,
+    disable = options?.disable || false,
+  } = options || {}
+
+  return {
+    name,
+    duration,
+    description,
+    disable,
+    level,
+    permissions: [
+      {
+        kind,
+        namespace,
+        access: accessList,
+      },
+    ],
+  }
+}
+
+export function isRobotCreated(obj: unknown): obj is RobotCreated {
+  return typeof obj === 'object' && obj !== null && 'id' in obj && 'name' in obj && 'secret' in obj
 }
 
 /**
@@ -290,45 +351,4 @@ export async function getBearerToken(
   }
   bearerAuth.accessToken = robotSecret.secret
   return bearerAuth
-}
-
-export function isRobotCreated(obj: unknown): obj is RobotCreated {
-  return typeof obj === 'object' && obj !== null && 'id' in obj && 'name' in obj && 'secret' in obj
-}
-
-export function generateRobotAccount(
-  name: string,
-  accessList: RobotAccess[],
-  options: {
-    description?: string
-    level: 'project' | 'system'
-    kind: 'project' | 'system'
-    namespace?: string
-    duration?: number
-    disable?: boolean
-  },
-): RobotAccount {
-  const {
-    description = options?.description || `Robot account for ${name}`,
-    level = options.level,
-    kind = options.kind,
-    namespace = options?.namespace || '/',
-    duration = options?.duration || -1,
-    disable = options?.disable || false,
-  } = options || {}
-
-  return {
-    name,
-    duration,
-    description,
-    disable,
-    level,
-    permissions: [
-      {
-        kind,
-        namespace,
-        access: accessList,
-      },
-    ],
-  }
 }
