@@ -79,7 +79,7 @@ export function parseDockerConfigJson(
   return undefined
 }
 
-export async function createRobotAccount(projectRobot: RobotCreate, robotApi: RobotApi): Promise<void> {
+export async function creatingRobotAccount(projectRobot: RobotCreate, robotApi: RobotApi): Promise<void> {
   try {
     log(`Creating robot account ${projectRobot.name} with project level permissions`)
     const { body } = await robotApi.createRobot(projectRobot)
@@ -185,9 +185,12 @@ export async function ensureRobotAccount(
   tokenType: string,
   secretName: string,
 ): Promise<void> {
-  const k8sSecret = await getSecret(secretName, namespace)
-  const fullName = `${ROBOT_PREFIX}${projectName}-${suffix}`
   const robotName = `${projectName}-${suffix}`
+  const fullName = `${ROBOT_PREFIX}${projectName}-${suffix}`
+  log(
+    `Attempting to sync the ${robotName} (harbor robot account token) with content of the ${namespace}/${secretName} k8s secret`,
+  )
+  const k8sSecret = await getSecret(secretName, namespace)
   const existingRobot = await findRobotByName(robotApi, robotName, fullName)
   let robotToken = generateRobotToken()
   if (!k8sSecret) {
@@ -195,7 +198,7 @@ export async function ensureRobotAccount(
   } else {
     const credentials = parseDockerConfigJson(k8sSecret, harborConfig.harborBaseRepoUrl)
     if (!credentials || !credentials.password) {
-      error(`Failed to parse credentials from existing ${suffix} secret/${secretName} in ${namespace} namespace`)
+      error(`Failed to parse credentials from existing secret/${secretName} in ${namespace} namespace`)
       return
     }
     robotToken = credentials.password
@@ -205,7 +208,7 @@ export async function ensureRobotAccount(
     log(`Creating ${suffix} robot account ${fullName} with project level permsissions`)
     const robot = createRobotPayload(robotName, projectName, robotToken, tokenType)
 
-    await createRobotAccount(robot, robotApi)
+    await creatingRobotAccount(robot, robotApi)
   } else {
     existingRobot.secret = robotToken
     await updateRobotToken(robotApi, existingRobot, namespace, secretName)

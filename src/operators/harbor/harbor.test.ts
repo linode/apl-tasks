@@ -1,7 +1,7 @@
 import { ProjectReq, RobotCreate, RobotCreated } from '@linode/harbor-client-node'
 import * as k8s from '../../k8s'
 import manageHarborProjectsAndRobotAccounts from './harbor'
-import { createRobotAccount, createSystemRobotSecret, ensureRobotAccount } from './lib/managers/harbor-robots'
+import { createSystemRobotSecret, creatingRobotAccount, ensureRobotAccount } from './lib/managers/harbor-robots'
 
 jest.mock('@kubernetes/client-node', () => ({
   KubeConfig: jest.fn().mockImplementation(() => ({
@@ -232,7 +232,7 @@ describe('harborOperator', () => {
 
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      await createRobotAccount(projectRobot, mockRobotApi as any)
+      await creatingRobotAccount(projectRobot, mockRobotApi as any)
 
       expect(mockRobotApi.createRobot).toHaveBeenCalledWith(projectRobot)
       expect(mockRobotApi.refreshSec).toHaveBeenCalled()
@@ -249,7 +249,7 @@ describe('harborOperator', () => {
 
       mockRobotApi.createRobot.mockRejectedValue(new Error('Robot creation failed'))
 
-      await expect(createRobotAccount(projectRobot, mockRobotApi as any)).rejects.toThrow('Robot creation failed')
+      await expect(creatingRobotAccount(projectRobot, mockRobotApi as any)).rejects.toThrow('Robot creation failed')
     })
   })
 

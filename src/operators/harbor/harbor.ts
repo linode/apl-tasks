@@ -148,10 +148,17 @@ async function main(): Promise<void> {
   log(`Starting Harbor operator, reconciling every ${env.HARBOR_RECONCILE_INTERVAL}s`)
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
   await reconcile()
-  setInterval(() => {
+  const intervalId = setInterval(() => {
     reconcile().catch((e) => error('Reconciliation error:', e))
   }, env.HARBOR_RECONCILE_INTERVAL * 1000)
-  process.on('SIGTERM', () => process.exit(0)).on('SIGINT', () => process.exit(0))
+  process.on('SIGTERM', () => {
+    clearInterval(intervalId)
+    process.exit(0)
+  })
+  process.on('SIGINT', () => {
+    clearInterval(intervalId)
+    process.exit(130)
+  })
 }
 
 if (typeof require !== 'undefined' && require.main === module) {
