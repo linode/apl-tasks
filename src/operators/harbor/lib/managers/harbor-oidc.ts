@@ -3,7 +3,10 @@ import { log } from 'console'
 import { ROBOT_PREFIX } from '../consts'
 import { HarborConfig } from '../types/oidc'
 
-export async function manageHarborOidcConfig(configureApi: ConfigureApi, harborConfig: HarborConfig): Promise<void> {
+export default async function manageHarborOidcConfig(
+  configureApi: ConfigureApi,
+  harborConfig: HarborConfig,
+): Promise<void> {
   const config: Configurations = {
     authMode: 'oidc_auth',
     oidcAdminGroup: 'platform-admin',

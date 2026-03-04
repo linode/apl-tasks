@@ -1,7 +1,7 @@
 import { ProjectReq, RobotCreate, RobotCreated } from '@linode/harbor-client-node'
 import * as k8s from '../../k8s'
-import { __setApiClients, manageHarborProjectsAndRobotAccounts } from './harbor'
-import { createRobotAccount, createSystemRobotSecret, ensureRobotAccount } from './lib/managers/harbor-robots'
+import manageHarborProjectsAndRobotAccounts from './harbor'
+import { createSystemRobotSecret, creatingRobotAccount, ensureRobotAccount } from './lib/managers/harbor-robots'
 
 jest.mock('@kubernetes/client-node', () => ({
   KubeConfig: jest.fn().mockImplementation(() => ({
@@ -59,6 +59,7 @@ describe('harborOperator', () => {
     deleteRobot: jest.fn(),
     updateRobot: jest.fn(),
     setDefaultAuthentication: jest.fn(),
+    refreshSec: jest.fn(),
   }
 
   const mockConfigureApi = {
@@ -69,11 +70,14 @@ describe('harborOperator', () => {
   const mockProjectsApi = {
     createProject: jest.fn(),
     getProject: jest.fn(),
+    updateProject: jest.fn(),
     setDefaultAuthentication: jest.fn(),
   }
 
   const mockMemberApi = {
     createProjectMember: jest.fn(),
+    listProjectMembers: jest.fn(),
+    updateProjectMember: jest.fn(),
     setDefaultAuthentication: jest.fn(),
   }
 
@@ -93,6 +97,13 @@ describe('harborOperator', () => {
     teamNamespaces: [],
   }
 
+  const mockApis = {
+    robotApi: mockRobotApi,
+    configureApi: mockConfigureApi,
+    projectsApi: mockProjectsApi,
+    memberApi: mockMemberApi,
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
 
@@ -100,13 +111,7 @@ describe('harborOperator', () => {
     mockK8s.createSecret.mockResolvedValue(undefined)
     mockK8s.replaceSecret.mockResolvedValue(undefined)
     mockK8s.createK8sSecret.mockResolvedValue(undefined)
-
-    __setApiClients(
-      mockRobotApi as any,
-      mockConfigureApi as any,
-      mockProjectsApi as any,
-      mockMemberApi as any,
-    )
+    mockK8s.createBuildsK8sSecret.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -206,7 +211,7 @@ describe('harborOperator', () => {
     it('should create a robot account successfully', async () => {
       const projectRobot: RobotCreate = {
         name: 'team-demo-pull',
-        level: 'project',
+        level: 'system',
         duration: -1,
         description: 'Allow to pull from project container registry',
         disable: false,
@@ -227,16 +232,16 @@ describe('harborOperator', () => {
 
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await createRobotAccount(projectRobot, mockRobotApi as any)
+      await creatingRobotAccount(projectRobot, mockRobotApi as any)
 
-      expect(result).toEqual(mockRobotCreated)
       expect(mockRobotApi.createRobot).toHaveBeenCalledWith(projectRobot)
+      expect(mockRobotApi.refreshSec).toHaveBeenCalled()
     })
 
     it('should throw error if robot creation fails', async () => {
       const projectRobot: RobotCreate = {
         name: 'team-demo-pull',
-        level: 'project',
+        level: 'system',
         duration: -1,
         disable: false,
         permissions: [],
@@ -244,7 +249,7 @@ describe('harborOperator', () => {
 
       mockRobotApi.createRobot.mockRejectedValue(new Error('Robot creation failed'))
 
-      await expect(createRobotAccount(projectRobot, mockRobotApi as any)).rejects.toThrow('Robot creation failed')
+      await expect(creatingRobotAccount(projectRobot, mockRobotApi as any)).rejects.toThrow('Robot creation failed')
     })
   })
 
@@ -260,13 +265,15 @@ describe('harborOperator', () => {
         expect.objectContaining({
           namespace: 'team-demo',
           name: 'harbor-pullsecret',
-          username: 'team-demo-pull',
+          username: 'otomi-team-demo-pull',
+          server: 'harbor.example.com',
+          password: expect.any(String),
         }),
       )
       expect(mockRobotApi.createRobot).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'team-demo-pull',
-          level: 'project',
+          level: 'system',
           permissions: expect.arrayContaining([
             expect.objectContaining({
               kind: 'project',
@@ -384,17 +391,55 @@ describe('harborOperator', () => {
         secret: 'robot-secret-123',
       }
 
-      mockProjectsApi.createProject.mockResolvedValue({})
-      mockProjectsApi.getProject.mockResolvedValue({ body: mockProject })
+      mockProjectsApi.createProject.mockResolvedValue({body: {
+        projectId: 1
+        }})
+      mockProjectsApi.getProject.mockRejectedValue({body: {
+        errors : [{ code: 'PROJECT_NOT_FOUND', message: 'Project not found' }],
+        }})
+      mockMemberApi.listProjectMembers.mockResolvedValue({
+        body: [],
+      })
       mockMemberApi.createProjectMember.mockResolvedValue({})
       mockRobotApi.listRobot.mockResolvedValue({ body: [] })
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await manageHarborProjectsAndRobotAccounts(namespace)
+      const result = await manageHarborProjectsAndRobotAccounts(namespace, mockHarborConfig as any, mockApis as any)
 
       expect(mockProjectsApi.createProject).toHaveBeenCalledWith(mockProjectReq)
       expect(mockProjectsApi.getProject).toHaveBeenCalledWith(namespace)
       expect(mockMemberApi.createProjectMember).toHaveBeenCalledTimes(2)
+      expect(result).toBe('1')
+    })
+    it('should update project members if they exist already, associate team roles, and set up robot accounts', async () => {
+      const namespace = 'team-demo'
+      const mockProject = { projectId: 1, name: namespace }
+      const mockProjectReq: ProjectReq = { projectName: namespace }
+      const mockRobotCreated: RobotCreated = {
+        id: 1,
+        name: 'otomi-team-demo-pull',
+        secret: 'robot-secret-123',
+      }
+
+      mockProjectsApi.createProject.mockResolvedValue({body: {
+        projectId: 1
+        }})
+      mockProjectsApi.getProject.mockRejectedValue({body: {
+        errors : [{ code: 'PROJECT_NOT_FOUND', message: 'Project not found' }],
+        }})
+      mockMemberApi.listProjectMembers.mockResolvedValue({
+        body: [{ id: 1, entityName: 'team-demo', roleId: 2 }],
+      })
+      mockMemberApi.createProjectMember.mockResolvedValue({})
+      mockRobotApi.listRobot.mockResolvedValue({ body: [] })
+      mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
+
+      const result = await manageHarborProjectsAndRobotAccounts(namespace, mockHarborConfig as any, mockApis as any)
+
+      expect(mockProjectsApi.createProject).toHaveBeenCalledWith(mockProjectReq)
+      expect(mockProjectsApi.getProject).toHaveBeenCalledWith(namespace)
+      expect(mockMemberApi.updateProjectMember).toHaveBeenCalledTimes(2)
+      expect(mockMemberApi.createProjectMember).not.toHaveBeenCalled()
       expect(result).toBe('1')
     })
 
@@ -404,7 +449,7 @@ describe('harborOperator', () => {
       mockProjectsApi.createProject.mockResolvedValue({})
       mockProjectsApi.getProject.mockResolvedValue({ body: null })
 
-      const result = await manageHarborProjectsAndRobotAccounts(namespace)
+      const result = await manageHarborProjectsAndRobotAccounts(namespace, mockHarborConfig as any, mockApis as any)
 
       expect(result).toBeNull()
     })
@@ -415,7 +460,7 @@ describe('harborOperator', () => {
       mockProjectsApi.createProject.mockRejectedValue(new Error('Project creation failed'))
       mockProjectsApi.getProject.mockResolvedValue({ body: null })
 
-      const result = await manageHarborProjectsAndRobotAccounts(namespace)
+      const result = await manageHarborProjectsAndRobotAccounts(namespace, mockHarborConfig as any, mockApis as any)
 
       expect(result).toBe(null)
     })
@@ -431,11 +476,15 @@ describe('harborOperator', () => {
 
       mockProjectsApi.createProject.mockResolvedValue({})
       mockProjectsApi.getProject.mockResolvedValue({ body: mockProject })
+      mockProjectsApi.updateProject.mockResolvedValue({ body: mockProject })
+      mockMemberApi.listProjectMembers.mockResolvedValue({
+        body: [],
+      })
       mockMemberApi.createProjectMember.mockRejectedValue(new Error('Member creation failed'))
       mockRobotApi.listRobot.mockResolvedValue({ body: [] })
       mockRobotApi.createRobot.mockResolvedValue({ body: mockRobotCreated })
 
-      const result = await manageHarborProjectsAndRobotAccounts(namespace)
+      const result = await manageHarborProjectsAndRobotAccounts(namespace, mockHarborConfig as any, mockApis as any)
 
       expect(mockMemberApi.createProjectMember).toHaveBeenCalled()
       expect(result).toBe('1')
@@ -450,7 +499,7 @@ describe('harborOperator', () => {
       mockMemberApi.createProjectMember.mockResolvedValue({})
       mockRobotApi.listRobot.mockRejectedValue(new Error('Robot API error'))
 
-      const result = await manageHarborProjectsAndRobotAccounts(namespace)
+      const result = await manageHarborProjectsAndRobotAccounts(namespace, mockHarborConfig as any, mockApis as any)
 
       expect(result).toBeNull()
     })

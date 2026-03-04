@@ -1,4 +1,3 @@
-// Interfaces
 export interface RobotSecret {
   id: number
   name: string

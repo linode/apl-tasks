@@ -1,4 +1,3 @@
-// consts
 export const HARBOR_ROLE = {
   admin: 1,
   developer: 2,
