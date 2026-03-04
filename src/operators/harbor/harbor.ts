@@ -1,8 +1,8 @@
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
-import { ConfigureApi, MemberApi, ProjectApi, RobotApi } from '@linode/harbor-client-node'
-import { handleErrors, waitTillAvailable } from '../../utils'
+import { ConfigureApi, HttpError, MemberApi, ProjectApi, RobotApi } from '@linode/harbor-client-node'
 import { getSecret } from '../../k8s'
+import { handleErrors, waitTillAvailable } from '../../utils'
 import { errors } from './lib/globals'
 import manageHarborOidcConfig from './lib/managers/harbor-oidc'
 import manageHarborProject from './lib/managers/harbor-project'
@@ -39,6 +39,24 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 }
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 let reconciling = false
+
+function formatHttpError(err: HttpError): string {
+  const responseWithRequest = err.response as unknown as {
+    url?: string
+    req?: {
+      method?: string
+      path?: string
+      host?: string
+    }
+  }
+  const request = responseWithRequest.req
+  const method = request?.method ?? 'unknown'
+  const path = request?.path ?? responseWithRequest.url ?? 'unknown'
+  const host = request?.host ?? 'unknown'
+  const response = typeof err.body === 'object' ? JSON.stringify(err.body) : String(err.body)
+  return `Request: ${method} ${host} ${path}. Response: status code: ${err.statusCode} - ${response}`
+}
+
 interface HarborApis {
   robotApi: RobotApi
   configureApi: ConfigureApi
@@ -77,8 +95,8 @@ export default async function manageHarborProjectsAndRobotAccounts(
   harborConfig: HarborConfig,
   apis: HarborApis,
 ): Promise<string | null> {
+  const projectName = namespace
   try {
-    const projectName = namespace
     const projectId = await manageHarborProject(projectName, apis.projectsApi, apis.memberApi)
     if (!projectId) {
       error(`Failed to manage the project ${projectName}, skipping robot account setup`)
@@ -114,7 +132,11 @@ export default async function manageHarborProjectsAndRobotAccounts(
     )
     return projectId
   } catch (e) {
-    error(`Error processing project ${namespace}:`, e)
+    if (e instanceof HttpError) {
+      error(`Error processing project ${projectName}: ${formatHttpError(e)}`)
+    } else {
+      error(`Error processing project ${projectName}:`, e)
+    }
     return null
   }
 }
@@ -138,7 +160,11 @@ async function reconcile(): Promise<void> {
       )
     }
   } catch (e) {
-    error('Reconciliation failed:', e)
+    if (e instanceof HttpError) {
+      error(`Reconciliation failed: ${formatHttpError(e)}`)
+    } else {
+      error('Reconciliation failed:', e)
+    }
   } finally {
     reconciling = false
   }
@@ -149,7 +175,7 @@ async function main(): Promise<void> {
   await waitTillAvailable(harborHealthUrl, undefined, { confirmations: 1 })
   await reconcile()
   const intervalId = setInterval(() => {
-    reconcile().catch((e) => error('Reconciliation error:', e))
+    void reconcile()
   }, env.HARBOR_RECONCILE_INTERVAL * 1000)
   process.on('SIGTERM', () => {
     clearInterval(intervalId)
