@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.17.0](https://github.com/linode/apl-tasks/compare/v3.16.0...v3.17.0) (2026-03-04)
+
+
+### Features
+
+* add userManagementRole to platform-admin ([#309](https://github.com/linode/apl-tasks/issues/309)) ([5b7215c](https://github.com/linode/apl-tasks/commit/5b7215c25c0c6eeb29cb4b04d709a0d16d1bc4b6))
+
+
+### Bug Fixes
+
+* add query to findRobotByName ([#319](https://github.com/linode/apl-tasks/issues/319)) ([25febd9](https://github.com/linode/apl-tasks/commit/25febd9b9c9ccbd05ecd926e341cbb3ae87c7ec3))
+* refactor harbor oidc config ([#314](https://github.com/linode/apl-tasks/issues/314)) ([9bb6a66](https://github.com/linode/apl-tasks/commit/9bb6a6623cc5f7295ee1d3438274ef476856f6c6))
+* refactor harbor robot account ([#315](https://github.com/linode/apl-tasks/issues/315)) ([fa009a9](https://github.com/linode/apl-tasks/commit/fa009a9e9392dc26a5d053ebde8df279723350b5))
+* remove watching resources and change to reconciling loop ([#320](https://github.com/linode/apl-tasks/issues/320)) ([a4a3a34](https://github.com/linode/apl-tasks/commit/a4a3a34fbf96fdb3f98b0b031af9b5576879471a))
+* team robot accounts creation ([#318](https://github.com/linode/apl-tasks/issues/318)) ([f58a5ac](https://github.com/linode/apl-tasks/commit/f58a5acbd319721bae44716aec096a4240eaa9d3))
+
 ## [3.16.0](https://github.com/linode/apl-tasks/compare/v3.15.0...v3.16.0) (2026-02-02)
 
 
