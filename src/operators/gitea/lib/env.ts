@@ -1,4 +1,5 @@
 import { cleanEnv, num, str } from 'envalid'
+import dotenv from 'dotenv'
 
 export const GITEA_PASSWORD = str({ desc: 'The gitea admin password' })
 export const GITEA_USERNAME = str({ desc: 'The gitea username', default: 'otomi-admin' })
@@ -19,4 +20,5 @@ export const giteaEnvValidators = {
   GITEA_USERNAME,
 }
 
+dotenv.config()
 export const giteaEnv = cleanEnv(process.env, giteaEnvValidators)
