@@ -27,7 +27,7 @@ import stream from 'stream'
 import { getRepoNameFromUrl, setServiceAccountSecret } from '../../gitea-utils'
 import { getTektonPipeline } from '../../k8s'
 import { getSanitizedErrorMessage } from '../../utils'
-import { orgName, otomiChartsRepoName, otomiValuesRepoName, teamNameOwners, teamNameViewer } from '../common'
+import { orgName, otomiValuesRepoName, teamNameOwners, teamNameViewer } from '../common'
 import { giteaEnv } from './lib/env'
 
 // Interfaces
@@ -688,12 +688,9 @@ async function createReposAndAddToTeam(
 ) {
   // create main organization repo: otomi/values
   await upsertRepo(existingRepos, orgApi, repoApi, repoOption)
-  // create otomi/charts repo for auto image updates
-  await upsertRepo(existingRepos, orgApi, repoApi, { ...repoOption, name: otomiChartsRepoName })
 
   // add repo: otomi/values to the team: otomi-viewer
   const existingValuesRepo = existingRepos.find((repo) => repo.name === otomiValuesRepoName)
-  const existingChartsRepo = existingRepos.find((repo) => repo.name === otomiChartsRepoName)
   if (!existingValuesRepo) {
     try {
       console.info(`Adding repo "${otomiValuesRepoName}" to team "${teamNameViewer}"`)
@@ -701,17 +698,6 @@ async function createReposAndAddToTeam(
     } catch (e) {
       if (!isUnprocessableError(e)) {
         errors.push(`Error adding repo ${otomiValuesRepoName} to team ${teamNameViewer}: ${e}`)
-      }
-    }
-  }
-  if (!existingChartsRepo) {
-    // add repo: otomi/charts to the team: otomi-viewer
-    try {
-      console.info(`Adding repo "${otomiChartsRepoName}" to team "${teamNameViewer}"`)
-      await repoApi.repoAddTeam({ owner: orgName, repo: otomiChartsRepoName, team: teamNameViewer })
-    } catch (e) {
-      if (!isUnprocessableError(e)) {
-        errors.push(`Error adding repo ${otomiChartsRepoName} to team ${teamNameViewer}: ${e}`)
       }
     }
   }
