@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.18.0](https://github.com/linode/apl-tasks/compare/v3.17.0...v3.18.0) (2026-03-20)
+
+
+### Features
+
+* remove create charts from gitea and old scripts ([#325](https://github.com/linode/apl-tasks/issues/325)) ([74c988d](https://github.com/linode/apl-tasks/commit/74c988d0862cd270a61cad1dcce644b4c0b1eff7))
+
+
+### Bug Fixes
+
+* load gitea username from env ([#321](https://github.com/linode/apl-tasks/issues/321)) ([b7334e0](https://github.com/linode/apl-tasks/commit/b7334e0fdaa8331d5f9d55e7e7260c154e2bbf0f))
+
 ## [3.17.0](https://github.com/linode/apl-tasks/compare/v3.16.0...v3.17.0) (2026-03-04)
 
 
