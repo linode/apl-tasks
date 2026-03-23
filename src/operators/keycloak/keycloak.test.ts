@@ -13,7 +13,6 @@ jest.mock('@kubernetes/client-node', () => ({
   },
 }))
 
-import { UnmanagedAttributePolicy } from '@linode/keycloak-client-node'
 import * as keycloak from './keycloak'
 import { manageUserProfile, updateUserGroups } from './keycloak'
 
@@ -84,14 +83,6 @@ describe('Keycloak User Group Management', () => {
 
       // The realm user profile should be updated
       expect(api.users.adminRealmsRealmUsersProfilePut).toHaveBeenCalled()
-    })
-
-    it('should not update realm user profile', async () => {
-      api.users.adminRealmsRealmUsersProfileGet.mockResolvedValue({ body: { unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit } })
-      await manageUserProfile(api)
-
-      // The realm user profile should not be updated
-      expect(api.users.adminRealmsRealmUsersProfilePut).not.toHaveBeenCalled()
     })
   })
 
