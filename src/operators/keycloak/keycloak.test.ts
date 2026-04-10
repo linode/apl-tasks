@@ -14,7 +14,7 @@ jest.mock('@kubernetes/client-node', () => ({
 }))
 
 import * as keycloak from './keycloak'
-import { manageUserProfile, updateUserGroups } from './keycloak'
+import { createUpdateUser, manageUserProfile, updateUserGroups } from './keycloak'
 
 describe('Keycloak User Group Management', () => {
   let api: any
@@ -115,6 +115,68 @@ describe('Keycloak User Group Management', () => {
       )
     })
   })
+  describe('createUpdateUser', () => {
+    it('should not send credentials when updating an existing user', async () => {
+      const existingUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        requiredActions: [],
+      }
+
+      api.users.adminRealmsRealmUsersGet = jest.fn().mockResolvedValue({ body: [existingUser] })
+      api.users.adminRealmsRealmUsersUserIdPut = jest.fn().mockResolvedValue({})
+      api.groups.adminRealmsRealmGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+      api.users.adminRealmsRealmUsersUserIdGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+
+      const userConf = {
+        email: 'test@example.com',
+        firstName: 'Test-Updated',
+        lastName: 'User',
+        enabled: true,
+        credentials: [{ type: 'password', value: 'initial-password', temporary: true }],
+        groups: [],
+      }
+
+      await createUpdateUser(api, userConf)
+
+      expect(api.users.adminRealmsRealmUsersUserIdPut).toHaveBeenCalledWith(
+        'otomi',
+        'user-123',
+        expect.not.objectContaining({ credentials: expect.anything() }),
+      )
+    })
+
+    it('should not send credentials even when user has UPDATE_PASSWORD action', async () => {
+      const existingUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        requiredActions: ['UPDATE_PASSWORD'],
+      }
+
+      api.users.adminRealmsRealmUsersGet = jest.fn().mockResolvedValue({ body: [existingUser] })
+      api.users.adminRealmsRealmUsersUserIdPut = jest.fn().mockResolvedValue({})
+      api.groups.adminRealmsRealmGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+      api.users.adminRealmsRealmUsersUserIdGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+
+      const userConf = {
+        email: 'test@example.com',
+        firstName: 'Test-Updated',
+        lastName: 'User',
+        enabled: true,
+        credentials: [{ type: 'password', value: 'initial-password', temporary: true }],
+        groups: [],
+      }
+
+      await createUpdateUser(api, userConf)
+
+      expect(api.users.adminRealmsRealmUsersUserIdPut).toHaveBeenCalledWith(
+        'otomi',
+        'user-123',
+        expect.not.objectContaining({ credentials: expect.anything() }),
+      )
+    })
+  })
+
   describe('IDPManager', () => {
     let api: any
 

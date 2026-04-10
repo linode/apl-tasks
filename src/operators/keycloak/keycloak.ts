@@ -845,7 +845,7 @@ export async function updateUserGroups(
   }
 }
 
-async function createUpdateUser(api: KeycloakApi, userConf: UserRepresentation): Promise<void> {
+export async function createUpdateUser(api: KeycloakApi, userConf: UserRepresentation): Promise<void> {
   const { email, groups } = userConf
   console.info(`Getting users for ${email}`)
   const existingUsersByUserEmail = (await api.users.adminRealmsRealmUsersGet(keycloakRealm, false, email)).body
@@ -857,8 +857,7 @@ async function createUpdateUser(api: KeycloakApi, userConf: UserRepresentation):
   >
   try {
     if (existingUser) {
-      const omitUpdateFields = ['realmRoles', 'initialPassword', 'requiredActions', 'groups']
-      if (!existingUser.requiredActions?.includes('UPDATE_PASSWORD')) omitUpdateFields.push('credentials')
+      const omitUpdateFields = ['realmRoles', 'initialPassword', 'requiredActions', 'groups', 'credentials']
       const updatedUserConf = omit(userConf, omitUpdateFields)
       if (isObjectSubsetDifferent(updatedUserConf, existingUser)) {
         console.info(`Updating user ${email}`)
