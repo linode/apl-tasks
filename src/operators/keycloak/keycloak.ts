@@ -188,6 +188,7 @@ async function runKeycloakUpdater() {
 export default class MyOperator extends Operator {
   private userUpdateTimer: ReturnType<typeof setTimeout> | null = null
   private readonly USER_UPDATE_DEBOUNCE_MS = 5000
+  public usersInitialized = false
 
   private async handleUserSecretEvent(
     e: ResourceEvent,
@@ -228,6 +229,7 @@ export default class MyOperator extends Operator {
           }
 
           env.USERS = users
+          this.usersInitialized = true
           console.info(`Updated USERS from apl-users namespace: ${users.length} user(s)`)
           this.debouncedUserUpdate(secretInitialized, configMapInitialized)
           break
@@ -279,7 +281,7 @@ export default class MyOperator extends Operator {
                 if (data!.IDP_CLIENT_SECRET)
                   env.IDP_CLIENT_SECRET = Buffer.from(data!.IDP_CLIENT_SECRET, 'base64').toString()
                 configMapInitialized = true
-                if (secretInitialized) await runKeycloakUpdater()
+                if (secretInitialized && this.usersInitialized) await runKeycloakUpdater()
                 break
               } catch (error) {
                 throw extractError('handling secret update event', error)
@@ -331,7 +333,7 @@ export default class MyOperator extends Operator {
                   env.IDP_USERNAME_CLAIM_MAPPER = data!.IDP_USERNAME_CLAIM_MAPPER
                 }
                 secretInitialized = true
-                if (configMapInitialized) await runKeycloakUpdater()
+                if (configMapInitialized && this.usersInitialized) await runKeycloakUpdater()
                 break
               } catch (error) {
                 throw extractError('handling configmap update event', error)
