@@ -108,8 +108,6 @@
     "tasks:copy-certs": "node dist/src/tasks/otomi/copy-certs.js",
     "tasks:copy-certs-argo": "node dist/src/tasks/otomi/copy-certs-argo.js",
     "tasks:keycloak-users-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/tasks/keycloak/users.ts",
-    "tasks:otomi-chart-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/tasks/otomi/otomi-chart.ts",
-    "tasks:otomi-chart": "node dist/src/tasks/otomi/otomi-chart.js",
     "tasks:wait-for-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/tasks/otomi/wait-for.ts",
     "tasks:wait-for": "node dist/src/tasks/otomi/wait-for.js",
     "operator:secrets-dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx ./src/operators/secrets/secrets.ts",
@@ -127,5 +125,5 @@
       "tag": true
     }
   },
-  "version": "3.17.0"
+  "version": "3.18.0"
 }

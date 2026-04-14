@@ -19,12 +19,12 @@ import { giteaEnv } from './lib/env'
 import { createOrganizations } from './lib/managers/gitea-organizations'
 import { errors } from './lib/globals'
 import { createTeams } from './lib/managers/gitea-teams'
-import { createReposAndAddToTeam, upsertRepo } from './lib/managers/gitea-repositories'
 import { createUsers } from './lib/managers/gitea-users'
 import { setGiteaOIDCConfig } from './lib/managers/gitea-oidc'
 import { addTektonHook, createBuildWebHook, deleteBuildWebHook, updateBuildWebHook } from './lib/managers/gitea-webhook'
 import { PipelineKubernetesObject } from './lib/types/webhook'
 import { getTektonPipeline } from './lib/helpers'
+import { createReposAndAddToTeam, upsertRepo } from './lib/managers/gitea-repositories'
 
 interface DependencyState {
   giteaPassword: string | null
