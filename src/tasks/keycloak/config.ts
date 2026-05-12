@@ -1,5 +1,4 @@
 import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
-import axios from 'axios'
 import { emailTransformer } from '../../utils'
 import { cleanEnv, KEYCLOAK_CLIENT_ID } from '../../validators'
 
