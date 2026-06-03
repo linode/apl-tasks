@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.0.0](https://github.com/linode/apl-tasks/compare/v3.18.0...v4.0.0) (2026-06-03)
+
+
+### Features
+
+* platform secrets as sealed secrets ([#310](https://github.com/linode/apl-tasks/issues/310)) ([e8e600e](https://github.com/linode/apl-tasks/commit/e8e600eef2ef767a7203026b8f58f94ec97fa3b4))
+
 ## [3.18.0](https://github.com/linode/apl-tasks/compare/v3.17.0...v3.18.0) (2026-03-20)
 
 
