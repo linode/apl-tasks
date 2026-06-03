@@ -1,8 +1,7 @@
 #!/bin/sh
 
-# Prevent errors on shallow clones
-if git rev-parse --verify HEAD@{1} >/dev/null 2>&1; then
-  npm run run-if-changed
-else
-  echo "Skipping run-if-changed: Not enough Git history"
+# Check if package-lock.json changed
+if git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep --quiet 'package-lock.json'; then
+  echo "📦 package-lock.json changed, running npm install..."
+  npm install --prefer-offline --no-audit
 fi
