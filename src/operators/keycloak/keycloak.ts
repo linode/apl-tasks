@@ -850,8 +850,12 @@ export async function updateUserGroups(
 export async function createUpdateUser(api: KeycloakApi, userConf: UserRepresentation): Promise<void> {
   const { email, groups } = userConf
   console.info(`Getting users for ${email}`)
-  const existingUsersByUserEmail = (await api.users.adminRealmsRealmUsersGet(keycloakRealm, false, email)).body
-  const existingUser = existingUsersByUserEmail?.[0]
+  // exact is the 6th positional argument, without it Keycloak does a substring match on email
+  const existingUsersByUserEmail = (
+    await api.users.adminRealmsRealmUsersGet(keycloakRealm, false, email, undefined, undefined, true)
+  ).body
+  // Never trust the first result, only accept a user whose email is really the one we asked for
+  const existingUser = existingUsersByUserEmail?.find((user) => user.email?.toLowerCase() === email?.toLowerCase())
   const existingGroups = (await api.groups.adminRealmsRealmGroupsGet(keycloakRealm)).body
   const groupsByName = Object.fromEntries(existingGroups.map((group) => [group.name, group.id])) as Record<
     string,
@@ -903,7 +907,7 @@ async function deleteUsers(api: any, users: any[]) {
 
 export async function manageUsers(api: KeycloakApi, users: Record<string, any>[]) {
   // Create/Update users in realm 'otomi'
-  await Promise.all(
+  const results = await Promise.allSettled(
     users.map((user) =>
       createUpdateUser(
         api,
@@ -911,6 +915,12 @@ export async function manageUsers(api: KeycloakApi, users: Record<string, any>[]
       ),
     ),
   )
-  // Delete users not in users list
+  // Delete users not in users list, also when some users failed to update
   await deleteUsers(api, users)
+
+  // Report the failures only after the full cycle, so one bad user cannot stall reconciliation
+  const errors = results.filter((result) => result.status === 'rejected').map((result) => result.reason)
+  if (errors.length > 0) {
+    throw new Error(`Failed to create or update ${errors.length} user(s): ${errors.map((e) => e.message).join('; ')}`)
+  }
 }

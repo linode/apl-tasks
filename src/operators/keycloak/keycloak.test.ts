@@ -175,6 +175,107 @@ describe('Keycloak User Group Management', () => {
         expect.not.objectContaining({ credentials: expect.anything() }),
       )
     })
+
+    it('should request an exact email match from Keycloak', async () => {
+      api.users.adminRealmsRealmUsersGet = jest.fn().mockResolvedValue({ body: [] })
+      api.users.adminRealmsRealmUsersPost = jest.fn().mockResolvedValue({})
+      api.groups.adminRealmsRealmGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+
+      await createUpdateUser(api, { email: 'member@example.com', groups: [] })
+
+      // exact is the 6th positional argument of adminRealmsRealmUsersGet
+      expect(api.users.adminRealmsRealmUsersGet).toHaveBeenCalledWith(
+        'otomi',
+        false,
+        'member@example.com',
+        undefined,
+        undefined,
+        true,
+      )
+    })
+
+    it('should not update a user whose email only partially matches', async () => {
+      const otherUser = {
+        id: 'other-user-id',
+        email: 'ln3-member@example.com',
+        username: 'ln3-member@example.com',
+      }
+
+      api.users.adminRealmsRealmUsersGet = jest.fn().mockResolvedValue({ body: [otherUser] })
+      api.users.adminRealmsRealmUsersUserIdPut = jest.fn().mockResolvedValue({})
+      api.users.adminRealmsRealmUsersPost = jest.fn().mockResolvedValue({})
+      api.groups.adminRealmsRealmGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+      api.users.adminRealmsRealmUsersUserIdGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+
+      const userConf = {
+        email: 'member@example.com',
+        firstName: 'Member',
+        lastName: 'User',
+        enabled: true,
+        groups: [],
+      }
+
+      await createUpdateUser(api, userConf)
+
+      // The unrelated account must never be renamed to the requested email
+      expect(api.users.adminRealmsRealmUsersUserIdPut).not.toHaveBeenCalled()
+      // The requested user does not exist yet, so it must be created
+      expect(api.users.adminRealmsRealmUsersPost).toHaveBeenCalledWith('otomi', userConf)
+    })
+
+    it('should update the user that matches the requested email exactly', async () => {
+      const otherUser = { id: 'other-user-id', email: 'ln3-member@example.com' }
+      const targetUser = { id: 'target-user-id', email: 'member@example.com' }
+
+      api.users.adminRealmsRealmUsersGet = jest.fn().mockResolvedValue({ body: [otherUser, targetUser] })
+      api.users.adminRealmsRealmUsersUserIdPut = jest.fn().mockResolvedValue({})
+      api.groups.adminRealmsRealmGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+      api.users.adminRealmsRealmUsersUserIdGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+
+      await createUpdateUser(api, {
+        email: 'member@example.com',
+        firstName: 'Member',
+        lastName: 'User',
+        enabled: true,
+        groups: [],
+      })
+
+      expect(api.users.adminRealmsRealmUsersUserIdPut).toHaveBeenCalledWith(
+        'otomi',
+        'target-user-id',
+        expect.objectContaining({ email: 'member@example.com' }),
+      )
+    })
+  })
+
+  describe('manageUsers', () => {
+    it('should still delete removed users when one user fails to update', async () => {
+      const users = [
+        { email: 'good@example.com', firstName: 'Good', lastName: 'User', groups: [] },
+        { email: 'bad@example.com', firstName: 'Bad', lastName: 'User', groups: [] },
+      ]
+
+      api.users.adminRealmsRealmUsersGet = jest.fn().mockImplementation((_realm, _brief, email) => {
+        // The listing call for deleteUsers passes no email
+        if (!email) {
+          return Promise.resolve({
+            body: [
+              { id: 'good-id', email: 'good@example.com', username: 'good@example.com' },
+              { id: 'stale-id', email: 'stale@example.com', username: 'stale@example.com' },
+            ],
+          })
+        }
+        if (email === 'bad@example.com') return Promise.reject(new Error('keycloak exploded'))
+        return Promise.resolve({ body: [] })
+      })
+      api.users.adminRealmsRealmUsersPost = jest.fn().mockResolvedValue({})
+      api.users.adminRealmsRealmUsersUserIdDelete = jest.fn().mockResolvedValue({})
+      api.groups.adminRealmsRealmGroupsGet = jest.fn().mockResolvedValue({ body: [] })
+
+      await expect(keycloak.manageUsers(api, users)).rejects.toThrow()
+
+      expect(api.users.adminRealmsRealmUsersUserIdDelete).toHaveBeenCalledWith('otomi', 'stale-id')
+    })
   })
 
   describe('IDPManager', () => {
