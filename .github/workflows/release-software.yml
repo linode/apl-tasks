@@ -1,0 +1,117 @@
+# Required repository/environment secrets:
+#   OCI_USERNAME              - registry login username
+#   DOCKERHUB_LINODEBOT_TOKEN - registry login token
+#   BOT_TOKEN                 - GitHub token with read access to @linode packages
+
+name: Release Software
+
+on:
+  workflow_dispatch:
+    inputs:
+      is_prerelease:
+        description: "Cut an RC tag instead of a stable tag"
+        required: true
+        type: boolean
+      dry_run:
+        description: "Skip all writes (tag, release, and Docker push)"
+        required: true
+        type: boolean
+
+env:
+  CONTAINER_REGISTRY: docker.io
+  CONTAINER_IMAGE_NAME: linode/apl-tasks
+  RELEASE_BRANCH: ${{ github.ref_name }}
+  RELEASE_BRANCH_PREFIX: "releases/"
+  RELEASE_TAG_PREFIX: "v"
+
+jobs:
+  release-get-tag:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    outputs:
+      release_tag: ${{ steps.compute-tag.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+          fetch-tags: true
+
+      - name: Validate branch, compute release tag, and check it does not already exist
+        id: compute-tag
+        uses: linode/apl-gh-actions/actions/release-get-tag@v0.3.0
+        with:
+          is_prerelease: ${{ inputs.is_prerelease }}
+          release_branch: ${{ env.RELEASE_BRANCH }}
+          release_branch_prefix: ${{ env.RELEASE_BRANCH_PREFIX }}
+          release_tag_prefix: ${{ env.RELEASE_TAG_PREFIX }}
+          require_rc_before_stable: false
+          check_tag_not_exists: true
+          validate_branch: true
+
+  release-software:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    needs:
+      - release-get-tag
+
+    env:
+      GIT_TAG: ${{ needs.release-get-tag.outputs.release_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_BRANCH }}
+          fetch-depth: 1
+          fetch-tags: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git identity
+        env:
+          ACTOR_ID: ${{ github.actor_id }}
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "${ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Create and push git tag
+        uses: linode/apl-gh-actions/actions/release-tag@v0.3.0
+        with:
+          release_tag: ${{ env.GIT_TAG }}
+          dry_run: ${{ inputs.dry_run }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to OCI registry
+        if: ${{ !inputs.dry_run }}
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.CONTAINER_REGISTRY }}
+          username: ${{ secrets.OCI_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_LINODEBOT_TOKEN }}
+
+      - name: Build and push to OCI registry
+        uses: docker/build-push-action@v7
+        env:
+          CONTAINER_IMAGE_TAG: ${{ env.CONTAINER_REGISTRY }}/${{ env.CONTAINER_IMAGE_NAME }}:${{ needs.release-get-tag.outputs.release_tag }}
+        with:
+          push: ${{ !inputs.dry_run }}
+          context: .
+          tags: ${{ env.CONTAINER_IMAGE_TAG }}
+          secrets: |
+            NPM_TOKEN=${{ secrets.BOT_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: linode/apl-gh-actions/actions/release-create-github-release@v0.3.0
+        with:
+          release_tag: ${{ env.GIT_TAG }}
+          is_prerelease: ${{ inputs.is_prerelease }}
+          dry_run: ${{ inputs.dry_run }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
