@@ -51,7 +51,7 @@ export async function upsertRepo(
   } else {
     // repo update
     console.info(`Updating repo "${repoName}" in organization "${orgName}"`)
-    await repoApi.repoEdit({ owner: orgName, repo: repoName, body: repoOption as EditRepoOption })
+    await repoApi.repoEdit({ owner: orgName, repo: repoName, body: repoOption })
     if (teamName) {
       console.info(`Checking if repo "${repoName}" is assigned to team "${teamName}"`)
       try {

@@ -80,7 +80,7 @@ export async function createBuildWebHook(
       webhookExists = webhooks.find((hook) => {
         return (
           hook.config!.url ===
-          `http://el-gitea-webhook-${buildWorkspace.buildName}.${teamName}.svc.cluster.local:8080` &&
+            `http://el-gitea-webhook-${buildWorkspace.buildName}.${teamName}.svc.cluster.local:8080` &&
           hook.events?.includes('push')
         )
       })

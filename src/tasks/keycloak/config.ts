@@ -1,5 +1,4 @@
 import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
-import axios from 'axios'
 import { emailTransformer } from '../../utils'
 import { cleanEnv, KEYCLOAK_CLIENT_ID } from '../../validators'
 
@@ -305,9 +304,10 @@ export const oidcCfg = (
 })
 
 export async function getDiscoveryUrls(oidcUrl: string, version = 'v2.0'): Promise<OidcProviderCfg> {
-  const response = await axios.get(`${oidcUrl}${version}/.well-known/openid-configuration`)
-  if (!response.data) throw Error('Oidc Provider Address not found!')
-  return response.data
+  const response = await fetch(`${oidcUrl}${version}/.well-known/openid-configuration`)
+  if (!response.ok) throw Error('Oidc Provider Address not found!')
+  const data = (await response.json()) as unknown
+  return data as OidcProviderCfg
 }
 
 export const idpProviderCfgTpl = async (

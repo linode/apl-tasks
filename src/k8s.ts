@@ -29,11 +29,6 @@ export const k8s = {
     coreClient = k8s.kc().makeApiClient(CoreV1Api)
     return coreClient
   },
-  networking: (): NetworkingV1Api => {
-    if (networkingClient) return networkingClient
-    networkingClient = k8s.kc().makeApiClient(NetworkingV1Api)
-    return networkingClient
-  },
   customObjectsApi: (): CustomObjectsApi => {
     if (customObjectsApi) return customObjectsApi
     customObjectsApi = kc.makeApiClient(CustomObjectsApi)
@@ -41,36 +36,22 @@ export const k8s = {
   },
 }
 
-export async function createSecret(
-  name: string,
-  namespace: string,
-  data: Record<string, any>,
-  secretType?: string,
-): Promise<void> {
+export async function createSecret(name: string, namespace: string, data: Record<string, any>): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
     metadata: { name },
-    data: mapValues(data, b64enc) as {
-      [key: string]: string
-    },
+    data: mapValues(data, b64enc),
   }
 
   await k8s.core().createNamespacedSecret({ namespace, body: secret })
   console.info(`New secret ${name} has been created in the namespace ${namespace}`)
 }
 
-export async function replaceSecret(
-  name: string,
-  namespace: string,
-  data: Record<string, unknown>,
-  secretType?: string,
-): Promise<void> {
+export async function replaceSecret(name: string, namespace: string, data: Record<string, unknown>): Promise<void> {
   const b64enc = (val): string => Buffer.from(`${val}`).toString('base64')
   const secret: V1Secret = {
     metadata: { name },
-    data: mapValues(data, b64enc) as {
-      [key: string]: string
-    },
+    data: mapValues(data, b64enc),
   }
 
   await k8s.core().replaceNamespacedSecret({
@@ -80,16 +61,6 @@ export async function replaceSecret(
   })
   console.info(`Secret ${name} has been patched in the namespace ${namespace}`)
 }
-
-export type SecretPromise = Promise<{
-  response: IncomingMessage
-  body: V1Secret
-}>
-
-export type ServiceAccountPromise = Promise<{
-  response: IncomingMessage
-  body: V1ServiceAccount
-}>
 
 export async function getSecret(name: string, namespace: string): Promise<unknown> {
   const b64dec = (val): string => Buffer.from(val, 'base64').toString()
