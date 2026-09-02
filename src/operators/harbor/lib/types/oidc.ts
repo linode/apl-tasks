@@ -14,7 +14,7 @@ export interface HarborConfigMapData {
   oidcUserClaim: string
   oidcGroupsClaim: string
   oidcName: string
-  oidcScope: string
+  oidcScope?: string
   oidcVerifyCert: boolean
   teamNamespaces: string[]
 }
@@ -39,7 +39,6 @@ export function validateConfigMapData(configMap: V1ConfigMap): HarborConfigMapDa
     'oidcUserClaim',
     'oidcGroupsClaim',
     'oidcName',
-    'oidcScope',
     'oidcVerifyCert',
     'teamNamespaces',
   ]
@@ -71,7 +70,7 @@ export class HarborConfig {
   oidcAutoOnboard: boolean
   oidcGroupsClaim: string
   oidcName: string
-  oidcScope: string
+  oidcScope?: string
   teamNamespaces: string[]
 
   constructor(secretData: HarborSecretData, configMapData: HarborConfigMapData) {
