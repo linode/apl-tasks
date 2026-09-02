@@ -36,6 +36,7 @@ import {
   createLoginThemeConfig,
   createRealm,
   createTeamUser,
+  findManagedClient,
   mapTeamsToRoles,
 } from '../../tasks/keycloak/realm-factory'
 import { isObjectSubsetDifferent } from '../../utils'
@@ -544,7 +545,7 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   const client = createClient(uniqueUrls, env.KEYCLOAK_HOSTNAME_URL, env.KEYCLOAK_CLIENT_SECRET)
   console.info('Getting otomi client')
   const allClients = (await api.clients.adminRealmsRealmClientsGet(keycloakRealm)).body
-  const existingClient = allClients.find((el) => el.name === client.name)
+  const existingClient = findManagedClient(allClients)
   if (existingClient) {
     if (isObjectSubsetDifferent(client, existingClient)) {
       console.info('Updating otomi client')
