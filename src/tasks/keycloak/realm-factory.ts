@@ -24,6 +24,7 @@ import {
   idpMapperTpl,
   idpProviderCfgTpl,
   otomiClientCfgTpl,
+  otomiClientId,
   protocolMappersList,
   realmCfgTpl,
   roleTpl,
@@ -36,6 +37,42 @@ export function createClient(redirectUris: string[], webOrigins: string, secret:
     otomiClientCfgTpl(secret, redirectUris, [webOrigins]),
   )
   return otomiClientRepresentation
+}
+
+/**
+ * Find the client this operator manages among the realm's clients.
+ *
+ * Matching is on Keycloak's identity fields -- `id` (pinned by otomiClientCfgTpl)
+ * and `clientId` (the same value, and unique per realm). It deliberately does NOT
+ * match on `name`.
+ *
+ * The previous lookup was `allClients.find((el) => el.name === client.name)`, and
+ * because otomiClientCfgTpl sets no `name`, that expression evaluated to "the
+ * first client in the realm with no name". That is correct only while this client
+ * is the only nameless one, which nothing in the realm enforces: any client
+ * created through the admin API without a `name` -- by an operator in the console,
+ * or by external tooling that provisions its own OIDC client -- silently captures
+ * the lookup if its clientId sorts earlier.
+ *
+ * The consequence is severe and effectively invisible. The operator then PUTs this
+ * client's representation, including `authorizationServicesEnabled: true`, onto
+ * the intruder. If that client is public, Keycloak rejects it:
+ *
+ *     Only confidential clients are allowed to set authorization settings
+ *
+ * The 500 rolls the transaction back, so nothing in the realm drifts and nothing
+ * looks wrong afterwards -- but keycloakRealmProviderConfigurer aborts at this
+ * step on every 30s retry and never reaches IDPManager -> manageUsers. Users added
+ * in the APL console are never written to the realm, and logins fail with
+ * `user_not_found` for accounts that plainly exist in the `apl-users` namespace.
+ * Diagnosing that from the symptom takes a while; the operator log shows only a
+ * repeating "Updating otomi client" followed by a 500.
+ */
+export function findManagedClient(
+  allClients: ClientRepresentation[],
+  clientId: string = otomiClientId,
+): ClientRepresentation | undefined {
+  return allClients.find((el) => el.id === clientId || el.clientId === clientId)
 }
 
 export function createGroups(teamIds: string[]): Array<GroupRepresentation> {
