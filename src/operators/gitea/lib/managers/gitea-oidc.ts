@@ -3,10 +3,6 @@ import stream from 'stream'
 import { GiteaConfig } from '../../gitea'
 import { buildTeamString } from '../helpers'
 
-// Scopes Gitea must request so the issuer emits the claims the auth source is configured to read.
-// The group claim (`groups`) is only present in the token when its scope is requested.
-export const OIDC_SCOPES = 'openid email profile groups'
-
 async function getGiteaPodName(kubeConfig: KubeConfig, namespace: string): Promise<string | undefined> {
   const k8sApi = kubeConfig.makeApiClient(CoreV1Api)
   const giteaPods = await k8sApi.listNamespacedPod({
@@ -44,10 +40,11 @@ export async function setGiteaOIDCConfig(giteaConfig: GiteaConfig, kubeConfig: K
       AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\\n')
       if [ -z "$AUTH_ID" ]; then
         echo "Gitea OIDC config not found. Adding OIDC config for otomi-idp."
-        gitea admin auth add-oauth --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "platform-admin" --group-claim-name "groups" --scopes "${OIDC_SCOPES}" --group-team-map '${teamNamespaceString}'
+        gitea admin auth add-oauth
+         --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "platform-admin" --group-claim-name "groups" --group-team-map '${teamNamespaceString}'
       elif ${update}; then
         echo "Gitea OIDC config is different. Updating OIDC config for otomi-idp."
-        gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --scopes "${OIDC_SCOPES}" --group-team-map '${teamNamespaceString}'
+        gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --group-team-map '${teamNamespaceString}'
       else
         echo "Gitea OIDC config is up to date."
       fi
