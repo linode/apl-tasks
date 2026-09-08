@@ -1,6 +1,6 @@
 import { Configurations, ConfigureApi } from '@linode/harbor-client-node'
 import { log } from 'console'
-import { ROBOT_PREFIX } from '../consts'
+import { DEFAULT_OIDC_NAME, DEFAULT_OIDC_SCOPE, ROBOT_PREFIX } from '../consts'
 import { HarborConfig } from '../types/oidc'
 
 export default async function manageHarborOidcConfig(
@@ -14,8 +14,8 @@ export default async function manageHarborOidcConfig(
     oidcClientSecret: harborConfig.oidcClientSecret,
     oidcEndpoint: harborConfig.oidcEndpoint,
     oidcGroupsClaim: 'groups',
-    oidcName: 'otomi',
-    oidcScope: 'openid',
+    oidcName: harborConfig.oidcName || DEFAULT_OIDC_NAME,
+    oidcScope: harborConfig.oidcScope || DEFAULT_OIDC_SCOPE,
     oidcVerifyCert: harborConfig.oidcVerifyCert,
     oidcUserClaim: harborConfig.oidcUserClaim,
     oidcAutoOnboard: harborConfig.oidcAutoOnboard,
