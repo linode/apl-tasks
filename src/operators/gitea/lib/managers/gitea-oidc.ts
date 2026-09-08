@@ -40,8 +40,7 @@ export async function setGiteaOIDCConfig(giteaConfig: GiteaConfig, kubeConfig: K
       AUTH_ID=$(gitea admin auth list --vertical-bars | grep -E "\\|otomi-idp\\s+\\|" | grep -iE "\\|OAuth2\\s+\\|" | awk -F " " '{print $1}' | tr -d '\\n')
       if [ -z "$AUTH_ID" ]; then
         echo "Gitea OIDC config not found. Adding OIDC config for otomi-idp."
-        gitea admin auth add-oauth
-         --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "platform-admin" --group-claim-name "groups" --group-team-map '${teamNamespaceString}'
+        gitea admin auth add-oauth --name "otomi-idp" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --provider "openidConnect" --admin-group "platform-admin" --group-claim-name "groups" --group-team-map '${teamNamespaceString}'
       elif ${update}; then
         echo "Gitea OIDC config is different. Updating OIDC config for otomi-idp."
         gitea admin auth update-oauth --id "$AUTH_ID" --key "${clientID}" --secret "${clientSecret}" --auto-discover-url "${discoveryURL}" --group-team-map '${teamNamespaceString}'
