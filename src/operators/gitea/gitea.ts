@@ -358,8 +358,10 @@ async function setupGitea() {
   }
   await createReposAndAddToTeam(repoApi, existingRepos, repoOption)
 
-  // check for specific hooks
-  await addTektonHook(repoApi)
+  // check for specific hooks, only if the repo actually exists
+  if (existingRepos.some((repo) => repo.name === otomiValuesRepoName)) {
+    await addTektonHook(repoApi)
+  }
 
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
