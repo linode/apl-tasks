@@ -24,7 +24,7 @@ import { setGiteaOIDCConfig } from './lib/managers/gitea-oidc'
 import { addTektonHook, createBuildWebHook, deleteBuildWebHook, updateBuildWebHook } from './lib/managers/gitea-webhook'
 import { PipelineKubernetesObject } from './lib/types/webhook'
 import { getTektonPipeline } from './lib/helpers'
-import { createReposAndAddToTeam, upsertRepo } from './lib/managers/gitea-repositories'
+import { createReposAndAddToTeam } from './lib/managers/gitea-repositories'
 
 interface DependencyState {
   giteaPassword: string | null
@@ -38,7 +38,6 @@ interface DependencyState {
 const GITEA_ENDPOINT = `${giteaEnv.GITEA_URL}:${giteaEnv.GITEA_URL_PORT}`
 export type GiteaConfig = {
   giteaPassword: string
-  hasArgocd: boolean
   teamConfig: {}
   teamNames: string[]
   domainSuffix: string
@@ -49,7 +48,6 @@ export type GiteaConfig = {
 
 const env: GiteaConfig = {
   giteaPassword: '',
-  hasArgocd: false,
   teamConfig: {},
   teamNames: [] as string[],
   domainSuffix: '',
@@ -86,7 +84,6 @@ const secretsAndConfigmapsCallback = async (e: any) => {
     env.oidcClientSecret = Buffer.from(data.oidcClientSecret, 'base64').toString()
     env.oidcEndpoint = Buffer.from(data.oidcEndpoint, 'base64').toString()
   } else if (object.kind === 'ConfigMap' && metadata.name === 'apl-gitea-operator-cm') {
-    env.hasArgocd = data.hasArgocd === 'true'
     env.teamConfig = JSON.parse(data.teamConfig)
     env.teamNames = keys(env.teamConfig).filter((teamName) => teamName !== 'admin')
     env.domainSuffix = data.domainSuffix
@@ -323,7 +320,7 @@ async function runSetupGitea() {
 
 async function setupGitea() {
   const formattedGiteaUrl: string = GITEA_ENDPOINT.endsWith('/') ? GITEA_ENDPOINT.slice(0, -1) : GITEA_ENDPOINT
-  const { giteaPassword, teamConfig, hasArgocd } = env
+  const { giteaPassword, teamConfig } = env
   console.info('Starting Gitea setup/reconfiguration')
   const apiConfig = new Configuration({
     basePath: `${formattedGiteaUrl}/api/v1`,
@@ -359,21 +356,11 @@ async function setupGitea() {
     name: otomiValuesRepoName,
     _private: true,
   }
-  await createReposAndAddToTeam(orgApi, repoApi, existingRepos, repoOption)
+  await createReposAndAddToTeam(repoApi, existingRepos, repoOption)
 
   // check for specific hooks
   await addTektonHook(repoApi)
 
-  if (!hasArgocd) return
-
-  // then create initial gitops repo for teams
-  await Promise.all(
-    teamIds.map(async (teamId) => {
-      const name = `team-${teamId}-argocd`
-      const option = { ...repoOption, autoInit: true, name }
-      return upsertRepo(existingRepos, orgApi, repoApi, option, `team-${teamId}`)
-    }),
-  )
   if (errors.length) {
     console.error(`Errors found: ${JSON.stringify(errors, null, 2)}`)
     process.exit(1)
