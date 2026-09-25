@@ -329,12 +329,18 @@ export const idpProviderCfgTpl = async (
   }
 }
 
+// The Keycloak identity of the client this operator manages. It is pinned as the
+// client's `id` below, and Keycloak surfaces the same value as `clientId`. Both
+// are unique per realm, which is what makes them safe to look the client up by --
+// see findManagedClient in realm-factory.ts.
+export const otomiClientId = 'otomi'
+
 export const otomiClientCfgTpl = (
   secret: string,
   redirectUris: string[],
   webOrigins: string[],
 ): Record<string, unknown> => ({
-  id: 'otomi',
+  id: otomiClientId,
   secret,
   defaultClientScopes: ['openid', 'email', 'profile'],
   redirectUris,
