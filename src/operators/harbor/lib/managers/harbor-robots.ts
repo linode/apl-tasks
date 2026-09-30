@@ -1,5 +1,5 @@
 import { CoreV1Api } from '@kubernetes/client-node'
-import { HttpBearerAuth, Robot, RobotApi, RobotCreate, RobotCreated } from '@linode/harbor-client-node'
+import { ResponseError, Robot, RobotApi, RobotCreate, RobotCreated } from '@linode/harbor-client-fetch'
 import { debug, error, log } from 'console'
 import { generate as generatePassword } from 'generate-password'
 import { createBuildsK8sSecret, createK8sSecret, createSecret, getSecret, replaceSecret } from '../../../../k8s'
@@ -46,9 +46,9 @@ async function updateRobotToken(
   }
 
   try {
-    await robotApi.updateRobot(robot.id, robot)
+    await robotApi.updateRobot({ robotId: robot.id, robot })
     // the Harbor API does not apply the provided secret immediately, so we need to refresh it after creation to ensure the correct token is set
-    await robotApi.refreshSec(robot.id, { secret: robot.secret })
+    await robotApi.refreshSec({ robotId: robot.id, robotSec: { secret: robot.secret } })
   } catch (e) {
     handleApiError(errors, action, e)
   }
@@ -82,9 +82,9 @@ export function parseDockerConfigJson(
 export async function creatingRobotAccount(projectRobot: RobotCreate, robotApi: RobotApi): Promise<void> {
   try {
     log(`Creating robot account ${projectRobot.name} with project level permissions`)
-    const { body } = await robotApi.createRobot(projectRobot)
+    const robot = await robotApi.createRobot({ robot: projectRobot })
     // the Harbor API does not apply the provided secret immediately, so we need to refresh it after creation to ensure the correct token is set
-    await robotApi.refreshSec(body.id!, { secret: projectRobot.secret })
+    await robotApi.refreshSec({ robotId: robot.id!, robotSec: { secret: projectRobot.secret } })
   } catch (e) {
     errors.push(`Error creating robot account ${projectRobot.name}: ${e}`)
     throw e
@@ -92,8 +92,7 @@ export async function creatingRobotAccount(projectRobot: RobotCreate, robotApi: 
 }
 
 async function findRobotByName(robotApi: RobotApi, robotName: string, fullName: string): Promise<Robot | undefined> {
-  const query = `name=${robotName}`
-  const { body: robotList } = await robotApi.listRobot(undefined, query, undefined, undefined, undefined)
+  const robotList = await robotApi.listRobot({ q: `name=${robotName}` })
   return robotList.find((i) => i.name === fullName)
 }
 
@@ -278,7 +277,7 @@ export async function createSystemRobotSecret(
   systemRobotName: string,
   systemNamespace: string,
 ): Promise<RobotSecret> {
-  const { body: robotList } = await robotApi.listRobot()
+  const robotList = await robotApi.listRobot()
   const existing = robotList.find(
     (robot) =>
       robot.name === `${ROBOT_PREFIX}${systemRobotName}` || robot.name === `${DEFAULT_ROBOT_PREFIX}${systemRobotName}`,
@@ -287,7 +286,7 @@ export async function createSystemRobotSecret(
     const existingId = existing.id
     try {
       log(`Deleting previous robot account ${systemRobotName} with id ${existingId}`)
-      await robotApi.deleteRobot(existingId)
+      await robotApi.deleteRobot({ robotId: existingId })
     } catch (e) {
       errors.push(`Error deleting previous robot account ${systemRobotName}: ${e}`)
     }
@@ -295,14 +294,12 @@ export async function createSystemRobotSecret(
   let robotAccount: RobotCreated
   try {
     log(`Creating robot account ${systemRobotName} with system level permsissions`)
-    robotAccount = (
-      await robotApi.createRobot(
-        generateRobotAccount(systemRobotName, fullRobotPermissions, {
-          level: 'system',
-          kind: 'system',
-        }),
-      )
-    ).body
+    robotAccount = await robotApi.createRobot({
+      robot: generateRobotAccount(systemRobotName, fullRobotPermissions, {
+        level: 'system',
+        kind: 'system',
+      }),
+    })
   } catch (e) {
     errors.push(`Error creating robot account ${systemRobotName}: ${e}`)
     throw e
@@ -316,31 +313,27 @@ export async function createSystemRobotSecret(
 }
 
 /**
- * Get token by reading access token from kubernetes secret.
+ * Ensure the system robot account exists and its credentials are stored in a kubernetes secret.
  * If the secret does not exists then create Harbor robot account and populate credentials to kubernetes secret.
  */
-export async function getBearerToken(
+export async function ensureSystemRobotSecret(
   robotApi: RobotApi,
   systemRobotName: string,
   systemNamespace: string,
   k8sApi: CoreV1Api,
-): Promise<HttpBearerAuth> {
-  const bearerAuth: HttpBearerAuth = new HttpBearerAuth()
-
+): Promise<RobotSecret> {
   let robotSecret = (await getSecret(SYSTEM_SECRET_NAME, systemNamespace)) as RobotSecret
   if (!robotSecret) {
     // not existing yet, create robot account and keep creds in secret
     robotSecret = await createSystemRobotSecret(robotApi, systemRobotName, systemNamespace)
   } else {
     await ensureRobotSecretHasCorrectName(robotSecret, systemRobotName, systemNamespace)
-    // test if secret still works
+    // test if the api is still reachable with the configured credentials
     try {
-      bearerAuth.accessToken = robotSecret.secret
-      robotApi.setDefaultAuthentication(bearerAuth)
       await robotApi.listRobot()
     } catch (e) {
       // throw everything except 401, which is what we test for
-      if (e.status !== 401) throw e
+      if (!(e instanceof ResponseError) || e.response.status !== 401) throw e
       // unauthenticated, so remove and recreate secret
       await k8sApi.deleteNamespacedSecret({ name: SYSTEM_SECRET_NAME, namespace: systemNamespace })
       // now, the next call might throw IF:
@@ -349,6 +342,5 @@ export async function getBearerToken(
       robotSecret = await createSystemRobotSecret(robotApi, systemRobotName, systemNamespace)
     }
   }
-  bearerAuth.accessToken = robotSecret.secret
-  return bearerAuth
+  return robotSecret
 }
