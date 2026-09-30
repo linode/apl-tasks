@@ -1,4 +1,4 @@
-import { CreateRepoOption, EditRepoOption, Repository, RepositoryApi } from '@linode/gitea-client-fetch'
+import { CreateRepoOption, Repository, RepositoryApi } from '@linode/gitea-client-fetch'
 import { orgName, otomiValuesRepoName } from '../../../common'
 import { isEmpty } from 'lodash'
 
@@ -15,5 +15,5 @@ export async function createReposAndAddToTeam(
   }
 
   console.info(`Updating repo "${otomiValuesRepoName}" in organization "${orgName}"`)
-  await repoApi.repoEdit({ owner: orgName, repo: otomiValuesRepoName, body: repoOption as EditRepoOption })
+  await repoApi.repoEdit({ owner: orgName, repo: otomiValuesRepoName, body: repoOption })
 }

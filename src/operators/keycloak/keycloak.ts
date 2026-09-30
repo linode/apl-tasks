@@ -444,7 +444,7 @@ async function createKeycloakConnection(): Promise<KeycloakConnection> {
 
     token = (await response.json()) as TokenEndpointResponse
 
-    return { token, basePath } as KeycloakConnection
+    return { token, basePath }
   } catch (error) {
     throw extractError('creating Keycloak connection', error)
   }
