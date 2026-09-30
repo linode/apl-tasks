@@ -1,13 +1,13 @@
-import { HttpError as KeyCloakHttpError } from '@linode/keycloak-client-node'
+import { ResponseError } from '@linode/keycloak-client-fetch'
 
 export class WrappedError extends Error {}
 
-export function extractError(operationName: string, error: Error): WrappedError {
+export async function extractError(operationName: string, error: Error): Promise<WrappedError> {
   if (error instanceof WrappedError) return error
   let errorDetail: any
-  if (error instanceof KeyCloakHttpError) {
-    const responseStr = typeof error.body === 'object' ? JSON.stringify(error.body) : error.body
-    errorDetail = `status code: ${error.statusCode} - response: ${responseStr}`
+  if (error instanceof ResponseError) {
+    const responseStr = await error.response.text().catch(() => '')
+    errorDetail = `status code: ${error.response.status} - response: ${responseStr}`
   } else {
     errorDetail = error
   }

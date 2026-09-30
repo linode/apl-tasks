@@ -4,7 +4,6 @@ FROM node:24-alpine AS dev
 RUN apk --no-cache add make gcc g++ python3 git jq
 
 ENV NODE_ENV=development
-ENV BLUEBIRD_DEBUG=0
 
 RUN mkdir /app
 WORKDIR /app

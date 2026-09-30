@@ -1,21 +1,19 @@
-import { MemberApi, Project, ProjectApi, ProjectMember, ProjectReq } from '@linode/harbor-client-node'
+import { MemberApi, Project, ProjectApi, ProjectMember, ProjectReq } from '@linode/harbor-client-fetch'
 import { debug, error, log } from 'console'
 import { HARBOR_GROUP_TYPE, HARBOR_ROLE } from '../consts'
 import { errors } from '../globals'
-import { alreadyExistsError } from '../helpers'
+import { alreadyExistsError, notFoundError } from '../helpers'
 
-function notFoundError(e): boolean {
-  if (e && e.body && e.body.errors && e.body.errors.length > 0) {
-    return e.body.errors[0].message.includes('not found')
-  }
-  return true
-}
-
-async function createHarborProject(projectName: string, projectsApi: ProjectApi, projectReq: ProjectReq): Promise<any> {
+async function createHarborProject(
+  projectName: string,
+  projectsApi: ProjectApi,
+  projectReq: ProjectReq,
+): Promise<Project | null> {
   try {
     debug(`Creating project for team ${projectName}`)
-    const response = await projectsApi.createProject(projectReq)
-    return response.body
+    // Harbor responds 201 without a body, so read the project back to get its id
+    await projectsApi.createProject({ project: projectReq })
+    return await projectsApi.getProject({ projectNameOrId: projectName })
   } catch (e) {
     if (!alreadyExistsError(e)) errors.push(`Error creating project for team ${projectName}: ${e}`)
     return null
@@ -31,25 +29,21 @@ async function ensureProjectMember(
   projMember: ProjectMember,
 ): Promise<void> {
   try {
-    const response = await memberApi.listProjectMembers(
-      projectId,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      projectName,
-    )
-    const existingMembers = response.body
+    const existingMembers = await memberApi.listProjectMembers({ projectNameOrId: projectId, entityname: projectName })
     if (existingMembers.length > 0) {
       const [existingMember] = existingMembers
       if (!existingMember.id) {
         errors.push(`Error processing existing member for team ${projectName}: missing member ID`)
         return
       }
-      await memberApi.updateProjectMember(projectId, existingMember.id, undefined, undefined, projMember)
+      await memberApi.updateProjectMember({
+        projectNameOrId: projectId,
+        mid: existingMember.id,
+        role: { roleId: projMember.roleId },
+      })
     } else {
       log(`Associating "developer" role for team "${projectName}" with harbor project "${projectName}"`)
-      await memberApi.createProjectMember(projectId, undefined, undefined, projMember)
+      await memberApi.createProjectMember({ projectNameOrId: projectId, projectMember: projMember })
     }
   } catch (e) {
     if (!alreadyExistsError(e)) {
@@ -58,11 +52,15 @@ async function ensureProjectMember(
   }
 }
 
-async function ensureProject(projectsApi: ProjectApi, projectName: string, projectReq: ProjectReq): Promise<Project> {
-  let project: Project = {}
+async function ensureProject(
+  projectsApi: ProjectApi,
+  projectName: string,
+  projectReq: ProjectReq,
+): Promise<Project | null> {
+  let project: Project | null = {}
   try {
-    project = (await projectsApi.getProject(projectName)).body
-    await projectsApi.updateProject(projectName, projectReq)
+    project = await projectsApi.getProject({ projectNameOrId: projectName })
+    await projectsApi.updateProject({ projectNameOrId: projectName, project: projectReq })
   } catch (e) {
     if (notFoundError(e)) {
       project = await createHarborProject(projectName, projectsApi, projectReq)
@@ -84,7 +82,7 @@ export default async function manageHarborProject(
     }
     const project = await ensureProject(projectsApi, projectName, projectReq)
 
-    if (!project.projectId) return null
+    if (!project?.projectId) return null
     const projectId = `${project.projectId}`
 
     const projMember: ProjectMember = {

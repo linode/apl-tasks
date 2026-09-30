@@ -1,4 +1,4 @@
-import { ProtocolMapperRepresentation } from '@linode/keycloak-client-node'
+import { ProtocolMapperRepresentation } from '@linode/keycloak-client-fetch'
 import { emailTransformer } from '../../utils'
 import { cleanEnv, KEYCLOAK_CLIENT_ID } from '../../validators'
 
