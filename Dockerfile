@@ -1,5 +1,5 @@
 # --------------- Dev stage for developers to override sources
-FROM node:22.21.1-alpine AS dev
+FROM node:24-alpine AS dev
 
 RUN apk --no-cache add make gcc g++ python3 git jq
 

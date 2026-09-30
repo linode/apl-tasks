@@ -1,3 +1,10 @@
 #!/bin/sh
 
-npm run run-if-changed
+# git merge sets ORIG_HEAD to the commit before the merge
+git rev-parse --quiet --verify ORIG_HEAD >/dev/null || exit 0
+
+# Check if package-lock.json changed
+if git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep --quiet 'package-lock.json'; then
+  echo "📦 package-lock.json changed, running npm install..."
+  npm install --prefer-offline --no-audit
+fi
