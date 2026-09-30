@@ -12,6 +12,9 @@ jobs:
   coverage:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    env:
+      # Git hooks from husky break the branch switching done by jest-coverage-report-action
+      HUSKY: '0'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -31,6 +34,7 @@ jobs:
           nvm install
           nvm use
           node -v
+          dirname "$(nvm which current)" >> "$GITHUB_PATH"
           npm install
 
       - uses: ArtiomTr/jest-coverage-report-action@v2

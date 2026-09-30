@@ -1,12 +1,12 @@
 import * as k8s from '@kubernetes/client-node'
 import { KubeConfig } from '@kubernetes/client-node'
-import { ConfigureApi, HttpError, MemberApi, ProjectApi, RobotApi } from '@linode/harbor-client-node'
+import { Configuration, ConfigureApi, MemberApi, ProjectApi, ResponseError, RobotApi } from '@linode/harbor-client-fetch'
 import { getSecret } from '../../k8s'
 import { waitTillAvailable } from '../../utils'
 import { errors } from './lib/globals'
 import manageHarborOidcConfig from './lib/managers/harbor-oidc'
 import manageHarborProject from './lib/managers/harbor-project'
-import { ensureRobotAccount, getBearerToken } from './lib/managers/harbor-robots'
+import { ensureRobotAccount, ensureSystemRobotSecret } from './lib/managers/harbor-robots'
 import { HarborConfig, validateConfigMapData, validateSecretData } from './lib/types/oidc'
 
 import { error, log } from 'console'
@@ -41,21 +41,10 @@ if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) 
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api)
 let reconciling = false
 
-function formatHttpError(err: HttpError): string {
-  const responseWithRequest = err.response as unknown as {
-    url?: string
-    req?: {
-      method?: string
-      path?: string
-      host?: string
-    }
-  }
-  const request = responseWithRequest.req
-  const method = request?.method ?? 'unknown'
-  const path = request?.path ?? responseWithRequest.url ?? 'unknown'
-  const host = request?.host ?? 'unknown'
-  const response = typeof err.body === 'object' ? JSON.stringify(err.body) : String(err.body)
-  return `Request: ${method} ${host} ${path}. Response: status code: ${err.statusCode} - ${response}`
+async function formatResponseError(err: ResponseError): Promise<string> {
+  const { url, status } = err.response
+  const body = await err.response.text().catch(() => '')
+  return `Request: ${url}. Response: status code: ${status} - ${body}`
 }
 
 interface HarborApis {
@@ -66,15 +55,16 @@ interface HarborApis {
 }
 
 async function setupHarborApis(config: HarborConfig): Promise<HarborApis> {
-  const robotApi = new RobotApi(config.harborUser, config.harborPassword, harborBaseUrl)
-  const configureApi = new ConfigureApi(config.harborUser, config.harborPassword, harborBaseUrl)
-  const projectsApi = new ProjectApi(config.harborUser, config.harborPassword, harborBaseUrl)
-  const memberApi = new MemberApi(config.harborUser, config.harborPassword, harborBaseUrl)
-  const bearerAuth = await getBearerToken(robotApi, env.HARBOR_SYSTEM_ROBOTNAME, env.HARBOR_SYSTEM_NAMESPACE, k8sApi)
-  robotApi.setDefaultAuthentication(bearerAuth)
-  configureApi.setDefaultAuthentication(bearerAuth)
-  projectsApi.setDefaultAuthentication(bearerAuth)
-  memberApi.setDefaultAuthentication(bearerAuth)
+  const configuration = new Configuration({
+    basePath: harborBaseUrl,
+    username: config.harborUser,
+    password: config.harborPassword,
+  })
+  const robotApi = new RobotApi(configuration)
+  const configureApi = new ConfigureApi(configuration)
+  const projectsApi = new ProjectApi(configuration)
+  const memberApi = new MemberApi(configuration)
+  await ensureSystemRobotSecret(robotApi, env.HARBOR_SYSTEM_ROBOTNAME, env.HARBOR_SYSTEM_NAMESPACE, k8sApi)
   return { robotApi, configureApi, projectsApi, memberApi }
 }
 
@@ -133,8 +123,8 @@ export default async function manageHarborProjectsAndRobotAccounts(
     )
     return projectId
   } catch (e) {
-    if (e instanceof HttpError) {
-      error(`Error processing project ${projectName}: ${formatHttpError(e)}`)
+    if (e instanceof ResponseError) {
+      error(`Error processing project ${projectName}: ${await formatResponseError(e)}`)
     } else {
       error(`Error processing project ${projectName}:`, e)
     }
@@ -160,8 +150,8 @@ async function reconcile(): Promise<void> {
       )
     }
   } catch (e) {
-    if (e instanceof HttpError) {
-      error(`Reconciliation failed: ${formatHttpError(e)}`)
+    if (e instanceof ResponseError) {
+      error(`Reconciliation failed: ${await formatResponseError(e)}`)
     } else {
       error('Reconciliation failed:', e)
     }

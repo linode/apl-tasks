@@ -8,7 +8,7 @@ import {
   RealmRepresentation,
   RoleRepresentation,
   UserRepresentation,
-} from '@linode/keycloak-client-node'
+} from '@linode/keycloak-client-fetch'
 import { defaultsDeep } from 'lodash'
 import * as utils from '../../utils'
 import {
@@ -32,7 +32,7 @@ import {
 
 export function createClient(redirectUris: string[], webOrigins: string, secret: string): ClientRepresentation {
   const otomiClientRepresentation = defaultsDeep(
-    new ClientRepresentation(),
+    {},
     otomiClientCfgTpl(secret, redirectUris, [webOrigins]),
   )
   return otomiClientRepresentation
@@ -42,7 +42,7 @@ export function createGroups(teamIds: string[]): Array<GroupRepresentation> {
   const groupNames: string[] = teamIds
     .map((id) => `team-${id}`)
     .concat(['platform-admin', 'all-teams-admin', 'team-admin'])
-  const groups = groupNames.map((name) => defaultsDeep(new GroupRepresentation(), { name }))
+  const groups = groupNames.map((name) => defaultsDeep({}, { name }))
   return groups
 }
 
@@ -62,7 +62,7 @@ export function createIdpMappers(
     'platform-admin',
     platformAdminGroupMapping,
   )
-  const platformAdminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), platformAdmin)
+  const platformAdminMapper = defaultsDeep({}, platformAdmin)
   // all teams admin idp mapper case
   const allTeamsAdmin = idpMapperTpl(
     'all-teams-admin group to role',
@@ -70,21 +70,21 @@ export function createIdpMappers(
     'all-teams-admin',
     allTeamsAdminGroupMapping,
   )
-  const allTeamsAdminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), allTeamsAdmin)
+  const allTeamsAdminMapper = defaultsDeep({}, allTeamsAdmin)
   // team admin idp mapper case
   const teamAdmin = idpMapperTpl('team-admin group to role', idpAlias, 'team-admin', teamAdminGroupMapping)
-  const teamAdminMapper = defaultsDeep(new IdentityProviderMapperRepresentation(), teamAdmin)
+  const teamAdminMapper = defaultsDeep({}, teamAdmin)
   // default idp mappers case
   const defaultIdps = defaultsIdpMapperTpl(idpAlias, userClaimMapper, idpSubClaimMapper)
 
   const defaultMapper = defaultIdps.map((idpMapper) =>
-    defaultsDeep(new IdentityProviderMapperRepresentation(), idpMapper),
+    defaultsDeep({}, idpMapper),
   )
   // team idp case - team list extracted from IDP_GROUP_MAPPINGS_TEAMS env
   const teamList = utils.objectToArray(teams || [], 'name', 'groupMapping') as TeamMapping[]
   const teamMappers = teamList.map((team) => {
     const teamMapper = idpMapperTpl(`${team.name} group to role`, idpAlias, team.name, team.groupMapping)
-    return defaultsDeep(new IdentityProviderMapperRepresentation(), teamMapper)
+    return defaultsDeep({}, teamMapper)
   })
   return teamMappers
     .concat(defaultMapper)
@@ -100,7 +100,7 @@ export async function createIdProvider(
   oidcUrl: string,
 ): Promise<IdentityProviderRepresentation> {
   const otomiClientIdp = defaultsDeep(
-    new IdentityProviderRepresentation(),
+    {},
     await idpProviderCfgTpl(alias, clientId, clientSecret, oidcUrl),
   )
   return otomiClientIdp
@@ -108,38 +108,38 @@ export async function createIdProvider(
 
 export function createProtocolMappersForClientScope(): Array<ProtocolMapperRepresentation> {
   const protocolMapperRepresentations = protocolMappersList.map((protoMapper) =>
-    defaultsDeep(new ProtocolMapperRepresentation(), protoMapper),
+    defaultsDeep({}, protoMapper),
   )
   return protocolMapperRepresentations
 }
 
 export function createClientEmailClaimMapper(): ProtocolMapperRepresentation {
-  const emailClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientEmailClaimMapper())
+  const emailClaimMapper = defaultsDeep({}, clientEmailClaimMapper())
   return emailClaimMapper
 }
 
 export function createClientSubClaimMapper(): ProtocolMapperRepresentation {
-  const subClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientSubClaimMapper())
+  const subClaimMapper = defaultsDeep({}, clientSubClaimMapper())
   return subClaimMapper
 }
 
 export function createClientNameClaimMapper(): ProtocolMapperRepresentation {
-  const nameClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientNameClaimMapper())
+  const nameClaimMapper = defaultsDeep({}, clientNameClaimMapper())
   return nameClaimMapper
 }
 
 export function createClientNicknameClaimMapper(): ProtocolMapperRepresentation {
-  const nicknameClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientNicknameClaimMapper())
+  const nicknameClaimMapper = defaultsDeep({}, clientNicknameClaimMapper())
   return nicknameClaimMapper
 }
 
 export function createClientAudClaimMapper(): ProtocolMapperRepresentation {
-  const audClaimMapper = defaultsDeep(new ProtocolMapperRepresentation(), clientAudClaimMapper())
+  const audClaimMapper = defaultsDeep({}, clientAudClaimMapper())
   return audClaimMapper
 }
 
 export function createAdminUser(username: string, password: string): UserRepresentation {
-  const userRepresentation = defaultsDeep(new UserRepresentation(), adminUserCfgTpl(username, password))
+  const userRepresentation = defaultsDeep({}, adminUserCfgTpl(username, password))
   return userRepresentation
 }
 export function createTeamUser(
@@ -150,20 +150,20 @@ export function createTeamUser(
   initialPassword: string,
 ): UserRepresentation {
   const userRepresentation = defaultsDeep(
-    new UserRepresentation(),
+    {},
     teamUserCfgTpl(email, firstName, lastName, groups, initialPassword),
   )
   return userRepresentation
 }
 
 export function createRealm(realm: string): RealmRepresentation {
-  const realmRepresentation = defaultsDeep(new RealmRepresentation(), realmCfgTpl(realm))
+  const realmRepresentation = defaultsDeep({}, realmCfgTpl(realm))
   return realmRepresentation
 }
 
 export function createClientScopes(): ClientScopeRepresentation {
   const clientScopeRepresentation = defaultsDeep(
-    new ClientScopeRepresentation(),
+    {},
     clientScopeCfgTpl(createProtocolMappersForClientScope()),
   )
   return clientScopeRepresentation
@@ -199,12 +199,12 @@ export function mapTeamsToRoles(
   const teamList = utils.objectToArray(teams || [], 'name', 'groupMapping') as TeamMapping[]
   const teamRoleRepresentations = adminTeams.concat(teamList).map((team) => {
     const role = roleTpl(team.name, team.groupMapping, realm)
-    const roleRepresentation = defaultsDeep(new RoleRepresentation(), role)
+    const roleRepresentation = defaultsDeep({}, role)
     return roleRepresentation
   })
   return teamRoleRepresentations
 }
 
 export function createLoginThemeConfig(loginTheme = 'APL'): RealmRepresentation {
-  return defaultsDeep(new RealmRepresentation(), { loginTheme })
+  return defaultsDeep({}, { loginTheme })
 }

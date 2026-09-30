@@ -1,4 +1,4 @@
-import { Configurations, ConfigureApi } from '@linode/harbor-client-node'
+import { Configurations, ConfigureApi } from '@linode/harbor-client-fetch'
 import { log } from 'console'
 import { DEFAULT_OIDC_NAME, DEFAULT_OIDC_SCOPE, ROBOT_PREFIX } from '../consts'
 import { HarborConfig } from '../types/oidc'
@@ -26,6 +26,6 @@ export default async function manageHarborOidcConfig(
   }
 
   log('Putting Harbor configuration')
-  await configureApi.updateConfigurations(config)
+  await configureApi.updateConfigurations({ configurations: config })
   log('Harbor configuration updated successfully')
 }

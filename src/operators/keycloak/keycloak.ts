@@ -2,22 +2,23 @@ import * as k8s from '@kubernetes/client-node'
 import Operator, { ResourceEvent, ResourceEventType } from '@linode/apl-k8s-operator'
 import {
   ClientRoleMappingsApi,
+  Configuration,
   ClientsApi,
   ClientScopesApi,
   GroupsApi,
-  HttpBearerAuth,
   IdentityProvidersApi,
+  ProtocolMapperRepresentation,
   ProtocolMappersApi,
   RealmsAdminApi,
-  RequestFile,
+  ResponseError,
   RoleMapperApi,
   RoleRepresentation,
   RolesApi,
   UnmanagedAttributePolicy,
   UserRepresentation,
   UsersApi,
-} from '@linode/keycloak-client-node'
-import { forEach, omit } from 'lodash'
+} from '@linode/keycloak-client-fetch'
+import { omit } from 'lodash'
 import { type TokenEndpointResponse } from 'openid-client'
 import { keycloakRealm } from '../../tasks/keycloak/config'
 import { extractError } from '../../tasks/keycloak/errors'
@@ -131,7 +132,7 @@ async function retryOperation(operation: (...args: any[]) => Promise<void>, oper
       await operation(...params)
       return
     } catch (error) {
-      extractError(operationName, error)
+      await extractError(operationName, error)
       console.debug('Retrying in 30 seconds')
       await new Promise((resolve) => setTimeout(resolve, 30000))
       console.info(`Retrying to ${operationName}`)
@@ -284,7 +285,7 @@ export default class MyOperator extends Operator {
                 if (secretInitialized && this.usersInitialized) await runKeycloakUpdater()
                 break
               } catch (error) {
-                throw extractError('handling secret update event', error)
+                throw await extractError('handling secret update event', error)
               }
             }
             default:
@@ -295,7 +296,7 @@ export default class MyOperator extends Operator {
       )
       console.info('Setting up secrets watcher done')
     } catch (error) {
-      throw extractError('setting up secrets watcher', error)
+      throw await extractError('setting up secrets watcher', error)
     }
     // Watch apl-keycloak-operator-cm
     try {
@@ -336,7 +337,7 @@ export default class MyOperator extends Operator {
                 if (configMapInitialized && this.usersInitialized) await runKeycloakUpdater()
                 break
               } catch (error) {
-                throw extractError('handling configmap update event', error)
+                throw await extractError('handling configmap update event', error)
               }
             }
             default:
@@ -347,7 +348,7 @@ export default class MyOperator extends Operator {
       )
       console.info('Setting up configmap watcher done')
     } catch (error) {
-      throw extractError('setting up configmap watcher', error)
+      throw await extractError('setting up configmap watcher', error)
     }
 
     // Watch user secrets in apl-users namespace
@@ -363,7 +364,7 @@ export default class MyOperator extends Operator {
       )
       console.info('Setting up apl-users secrets watcher done')
     } catch (error) {
-      throw extractError('setting up apl-users secrets watcher', error)
+      throw await extractError('setting up apl-users secrets watcher', error)
     }
   }
 }
@@ -444,30 +445,31 @@ async function createKeycloakConnection(): Promise<KeycloakConnection> {
 
     token = (await response.json()) as TokenEndpointResponse
 
-    return { token, basePath } as KeycloakConnection
+    return { token, basePath }
   } catch (error) {
-    throw extractError('creating Keycloak connection', error)
+    throw await extractError('creating Keycloak connection', error)
   }
 }
 
 function setupKeycloakApi(connection: KeycloakConnection) {
   const { basePath, token } = connection
-  const auth = new HttpBearerAuth()
-  auth.accessToken = String(token.access_token)
-  // Configure AccessToken for service calls
+  // The Keycloak spec declares no security scheme, so the bearer token is sent as a default header
+  const configuration = new Configuration({
+    basePath,
+    headers: { Authorization: `Bearer ${String(token.access_token)}` },
+  })
   const api: KeycloakApi = {
-    providers: new IdentityProvidersApi(basePath),
-    clientScope: new ClientScopesApi(basePath),
-    roles: new RolesApi(basePath),
-    clientRoleMappings: new ClientRoleMappingsApi(basePath),
-    roleMapper: new RoleMapperApi(basePath),
-    clients: new ClientsApi(basePath),
-    protocols: new ProtocolMappersApi(basePath),
-    realms: new RealmsAdminApi(basePath),
-    users: new UsersApi(basePath),
-    groups: new GroupsApi(basePath),
+    providers: new IdentityProvidersApi(configuration),
+    clientScope: new ClientScopesApi(configuration),
+    roles: new RolesApi(configuration),
+    clientRoleMappings: new ClientRoleMappingsApi(configuration),
+    roleMapper: new RoleMapperApi(configuration),
+    clients: new ClientsApi(configuration),
+    protocols: new ProtocolMappersApi(configuration),
+    realms: new RealmsAdminApi(configuration),
+    users: new UsersApi(configuration),
+    groups: new GroupsApi(configuration),
   }
-  forEach(api, (a) => a.setDefaultAuthentication(auth))
   return api
 }
 
@@ -485,17 +487,17 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   // which we wan to discard, so we run the next command with an empty errors array
   console.info(`Getting realm ${keycloakRealm}`)
   try {
-    const existingRealm = (await api.realms.adminRealmsRealmGet(keycloakRealm)).body
+    const existingRealm = await api.realms.adminRealmsRealmGet({ realm: keycloakRealm })
     if (isObjectSubsetDifferent(realmConf, existingRealm)) {
       console.info(`Updating realm ${keycloakRealm}`)
-      await api.realms.adminRealmsRealmPut(keycloakRealm, realmConf)
+      await api.realms.adminRealmsRealmPut({ realm: keycloakRealm, realmRepresentation: realmConf })
     } else {
       console.info(`Realm ${keycloakRealm} does not require updating`)
     }
   } catch (error) {
-    if (error.statusCode === 404) {
+    if (error instanceof ResponseError && error.response.status === 404) {
       console.info(`Creating realm ${keycloakRealm}`)
-      await api.realms.adminRealmsPost(realmConf as RequestFile)
+      await api.realms.adminRealmsPost({ body: new Blob([JSON.stringify(realmConf)], { type: 'application/json' }) })
     } else {
       throw error
     }
@@ -504,15 +506,19 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   // Create Client Scopes
   const scope = createClientScopes()
   console.info('Getting openid client scope')
-  const clientScopes = (await api.clientScope.adminRealmsRealmClientScopesGet(keycloakRealm)).body
+  const clientScopes = await api.clientScope.adminRealmsRealmClientScopesGet({ realm: keycloakRealm })
   const existingScope = clientScopes.find((el) => el.name === scope.name)
   if (existingScope) {
     console.info('Updating openid client scope')
     // @NOTE this PUT operation is almost pointless as it is not updating deep nested properties because of various db constraints
-    await api.clientScope.adminRealmsRealmClientScopesClientScopeIdPut(keycloakRealm, existingScope.id!, scope)
+    await api.clientScope.adminRealmsRealmClientScopesClientScopeIdPut({
+      realm: keycloakRealm,
+      clientScopeId: existingScope.id!,
+      clientScopeRepresentation: scope,
+    })
   } else {
     console.info('Creating openid client scope')
-    await api.clientScope.adminRealmsRealmClientScopesPost(keycloakRealm, scope)
+    await api.clientScope.adminRealmsRealmClientScopesPost({ realm: keycloakRealm, clientScopeRepresentation: scope })
   }
 
   await manageUserProfile(api)
@@ -526,16 +532,20 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
     env.KEYCLOAK_REALM,
   )
   console.info(`Getting all roles from realm ${keycloakRealm}`)
-  const existingRealmRoles = (await api.roles.adminRealmsRealmRolesGet(keycloakRealm)).body
+  const existingRealmRoles = await api.roles.adminRealmsRealmRolesGet({ realm: keycloakRealm })
   await Promise.all(
     teamRoles.map((role) => {
       const exists = existingRealmRoles.some((el) => el.name === role.name)
       if (exists) {
         console.info(`Updating role ${role.name!}`)
-        return api.roles.adminRealmsRealmRolesRoleNamePut(keycloakRealm, role.name ?? '', role)
+        return api.roles.adminRealmsRealmRolesRoleNamePut({
+          realm: keycloakRealm,
+          roleName: role.name ?? '',
+          roleRepresentation: role,
+        })
       }
       console.info(`Creating role ${role.name!}`)
-      return api.roles.adminRealmsRealmRolesPost(keycloakRealm, role)
+      return api.roles.adminRealmsRealmRolesPost({ realm: keycloakRealm, roleRepresentation: role })
     }),
   )
 
@@ -543,72 +553,78 @@ async function keycloakRealmProviderConfigurer(api: KeycloakApi) {
   const uniqueUrls = [...new Set(env.REDIRECT_URIS)]
   const client = createClient(uniqueUrls, env.KEYCLOAK_HOSTNAME_URL, env.KEYCLOAK_CLIENT_SECRET)
   console.info('Getting otomi client')
-  const allClients = (await api.clients.adminRealmsRealmClientsGet(keycloakRealm)).body
+  const allClients = await api.clients.adminRealmsRealmClientsGet({ realm: keycloakRealm })
   const existingClient = allClients.find((el) => el.name === client.name)
   if (existingClient) {
     if (isObjectSubsetDifferent(client, existingClient)) {
       console.info('Updating otomi client')
-      await api.clients.adminRealmsRealmClientsClientUuidPut(keycloakRealm, existingClient.id!, client)
+      await api.clients.adminRealmsRealmClientsClientUuidPut({
+        realm: keycloakRealm,
+        clientUuid: existingClient.id!,
+        clientRepresentation: client,
+      })
     } else {
       console.info(`Client otomi does not require updating`)
     }
   } else {
     console.info('Creating otomi client')
-    await api.clients.adminRealmsRealmClientsPost(keycloakRealm, client)
+    await api.clients.adminRealmsRealmClientsPost({ realm: keycloakRealm, clientRepresentation: client })
   }
 
   console.info('Getting client claim mappers')
   const allClientClaimMappers =
-    (await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsGet(keycloakRealm, client.id!)).body ||
+    (await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsGet({
+      realm: keycloakRealm,
+      clientUuid: client.id!,
+    })) ||
     []
   if (!allClientClaimMappers.some((el) => el.name === 'email')) {
     const emailMapper = createClientEmailClaimMapper()
     console.info('Creating client email claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(
-      keycloakRealm,
-      client.id!,
-      emailMapper,
-    )
+    await addClientMapper(api, client.id!, emailMapper)
   }
   if (!allClientClaimMappers.some((el) => el.name === 'sub')) {
     const subMapper = createClientSubClaimMapper()
     console.info('Creating client sub claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, subMapper)
+    await addClientMapper(api, client.id!, subMapper)
   }
   if (!allClientClaimMappers.some((el) => el.name === 'name')) {
     const nameMapper = createClientNameClaimMapper()
     console.info('Creating client name claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(
-      keycloakRealm,
-      client.id!,
-      nameMapper,
-    )
+    await addClientMapper(api, client.id!, nameMapper)
   }
   if (!allClientClaimMappers.some((claim) => claim.name === 'nickname')) {
     const nicknameMapper = createClientNicknameClaimMapper()
     console.info('Creating client nickname claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(
-      keycloakRealm,
-      client.id!,
-      nicknameMapper,
-    )
+    await addClientMapper(api, client.id!, nicknameMapper)
   }
 
   // Needed for oauth2-proxy OIDC configuration
   if (!allClientClaimMappers.some((el) => el.name === 'aud-mapper-otomi')) {
     const audMapper = createClientAudClaimMapper()
     console.info('Creating client aud claim mapper')
-    await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost(keycloakRealm, client.id!, audMapper)
+    await addClientMapper(api, client.id!, audMapper)
   }
 
   // set login theme for master realm
   console.info('adding theme for login page')
-  await api.realms.adminRealmsRealmPut(env.KEYCLOAK_REALM, createLoginThemeConfig('APL'))
+  await api.realms.adminRealmsRealmPut({
+    realm: env.KEYCLOAK_REALM,
+    realmRepresentation: createLoginThemeConfig('APL'),
+  })
+}
+
+async function addClientMapper(api: KeycloakApi, clientUuid: string, mapper: ProtocolMapperRepresentation) {
+  await api.protocols.adminRealmsRealmClientsClientUuidProtocolMappersModelsPost({
+    realm: keycloakRealm,
+    clientUuid,
+    protocolMapperRepresentation: mapper,
+  })
 }
 
 // manage global user profiles
 export async function manageUserProfile(api: KeycloakApi) {
-  const currentUserProfile = (await api.users.adminRealmsRealmUsersProfileGet(keycloakRealm)).body
+  const currentUserProfile = await api.users.adminRealmsRealmUsersProfileGet({ realm: keycloakRealm })
 
   const requiredAttributes = ['username', 'email', 'firstName', 'lastName']
   const existingNames = (currentUserProfile.attributes || []).map((a: any) => a.name)
@@ -626,10 +642,13 @@ export async function manageUserProfile(api: KeycloakApi) {
         permissions: { view: ['admin', 'user'] as any, edit: ['admin', 'user'] as any },
       })
     }
-    await api.users.adminRealmsRealmUsersProfilePut(keycloakRealm, {
-      ...currentUserProfile,
-      attributes,
-      unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
+    await api.users.adminRealmsRealmUsersProfilePut({
+      realm: keycloakRealm,
+      uPConfig: {
+        ...currentUserProfile,
+        attributes,
+        unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
+      },
     })
     console.info(`User profile updated: ensured attributes [${requiredAttributes.join(', ')}] and AdminEdit policy`)
   }
@@ -641,14 +660,21 @@ export async function externalIDP(api: KeycloakApi) {
   const idp = await createIdProvider(env.IDP_CLIENT_ID, env.IDP_ALIAS, env.IDP_CLIENT_SECRET, env.IDP_OIDC_URL)
 
   console.info('Geting identity provider')
-  const existingProviders = (await api.providers.adminRealmsRealmIdentityProviderInstancesGet(keycloakRealm)).body || []
+  const existingProviders = (await api.providers.adminRealmsRealmIdentityProviderInstancesGet({ realm: keycloakRealm })) || []
 
   if (existingProviders.some((el) => el.alias === idp.alias)) {
     console.info('Updating identity provider')
-    await api.providers.adminRealmsRealmIdentityProviderInstancesAliasPut(keycloakRealm, idp.alias!, idp)
+    await api.providers.adminRealmsRealmIdentityProviderInstancesAliasPut({
+      realm: keycloakRealm,
+      alias: idp.alias!,
+      identityProviderRepresentation: idp,
+    })
   } else {
     console.info('Creating identity provider')
-    await api.providers.adminRealmsRealmIdentityProviderInstancesPost(keycloakRealm, idp)
+    await api.providers.adminRealmsRealmIdentityProviderInstancesPost({
+      realm: keycloakRealm,
+      identityProviderRepresentation: idp,
+    })
   }
 
   // Create Identity Provider Mappers
@@ -663,9 +689,10 @@ export async function externalIDP(api: KeycloakApi) {
   )
 
   console.info('Getting role mappers')
-  const existingMappers = (
-    await api.providers.adminRealmsRealmIdentityProviderInstancesAliasMappersGet(keycloakRealm, env.IDP_ALIAS)
-  ).body
+  const existingMappers = await api.providers.adminRealmsRealmIdentityProviderInstancesAliasMappersGet({
+    realm: keycloakRealm,
+    alias: env.IDP_ALIAS,
+  })
 
   try {
     await Promise.all(
@@ -673,48 +700,52 @@ export async function externalIDP(api: KeycloakApi) {
         const existingMapper = existingMappers.find((m) => m.name === idpMapper.name)
         if (existingMapper) {
           console.info(`Updating mapper ${idpMapper.name!}`)
-          return api.providers.adminRealmsRealmIdentityProviderInstancesAliasMappersIdPut(
-            keycloakRealm,
-            env.IDP_ALIAS,
-            existingMapper.id!,
-            {
+          return api.providers.adminRealmsRealmIdentityProviderInstancesAliasMappersIdPut({
+            realm: keycloakRealm,
+            alias: env.IDP_ALIAS,
+            id: existingMapper.id!,
+            identityProviderMapperRepresentation: {
               ...existingMapper,
               ...idpMapper,
             },
-          )
+          })
         }
         console.info(`Creating mapper ${idpMapper.name!}`)
-        return api.providers.adminRealmsRealmIdentityProviderInstancesAliasMappersPost(
-          keycloakRealm,
-          env.IDP_ALIAS,
-          idpMapper,
-        )
+        return api.providers.adminRealmsRealmIdentityProviderInstancesAliasMappersPost({
+          realm: keycloakRealm,
+          alias: env.IDP_ALIAS,
+          identityProviderMapperRepresentation: idpMapper,
+        })
       }),
     )
     console.info('Finished external IDP')
   } catch (error) {
-    throw extractError('setting up external IDP', error)
+    throw await extractError('setting up external IDP', error)
   }
 }
 
 export async function internalIDP(api: KeycloakApi) {
   // IDP instead of broker
   console.info('Getting realm groups')
-  const updatedExistingGroups = (await api.groups.adminRealmsRealmGroupsGet(keycloakRealm)).body
+  const updatedExistingGroups = await api.groups.adminRealmsRealmGroupsGet({ realm: keycloakRealm })
 
   // get updated existing roles
   console.info(`Getting all roles from realm ${keycloakRealm}`)
-  const updatedExistingRealmRoles = (await api.roles.adminRealmsRealmRolesGet(keycloakRealm)).body
+  const updatedExistingRealmRoles = await api.roles.adminRealmsRealmRolesGet({ realm: keycloakRealm })
 
   // get clients for access roles
   console.info(`Getting client realm-management from realm ${keycloakRealm}`)
-  const realmManagementClients = (await api.clients.adminRealmsRealmClientsGet(keycloakRealm, 'realm-management')).body
+  const realmManagementClients = await api.clients.adminRealmsRealmClientsGet({
+    realm: keycloakRealm,
+    clientId: 'realm-management',
+  })
   const realmManagementClient = realmManagementClients.find((el) => el.clientId === 'realm-management')!
 
   console.info(`Getting realm-management roles from realm ${keycloakRealm}`)
-  const realmManagementRoles = (
-    await api.roles.adminRealmsRealmClientsClientUuidRolesGet(keycloakRealm, realmManagementClient.id!)
-  ).body
+  const realmManagementRoles = await api.roles.adminRealmsRealmClientsClientUuidRolesGet({
+    realm: keycloakRealm,
+    clientUuid: realmManagementClient.id!,
+  })
   const realmManagementRole = realmManagementRoles.find((el) => el.name === 'manage-realm')!
   const userManagementRole = realmManagementRoles.find((el) => el.name === 'manage-users')!
   const userViewerRole = realmManagementRoles.find((el) => el.name === 'view-users')!
@@ -725,9 +756,10 @@ export async function internalIDP(api: KeycloakApi) {
       const groupName = group.name!
       // get realm roles for group
       console.info(`Getting all roles from realm ${keycloakRealm} for group ${groupName}`)
-      const existingRoleMappings = (
-        await api.roleMapper.adminRealmsRealmGroupsGroupIdRoleMappingsRealmGet(keycloakRealm, group.id!)
-      ).body
+      const existingRoleMappings = await api.roleMapper.adminRealmsRealmGroupsGroupIdRoleMappingsRealmGet({
+        realm: keycloakRealm,
+        groupId: group.id!,
+      })
       const existingRoleMapping = existingRoleMappings.find((el) => el.name === groupName)
       if (!existingRoleMapping) {
         // set realm roles
@@ -739,17 +771,20 @@ export async function internalIDP(api: KeycloakApi) {
           roles.push(existingRole)
         }
         console.info(`Creating role mapping for group ${groupName}`)
-        await api.roleMapper.adminRealmsRealmGroupsGroupIdRoleMappingsRealmPost(keycloakRealm, group.id!, roles)
+        await api.roleMapper.adminRealmsRealmGroupsGroupIdRoleMappingsRealmPost({
+          realm: keycloakRealm,
+          groupId: group.id!,
+          roleRepresentation: roles,
+        })
       }
       // get client roles for group
       console.info(`Getting all client roles from realm ${keycloakRealm} for group ${groupName}`)
-      const existingClientRoleMappings = (
-        await api.clientRoleMappings.adminRealmsRealmGroupsGroupIdRoleMappingsClientsClientIdGet(
-          keycloakRealm,
-          group.id!,
-          realmManagementClient.id!,
-        )
-      ).body
+      const existingClientRoleMappings =
+        await api.clientRoleMappings.adminRealmsRealmGroupsGroupIdRoleMappingsClientsClientIdGet({
+          realm: keycloakRealm,
+          groupId: group.id!,
+          clientId: realmManagementClient.id!,
+        })
       const existingClientRoleMapping = existingClientRoleMappings.find((el) => el.name === groupName)
       if (!existingClientRoleMapping) {
         // let team members see other users
@@ -761,12 +796,12 @@ export async function internalIDP(api: KeycloakApi) {
         console.info(
           `Creating access roles [${accessRoles.map((r) => r.name).join(',')}] mapping for group ${groupName}`,
         )
-        await api.clientRoleMappings.adminRealmsRealmGroupsGroupIdRoleMappingsClientsClientIdPost(
-          keycloakRealm,
-          group.id!,
-          realmManagementClient.id!,
-          accessRoles,
-        )
+        await api.clientRoleMappings.adminRealmsRealmGroupsGroupIdRoleMappingsClientsClientIdPost({
+          realm: keycloakRealm,
+          groupId: group.id!,
+          clientId: realmManagementClient.id!,
+          roleRepresentation: accessRoles,
+        })
       }
     }),
   )
@@ -787,22 +822,26 @@ export async function manageGroups(api: KeycloakApi) {
   const teamGroups = createGroups(env.TEAM_IDS)
   console.info('Getting realm groups')
   try {
-    const existingGroups = (await api.groups.adminRealmsRealmGroupsGet(keycloakRealm)).body
+    const existingGroups = await api.groups.adminRealmsRealmGroupsGet({ realm: keycloakRealm })
     await Promise.all(
       teamGroups.map((group) => {
         const groupName = group.name!
         const existingGroup = existingGroups.find((el) => el.name === groupName)
         if (existingGroup) {
           console.info(`Updating groups ${groupName}`)
-          return api.groups.adminRealmsRealmGroupsGroupIdPut(keycloakRealm, existingGroup.id!, group)
+          return api.groups.adminRealmsRealmGroupsGroupIdPut({
+            realm: keycloakRealm,
+            groupId: existingGroup.id!,
+            groupRepresentation: group,
+          })
         }
         console.info(`Creating group ${groupName}`)
-        return api.groups.adminRealmsRealmGroupsPost(keycloakRealm, group)
+        return api.groups.adminRealmsRealmGroupsPost({ realm: keycloakRealm, groupRepresentation: group })
       }),
     )
     console.info('Finished managing groups')
   } catch (error) {
-    throw extractError('managing groups', error)
+    throw await extractError('managing groups', error)
   }
 }
 
@@ -813,7 +852,7 @@ export async function updateUserGroups(
   teamGroups: string[],
 ): Promise<void> {
   const userId = user.id!
-  const { body: existingUserGroups } = await api.users.adminRealmsRealmUsersUserIdGroupsGet(keycloakRealm, userId)
+  const existingUserGroups = await api.users.adminRealmsRealmUsersUserIdGroupsGet({ realm: keycloakRealm, userId })
   const userGroupIds: Set<string> = new Set(existingUserGroups.map((userGroup) => groupsByName[userGroup.name!]))
   const teamGroupIds: Set<string> = new Set()
   let groupUpdates = 0
@@ -823,7 +862,7 @@ export async function updateUserGroups(
       if (teamGroupId) {
         if (!userGroupIds.has(teamGroupId)) {
           console.info(`Adding user ${user.email} to ${teamGroup}`)
-          await api.users.adminRealmsRealmUsersUserIdGroupsGroupIdPut(keycloakRealm, userId, teamGroupId)
+          await api.users.adminRealmsRealmUsersUserIdGroupsGroupIdPut({ realm: keycloakRealm, userId, groupId: teamGroupId })
           groupUpdates += 1
         }
         teamGroupIds.add(teamGroupId)
@@ -837,7 +876,11 @@ export async function updateUserGroups(
       const userGroupId = groupsByName[userGroup.name!]
       if (!teamGroupIds.has(userGroupId)) {
         console.info(`Removing user ${user.email} from ${userGroup.name}`)
-        await api.users.adminRealmsRealmUsersUserIdGroupsGroupIdDelete(keycloakRealm, userId, userGroupId)
+        await api.users.adminRealmsRealmUsersUserIdGroupsGroupIdDelete({
+          realm: keycloakRealm,
+          userId,
+          groupId: userGroupId,
+        })
         groupUpdates += 1
       }
     }),
@@ -850,13 +893,16 @@ export async function updateUserGroups(
 export async function createUpdateUser(api: KeycloakApi, userConf: UserRepresentation): Promise<void> {
   const { email, groups } = userConf
   console.info(`Getting users for ${email}`)
-  // exact is the 6th positional argument, without it Keycloak does a substring match on email
-  const existingUsersByUserEmail = (
-    await api.users.adminRealmsRealmUsersGet(keycloakRealm, false, email, undefined, undefined, true)
-  ).body
+  // without exact Keycloak does a substring match on email
+  const existingUsersByUserEmail = await api.users.adminRealmsRealmUsersGet({
+    realm: keycloakRealm,
+    briefRepresentation: false,
+    email,
+    exact: true,
+  })
   // Never trust the first result, only accept a user whose email is really the one we asked for
   const existingUser = existingUsersByUserEmail?.find((user) => user.email?.toLowerCase() === email?.toLowerCase())
-  const existingGroups = (await api.groups.adminRealmsRealmGroupsGet(keycloakRealm)).body
+  const existingGroups = await api.groups.adminRealmsRealmGroupsGet({ realm: keycloakRealm })
   const groupsByName = Object.fromEntries(existingGroups.map((group) => [group.name, group.id])) as Record<
     string,
     string
@@ -867,7 +913,11 @@ export async function createUpdateUser(api: KeycloakApi, userConf: UserRepresent
       const updatedUserConf = omit(userConf, omitUpdateFields)
       if (isObjectSubsetDifferent(updatedUserConf, existingUser)) {
         console.info(`Updating user ${email}`)
-        await api.users.adminRealmsRealmUsersUserIdPut(keycloakRealm, existingUser.id!, updatedUserConf)
+        await api.users.adminRealmsRealmUsersUserIdPut({
+          realm: keycloakRealm,
+          userId: existingUser.id!,
+          userRepresentation: updatedUserConf,
+        })
       } else {
         console.info(`User with email ${email} does not require updating`)
       }
@@ -881,25 +931,25 @@ export async function createUpdateUser(api: KeycloakApi, userConf: UserRepresent
           userConf.groups!.splice(i, 1)
         }
       }
-      await api.users.adminRealmsRealmUsersPost(keycloakRealm, userConf)
+      await api.users.adminRealmsRealmUsersPost({ realm: keycloakRealm, userRepresentation: userConf })
     }
   } catch (error) {
-    throw extractError('creating or updating user', error)
+    throw await extractError('creating or updating user', error)
   }
 }
 
-async function deleteUsers(api: any, users: any[]) {
-  const { body: keycloakUsers } = await api.users.adminRealmsRealmUsersGet(keycloakRealm)
+async function deleteUsers(api: KeycloakApi, users: Record<string, any>[]) {
+  const keycloakUsers = await api.users.adminRealmsRealmUsersGet({ realm: keycloakRealm })
   const filteredUsers = keycloakUsers.filter((user) => user.username !== 'otomi-admin')
   const usersToDelete = filteredUsers.filter((user) => !users.some((u) => u.email === user.email))
 
   await Promise.all(
     usersToDelete.map(async (user) => {
       try {
-        await api.users.adminRealmsRealmUsersUserIdDelete(keycloakRealm, user.id)
+        await api.users.adminRealmsRealmUsersUserIdDelete({ realm: keycloakRealm, userId: user.id! })
         console.debug(`Deleted user ${user.email}`)
       } catch (error) {
-        throw extractError(`deleting user ${user.email}`, error)
+        throw await extractError(`deleting user ${user.email}`, error)
       }
     }),
   )
