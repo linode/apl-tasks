@@ -10,6 +10,8 @@ export const HARBOR_GROUP_TYPE = {
   http: 2,
 }
 
+export const DEFAULT_OIDC_SCOPE = 'openid'
+export const DEFAULT_OIDC_NAME = 'otomi'
 export const ROBOT_PREFIX = 'otomi-'
 export const SYSTEM_SECRET_NAME = 'harbor-robot-admin'
 export const PROJECT_PULL_SECRET_NAME = 'harbor-pullsecret'
