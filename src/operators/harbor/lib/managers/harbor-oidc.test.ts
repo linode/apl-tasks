@@ -1,4 +1,4 @@
-import { ConfigureApi } from '@linode/harbor-client-node'
+import { Configurations, ConfigureApi } from '@linode/harbor-client-fetch'
 import { DEFAULT_OIDC_NAME, DEFAULT_OIDC_SCOPE } from '../consts'
 import { HarborConfig } from '../types/oidc'
 import manageHarborOidcConfig from './harbor-oidc'
@@ -9,6 +9,9 @@ describe('manageHarborOidcConfig', () => {
   }
 
   const configureApi = mockConfigureApi as unknown as ConfigureApi
+
+  const expectConfigurations = (configurations: Partial<Configurations>) =>
+    expect.objectContaining({ configurations: expect.objectContaining(configurations) })
 
   const harborConfig = (overrides: Partial<HarborConfig> = {}): HarborConfig =>
     ({
@@ -36,7 +39,7 @@ describe('manageHarborOidcConfig', () => {
     await manageHarborOidcConfig(configureApi, harborConfig())
 
     expect(mockConfigureApi.updateConfigurations).toHaveBeenCalledWith(
-      expect.objectContaining({ oidcScope: 'openid email profile groups' }),
+      expectConfigurations({ oidcScope: 'openid email profile groups' }),
     )
   })
 
@@ -44,7 +47,7 @@ describe('manageHarborOidcConfig', () => {
     await manageHarborOidcConfig(configureApi, harborConfig({ oidcScope: undefined }))
 
     expect(mockConfigureApi.updateConfigurations).toHaveBeenCalledWith(
-      expect.objectContaining({ oidcScope: DEFAULT_OIDC_SCOPE }),
+      expectConfigurations({ oidcScope: DEFAULT_OIDC_SCOPE }),
     )
   })
 
@@ -52,21 +55,21 @@ describe('manageHarborOidcConfig', () => {
     await manageHarborOidcConfig(configureApi, harborConfig({ oidcScope: '' }))
 
     expect(mockConfigureApi.updateConfigurations).toHaveBeenCalledWith(
-      expect.objectContaining({ oidcScope: DEFAULT_OIDC_SCOPE }),
+      expectConfigurations({ oidcScope: DEFAULT_OIDC_SCOPE }),
     )
   })
 
   it('configures Harbor with the identity provider name supplied in the configuration', async () => {
     await manageHarborOidcConfig(configureApi, harborConfig({ oidcName: 'dex' }))
 
-    expect(mockConfigureApi.updateConfigurations).toHaveBeenCalledWith(expect.objectContaining({ oidcName: 'dex' }))
+    expect(mockConfigureApi.updateConfigurations).toHaveBeenCalledWith(expectConfigurations({ oidcName: 'dex' }))
   })
 
   it('falls back to the default identity provider name when none is supplied', async () => {
     await manageHarborOidcConfig(configureApi, harborConfig({ oidcName: '' }))
 
     expect(mockConfigureApi.updateConfigurations).toHaveBeenCalledWith(
-      expect.objectContaining({ oidcName: DEFAULT_OIDC_NAME }),
+      expectConfigurations({ oidcName: DEFAULT_OIDC_NAME }),
     )
   })
 
@@ -74,7 +77,7 @@ describe('manageHarborOidcConfig', () => {
     await manageHarborOidcConfig(configureApi, harborConfig())
 
     expect(mockConfigureApi.updateConfigurations).toHaveBeenCalledWith(
-      expect.objectContaining({
+      expectConfigurations({
         authMode: 'oidc_auth',
         oidcAdminGroup: 'platform-admin',
         oidcClientId: 'otomi',
