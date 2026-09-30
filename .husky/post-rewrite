@@ -1,7 +1,15 @@
 #!/bin/sh
 
+# $1 = "amend" or "rebase". Rebase sets ORIG_HEAD to the pre-rebase tip; amend does not.
+if [ "$1" = "rebase" ]; then
+  prev=ORIG_HEAD
+else
+  prev='HEAD@{1}'
+fi
+git rev-parse --quiet --verify "$prev" >/dev/null || exit 0
+
 # Check if package-lock.json changed
-if git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep --quiet 'package-lock.json'; then
+if git diff-tree -r --name-only --no-commit-id "$prev" HEAD | grep --quiet 'package-lock.json'; then
   echo "📦 package-lock.json changed, running npm install..."
   npm install --prefer-offline --no-audit
 fi
