@@ -10,17 +10,37 @@ This readme is aimed at development. If you wish to contribute please read our D
 
 ## Development
 
+### Use the required Node.js version
+
+Node.js **24.22.1** and npm **11.x** are required. With nvm installed, run
+these commands from the repository root before installing dependencies or running scripts:
+
+```bash
+nvm install
+nvm use
+```
+
+The exact Node.js version is pinned in `.nvmrc`, `package.json`, and both Docker
+base images. The tracked `.npmrc` enables `engine-strict` so npm rejects installs
+with incompatible engines. npm 11 also checks `devEngines` before installs,
+`npm ci`, and `npm run` commands, rejecting any other Node.js version.
+
 ### Set token to pull npm packages
 **Important**
 When using `npm i` and you get the errors `Unauthorized` and `Permission denied` on the installation regarding getting packages from redkubes
 > Example: `npm ERR! 403 403 Forbidden - GET https://npm.pkg.github.com/linode/@linode%2fgitea-client-node - Permission denied`
 
-This can be fixed by adding the following line to the `.npmrc` file. 
-`//npm.pkg.github.com/:_authToken=PERSONAL_ACCESS_TOKEN_HERE`
+The tracked `.npmrc` reads authentication from `NODE_AUTH_TOKEN`. Export a token
+in your shell before installing dependencies:
+
+```bash
+export NODE_AUTH_TOKEN=PERSONAL_ACCESS_TOKEN_HERE
+npm ci
+```
 
 To create a personal access token, go to GitHub -> settings -> developer settings -> personal access token -> give read permission on packages and create the token
 
-**Remember not to push this token**
+**Never put a token directly in the tracked `.npmrc` or commit it to the repository.**
 
 ### Set environment variables
 Make sure your expected environment variables exist in a mandatory `.env` file.

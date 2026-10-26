@@ -22,6 +22,18 @@
     "openid-client": "6.8.8"
   },
   "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.22.1",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": "^11",
+      "onFail": "error"
+    }
+  },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
@@ -52,7 +64,7 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=24.0.0",
+    "node": "24.22.1",
     "npm": "^11"
   },
   "homepage": "https://github.com/linode/apl-tasks#readme",
