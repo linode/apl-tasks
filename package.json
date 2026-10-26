@@ -25,7 +25,7 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "24.22.1",
+      "version": ">=24.22.1 <25",
       "onFail": "error"
     },
     "packageManager": {
@@ -64,7 +64,7 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": "24.22.1",
+    "node": ">=24.22.1 <25",
     "npm": "^11"
   },
   "homepage": "https://github.com/linode/apl-tasks#readme",

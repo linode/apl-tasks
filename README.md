@@ -12,7 +12,7 @@ This readme is aimed at development. If you wish to contribute please read our D
 
 ### Use the required Node.js version
 
-Node.js **24.22.1** and npm **11.x** are required. With nvm installed, run
+Local development requires Node.js **>=24.22.1 <25** and npm **11.x**. With nvm installed, run
 these commands from the repository root before installing dependencies or running scripts:
 
 ```bash
@@ -20,10 +20,11 @@ nvm install
 nvm use
 ```
 
-The exact Node.js version is pinned in `.nvmrc`, `package.json`, and both Docker
-base images. The tracked `.npmrc` enables `engine-strict` so npm rejects installs
+The default Node.js version is pinned to **24.22.1** in `.nvmrc` and both Docker
+base images. `package.json` allows newer Node.js 24 releases for local development.
+The tracked `.npmrc` enables `engine-strict` so npm rejects installs
 with incompatible engines. npm 11 also checks `devEngines` before installs,
-`npm ci`, and `npm run` commands, rejecting any other Node.js version.
+`npm ci`, and `npm run` commands, rejecting Node.js versions outside the allowed range.
 
 ### Set token to pull npm packages
 **Important**
