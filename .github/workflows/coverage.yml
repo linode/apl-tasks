@@ -8,6 +8,8 @@ on:
       - '*.json'
       - '*.js'
       - '*.ts'
+      - '.nvmrc'
+      - '.npmrc'
 jobs:
   coverage:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -15,18 +17,11 @@ jobs:
     env:
       # Git hooks from husky break the branch switching done by jest-coverage-report-action
       HUSKY: '0'
+      NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Set npm token
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "@linode:registry=https://npm.pkg.github.com/linode" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> .npmrc
-          echo '::set-output name=diff::1'
-
       - name: Install Node
         run: |
           export NVM_DIR="$HOME/.nvm"
