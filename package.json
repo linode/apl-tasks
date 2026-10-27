@@ -9,7 +9,7 @@
     }
   },
   "dependencies": {
-    "@kubernetes/client-node": "1.4.0",
+    "@kubernetes/client-node": "2.0.0",
     "@linode/apl-k8s-operator": "0.1.0",
     "@linode/gitea-client-fetch": "^1.25.2",
     "@linode/harbor-client-fetch": "^2.15.0",
