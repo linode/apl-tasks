@@ -1,5 +1,5 @@
 # --------------- Dev stage for developers to override sources
-FROM node:24-alpine AS dev
+FROM node:24.22.1-alpine AS dev
 
 RUN apk --no-cache add make gcc g++ python3 git jq
 
@@ -10,6 +10,7 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN echo "@linode:registry=https://npm.pkg.github.com/linode" > .npmrc
+RUN echo "engine-strict=true" >> .npmrc
 RUN --mount=type=secret,id=NPM_TOKEN \
   echo "//npm.pkg.github.com/:_authToken=$(cat /run/secrets/NPM_TOKEN)" >> .npmrc
 
@@ -32,7 +33,7 @@ FROM dev AS clean
 # below command removes the packages specified in devDependencies and set NODE_ENV to production
 RUN npm prune --production
 # --------------- Production stage
-FROM node:22.21.1-alpine AS prod
+FROM node:24.22.1-alpine AS prod
 
 COPY --from=dev /usr/local/bin/node /usr/bin/
 COPY --from=dev /usr/lib/libgcc* /usr/lib/
