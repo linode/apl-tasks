@@ -1,2 +1,3 @@
-# The redkubes at github packages is a proxy for all npm packages.
+engine-strict=true
 @linode:registry=https://npm.pkg.github.com/linode
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}

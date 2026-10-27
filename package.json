@@ -27,6 +27,18 @@
     "tsx": "^4.20.6"
   },
   "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=24.22.1 <25",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": "^11",
+      "onFail": "error"
+    }
+  },
   "devDependencies": {
     "@babel/preset-env": "^7.28.5",
     "@babel/preset-typescript": "^7.28.5",
@@ -35,7 +47,6 @@
     "@eslint/compat": "^2.0.0",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.39.1",
-    "@hkdobrev/run-if-changed": "0.6.3",
     "@types/async-retry": "1.4.9",
     "@types/express": "5.0.5",
     "@types/jest": "^30.0.0",
@@ -68,8 +79,8 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=22.0.0",
-    "npm": "^10"
+    "node": ">=24.22.1 <25",
+    "npm": "^11"
   },
   "homepage": "https://github.com/linode/apl-tasks#readme",
   "license": "Apache-2.0",
