@@ -19,7 +19,7 @@
     "envalid": "9.0.0",
     "generate-password": "^1.7.1",
     "lodash": "4.18.1",
-    "openid-client": "6.8.8"
+    "openid-client": "6.8.9"
   },
   "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
   "devEngines": {
@@ -52,7 +52,7 @@
     "eslint-config-prettier": "^10.0.5",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-prettier": "^5.5.7",
-    "globals": "^17.13.0",
+    "globals": "^17.14.0",
     "husky": "9.1.7",
     "jest": "^30.5.2",
     "lint-staged": "17.6.0",
