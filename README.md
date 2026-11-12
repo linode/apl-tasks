@@ -97,3 +97,12 @@ There are not many unit tests, as the tasks are _very_ robust and idempotent. Yo
 ```
 npm test
 ```
+
+## Keycloak user profiles
+
+The Keycloak operator reconciles the `otomi` realm's user profile on both new and
+existing installations. First and last names are optional: it removes their
+`required` rules while preserving other profile settings, including email
+requirements, validators, and permissions. Users can sign in without names in
+their `apl-users` secrets; no placeholder names are generated. Other required
+actions, such as changing the initial password, remain unchanged.
