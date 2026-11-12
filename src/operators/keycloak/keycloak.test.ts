@@ -15,6 +15,7 @@ jest.mock('@kubernetes/client-node', () => ({
 
 import * as keycloak from './keycloak'
 import { createUpdateUser, manageUserProfile, updateUserGroups } from './keycloak'
+import { UnmanagedAttributePolicy } from '@linode/keycloak-client-fetch'
 
 describe('Keycloak User Group Management', () => {
   let api: any
@@ -68,13 +69,91 @@ describe('Keycloak User Group Management', () => {
     })
   })
 
-  describe('updateRealmUserProfile', () => {
-    it('should update realm user profile', async () => {
+  describe('manageUserProfile', () => {
+    it('should add missing profile attributes without requiring names', async () => {
       api.users.adminRealmsRealmUsersProfileGet.mockResolvedValue({ unmanagedAttributePolicy: undefined })
       await manageUserProfile(api)
 
-      // The realm user profile should be updated
-      expect(api.users.adminRealmsRealmUsersProfilePut).toHaveBeenCalled()
+      expect(api.users.adminRealmsRealmUsersProfilePut).toHaveBeenCalledWith({
+        realm: keycloakRealm,
+        uPConfig: {
+          unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
+          attributes: ['username', 'email', 'firstName', 'lastName'].map((name) => ({
+            name,
+            displayName: `\${${name}}`,
+            permissions: { view: ['admin', 'user'], edit: ['admin', 'user'] },
+          })),
+        },
+      })
+    })
+
+    it.each([
+      { roles: ['user'] },
+      { roles: ['admin', 'user'] },
+      { scopes: ['profile'] },
+      {},
+    ])('should remove name requirements %j while preserving other profile settings', async (required) => {
+      const profile = {
+        unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
+        attributes: [
+          { name: 'username', required: { roles: ['user'] } },
+          { name: 'email', required: { roles: ['user'] }, validations: { email: {} } },
+          {
+            name: 'firstName',
+            displayName: '${firstName}',
+            required,
+            permissions: { view: ['admin', 'user'], edit: ['admin', 'user'] },
+            validations: { length: { max: 255 }, 'person-name-prohibited-characters': {} },
+          },
+          { name: 'lastName', required, annotations: { inputType: 'text' } },
+          { name: 'custom', required: { scopes: ['custom'] } },
+        ],
+        groups: [{ name: 'user-metadata', displayHeader: 'User metadata' }],
+      }
+      api.users.adminRealmsRealmUsersProfileGet.mockResolvedValue(profile)
+
+      await manageUserProfile(api)
+
+      const { required: firstNameRequired, ...firstName } = profile.attributes[2]
+      const { required: lastNameRequired, ...lastName } = profile.attributes[3]
+      expect(api.users.adminRealmsRealmUsersProfilePut).toHaveBeenCalledWith({
+        realm: keycloakRealm,
+        uPConfig: {
+          ...profile,
+          attributes: [
+            profile.attributes[0],
+            profile.attributes[1],
+            firstName,
+            lastName,
+            profile.attributes[4],
+          ],
+        },
+      })
+      expect(firstNameRequired).toEqual(required)
+      expect(lastNameRequired).toEqual(required)
+    })
+
+    it('should not update a profile that already has optional names and the AdminEdit policy', async () => {
+      api.users.adminRealmsRealmUsersProfileGet.mockResolvedValue({
+        unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
+        attributes: [
+          { name: 'username' },
+          { name: 'email', required: { roles: ['user'] } },
+          { name: 'firstName' },
+          { name: 'lastName' },
+        ],
+      })
+
+      await manageUserProfile(api)
+
+      expect(api.users.adminRealmsRealmUsersProfilePut).not.toHaveBeenCalled()
+    })
+
+    it('should propagate profile update failures', async () => {
+      api.users.adminRealmsRealmUsersProfileGet.mockResolvedValue({})
+      api.users.adminRealmsRealmUsersProfilePut.mockRejectedValue(new Error('profile update failed'))
+
+      await expect(manageUserProfile(api)).rejects.toThrow('profile update failed')
     })
   })
 

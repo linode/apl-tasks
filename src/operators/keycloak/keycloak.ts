@@ -626,15 +626,24 @@ async function addClientMapper(api: KeycloakApi, clientUuid: string, mapper: Pro
 export async function manageUserProfile(api: KeycloakApi) {
   const currentUserProfile = await api.users.adminRealmsRealmUsersProfileGet({ realm: keycloakRealm })
 
-  const requiredAttributes = ['username', 'email', 'firstName', 'lastName']
-  const existingNames = (currentUserProfile.attributes || []).map((a: any) => a.name)
-  const missingAttributes = requiredAttributes.filter((name) => !existingNames.includes(name))
+  const managedAttributes = ['username', 'email', 'firstName', 'lastName']
+  const optionalAttributes = ['firstName', 'lastName']
+  const currentAttributes = currentUserProfile.attributes || []
+  const existingNames = currentAttributes.map((attribute) => attribute.name)
+  const missingAttributes = managedAttributes.filter((name) => !existingNames.includes(name))
+  const namesRequired = currentAttributes.some(
+    (attribute) => optionalAttributes.includes(attribute.name ?? '') && attribute.required !== undefined,
+  )
 
   if (
     currentUserProfile.unmanagedAttributePolicy !== UnmanagedAttributePolicy.AdminEdit ||
-    missingAttributes.length > 0
+    missingAttributes.length > 0 ||
+    namesRequired
   ) {
-    const attributes = currentUserProfile.attributes || []
+    // An empty required object means "always required" in Keycloak; omit it entirely for optional names.
+    const attributes = currentAttributes.map((attribute) =>
+      optionalAttributes.includes(attribute.name ?? '') ? omit(attribute, 'required') : attribute,
+    )
     for (const name of missingAttributes) {
       attributes.push({
         name,
@@ -650,7 +659,9 @@ export async function manageUserProfile(api: KeycloakApi) {
         unmanagedAttributePolicy: UnmanagedAttributePolicy.AdminEdit,
       },
     })
-    console.info(`User profile updated: ensured attributes [${requiredAttributes.join(', ')}] and AdminEdit policy`)
+    console.info(
+      `User profile updated: ensured attributes [${managedAttributes.join(', ')}], optional names and AdminEdit policy`,
+    )
   }
 }
 
