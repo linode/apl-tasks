@@ -19,7 +19,7 @@
     "envalid": "8.2.0",
     "generate-password": "^1.7.1",
     "lodash": "4.18.1",
-    "openid-client": "6.8.9"
+    "openid-client": "6.9.0"
   },
   "description": "Tasks needed by the APL Container Platform to glue all the pieces together.",
   "devEngines": {
@@ -44,7 +44,7 @@
     "@types/jest": "^30.0.0",
     "@types/lodash": "4.17.27",
     "@types/node": "24.10.0",
-    "@typescript-eslint/eslint-plugin": "^8.72.2",
+    "@typescript-eslint/eslint-plugin": "^8.73.0",
     "@typescript-eslint/parser": "^8.29.0",
     "commitizen": "4.3.2",
     "cz-conventional-changelog": "3.3.0",
@@ -55,7 +55,7 @@
     "globals": "^17.14.0",
     "husky": "9.1.7",
     "jest": "^30.5.2",
-    "lint-staged": "17.6.0",
+    "lint-staged": "17.6.1",
     "npm-run-all": "4.1.5",
     "prettier": "^3.10.1",
     "ts-jest": "^29.4.15",
